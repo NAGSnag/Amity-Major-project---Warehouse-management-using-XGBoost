@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory Management - Simulation Mode</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: "Monospac821 BT", "Lucida Console", "Courier New", monospace;
+            background:
+                radial-gradient(1000px 400px at 50% -100px, #29324a 0%, #0d0f18 60%),
+                #0b0d13;
+            color: #e9edf4;
+            min-height: 100vh;
+        }
+
+        .app {
+            min-height: 100vh;
+            display: grid;
+            grid-template-rows: auto auto 1fr;
+            gap: 12px;
+            padding: 12px;
+        }
+
+        .topbar {
+            border-radius: 18px;
+            border: 1px solid #262b3b;
+            background: rgba(12, 15, 24, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 16px 24px;
+        }
+
+        .topbar h2 {
+            font-size: 20px;
+            color: #eef2f9;
+        }
+
+        .topbar-right {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .pill {
+            border: none;
+            color: #eef2f9;
+            background: #2f3345;
+            border-radius: 999px;
+            padding: 8px 18px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .pill:hover {
+            background: #3a3e52;
+        }
+
+        .pill.active {
+            background: #52c28f;
+            color: #071811;
+            font-weight: 700;
+        }
+
+        .pill.dashboard-active {
+            background: #4a55d8;
+            color: #eff2fe;
+            font-weight: 700;
+            box-shadow: 0 0 0 2px rgba(74, 85, 216, 0.28);
+        }
+
+        .avatar {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #eceef4, #cbd0d9);
+        }
+
+        /* Simulation Banner */
+        .simulation-banner {
+            background: linear-gradient(135deg, #ff8c42, #ff6b35);
+            border-radius: 16px;
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3); }
+            50% { box-shadow: 0 4px 20px rgba(255, 107, 53, 0.5); }
+        }
+
+        .simulation-icon {
+            font-size: 24px;
+        }
+
+        .simulation-text {
+            color: #fff;
+            font-weight: 700;
+            font-size: 16px;
+            text-align: center;
+        }
+
+        .simulation-subtext {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        /* Main Content Grid - 75% / 25% split */
+        .content {
+            display: grid;
+            grid-template-columns: 3fr 1fr;
+            gap: 14px;
+            min-height: calc(100vh - 200px);
+        }
+
+        /* Left: Large Warehouse Map Section (75%) */
+        .map-section {
+            background: #f6f6f6;
+            color: #111827;
+            border-radius: 24px;
+            padding: 24px 28px;
+            border: 1px solid #d4d8dd;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .map-header {
+            display: grid;
+            grid-template-columns: 60px 1fr 60px;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .arrow {
+            font-size: 48px;
+            font-weight: 700;
+            color: #161616;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .arrow:hover {
+            color: #4a55d8;
+            transform: scale(1.1);
+        }
+
+        .map-title {
+            text-align: center;
+            font-size: 36px;
+            letter-spacing: 3px;
+            font-weight: 600;
+        }
+
+        .shelves {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px 36px;
+            padding: 8px 24px 24px;
+            flex: 1;
+        }
+
+        .shelf-card {
+            display: grid;
+            gap: 10px;
+        }
+
+        .shelf-id {
+            font-size: 13px;
+            color: #374151;
+            font-family: "Monospac821 BT", "Lucida Console", "Courier New", monospace;
+            text-transform: lowercase;
+            margin-bottom: 2px;
+        }
+
+        .shelf-title {
+            min-height: 22px;
+            font-size: 14px;
+            font-family: "Monospac821 BT", "Lucida Console", "Courier New", monospace;
+            color: #111827;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .rack {
+            min-height: 360px;
+            border-radius: 10px;
+            display: grid;
+            gap: 10px;
+            align-content: start;
+            padding: 14px;
+            background:
+                repeating-linear-gradient(
+                    to right,
+                    #a76543 0,
+                    #b97753 16px,
+                    #a96845 32px
+                );
+            border: 5px solid #9a5d3e;
+            position: relative;
+            box-shadow: inset 0 -8px 0 rgba(65, 33, 17, 0.2);
+        }
+
+        .box {
+            display: grid;
+            grid-template-rows: auto 1fr;
+            gap: 6px;
+            align-content: start;
+            width: 100%;
+            height: 92px;
+            min-height: 92px;
+            padding: 7px;
+            background: linear-gradient(145deg, #f0d4a8, #cfab77);
+            border: 2px solid #f5dfbb;
+            box-shadow: 0 4px 0 rgba(95, 64, 29, 0.3);
+            border-radius: 4px;
+            color: #4b2c12;
+            font-size: 11px;
+            line-height: 1.2;
+            transition: opacity 200ms ease, transform 200ms ease, box-shadow 250ms ease;
+            cursor: pointer;
+        }
+
+        .box:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 0 rgba(95, 64, 29, 0.3);
+        }
+
+        .box.is-source {
+            opacity: 0.45;
+            transform: scale(0.98);
+        }
+
+        .box.is-target {
+            box-shadow: 0 0 0 3px rgba(76, 149, 255, 0.45), 0 4px 0 rgba(95, 64, 29, 0.3);
+        }
+
+        .box-id {
+            font-weight: 700;
+            font-size: 10px;
+        }
+
+        .box-info {
+            background: rgba(255, 245, 220, 0.7);
+            border: 1px dashed rgba(120, 74, 36, 0.45);
+            border-radius: 3px;
+            padding: 5px;
+            overflow: hidden;
+        }
+
+        .box-line + .box-line {
+            margin-top: 2px;
+        }
+
+        /* Right Sidebar (25%) - Actions + WareBot */
+        .right-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .panel {
+            background: rgba(30, 33, 40, 0.95);
+            border: 1px solid #323847;
+            border-radius: 20px;
+            padding: 18px;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+        }
+
+        .action-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #e9edf4;
+            margin-bottom: 14px;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .action-btn {
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(180deg, #4a55d8, #4250c8);
+            color: #eff2fe;
+            font-size: 14px;
+            text-align: left;
+            width: 100%;
+            padding: 11px 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 8px;
+        }
+
+        .action-btn:hover {
+            background: linear-gradient(180deg, #5565e8, #5260d8);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(74, 85, 216, 0.3);
+        }
+
+        .action-btn:last-child {
+            margin-bottom: 0;
+        }
+
+        .bot-card {
+            background: linear-gradient(145deg, #0b1430, #101b3b);
+            border: 1px solid #1f2f5c;
+            border-radius: 20px;
+            padding: 18px;
+            flex: 1;
+            overflow-y: auto;
+            max-height: calc(100vh - 400px);
+        }
+
+        .bot-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            font-size: 18px;
+            font-weight: 700;
+            color: #eef2f9;
+        }
+
+        .bot-icon {
+            font-size: 22px;
+        }
+
+        .alert {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 8px;
+            border-radius: 12px;
+            border: 1px solid #324670;
+            background: rgba(206, 221, 255, 0.05);
+            padding: 10px 11px;
+            margin-bottom: 10px;
+            line-height: 1.3;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .alert:hover {
+            background: rgba(206, 221, 255, 0.08);
+            transform: translateX(2px);
+        }
+
+        .alert-text {
+            flex: 1;
+        }
+
+        .alert-done-btn {
+            border: none;
+            border-radius: 8px;
+            background: #2ac481;
+            color: #082316;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 5px 9px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+
+        .alert-done-btn:hover {
+            background: #3cd491;
+            transform: scale(1.05);
+        }
+
+        .alert.warn {
+            border-left: 3px solid #ea7b39;
+        }
+
+        .alert.info {
+            border-left: 3px solid #34c7d8;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(10, 14, 24, 0.75);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 20000;
+            padding: 18px;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-overlay.open {
+            display: flex;
+        }
+
+        .box-modal {
+            width: min(700px, 96vw);
+            max-height: 85vh;
+            overflow: auto;
+            background: #f8f1e6;
+            border: 2px solid #a67a50;
+            border-radius: 16px;
+            color: #352210;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            padding: 20px;
+        }
+
+        .box-modal-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .box-modal-title {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .box-modal-close {
+            border: none;
+            border-radius: 8px;
+            background: #d94949;
+            color: #fff;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 700;
+            transition: all 0.2s;
+        }
+
+        .box-modal-close:hover {
+            background: #e95959;
+            transform: scale(1.05);
+        }
+
+        .box-modal-content {
+            display: grid;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.5);
+            border: 1px dashed rgba(120, 74, 36, 0.45);
+            border-radius: 10px;
+            padding: 16px;
+            min-height: 120px;
+        }
+
+        /* Scrollbar Styling */
+        .bot-card::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .bot-card::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+
+        .bot-card::-webkit-scrollbar-thumb {
+            background: rgba(74, 85, 216, 0.4);
+            border-radius: 10px;
+        }
+
+        .bot-card::-webkit-scrollbar-thumb:hover {
+            background: rgba(74, 85, 216, 0.6);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1400px) {
+            .map-title {
+                font-size: 32px;
+            }
+        }
+
+        @media (max-width: 1100px) {
+            .content {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto;
+            }
+            .topbar h2 {
+                font-size: 16px;
+            }
+            .avatar {
+                display: none;
+            }
+            .shelves {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .map-section {
+                order: 1;
+            }
+            .right-sidebar {
+                order: 2;
+            }
+        }
+
+        @media (max-width: 720px) {
+            .shelves {
+                grid-template-columns: 1fr;
+            }
+            .map-section {
+                padding: 16px;
+            }
+            .topbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .topbar-right {
+                flex-wrap: wrap;
+            }
+            .simulation-banner {
+                flex-direction: column;
+                text-align: center;
+            }
+            .map-title {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- Top Bar -->
+        <header class="topbar">
+            <h2>🏭 WareBot Inventory Management</h2>
+            <div class="topbar-right">
+                <button class="pill active">Efficiency: 80/100</button>
+                <button class="pill dashboard-active">Dashboard</button>
+                <button class="pill">Simulations</button>
+                <button class="pill">Reports</button>
+                <button class="pill">Products</button>
+                <div class="avatar"></div>
+            </div>
+        </header>
+
+        <!-- Simulation Banner -->
+        <div class="simulation-banner">
+            <span class="simulation-icon">⚠️</span>
+            <div>
+                <div class="simulation-text">SIMULATION MODE ACTIVE</div>
+                <div class="simulation-subtext">All actions are simulated • Your actual inventory data remains unchanged</div>
+            </div>
+            <span class="simulation-icon">⚠️</span>
+        </div>
+
+        <!-- Main Content: 75% Map / 25% Sidebar -->
+        <main class="content">
+            <!-- Left: Large Warehouse Map (75%) -->
+            <section class="map-section">
+                <div class="map-header">
+                    <div class="arrow">‹</div>
+                    <h2 class="map-title">📍 FINISHED GOODS SECTION</h2>
+                    <div class="arrow">›</div>
+                </div>
+                <div class="shelves" id="shelves"></div>
+            </section>
+
+            <!-- Right Sidebar (25%): Actions + WareBot -->
+            <aside class="right-sidebar">
+                <!-- Quick Actions -->
+                <article class="panel">
+                    <h3 class="action-title"><span>⚡</span> Quick Actions</h3>
+                    <button class="action-btn">📈 Demand Spike</button>
+                    <button class="action-btn">🚚 Supply Delay</button>
+                    <button class="action-btn">⏰ Time Travel</button>
+                    <button class="action-btn">📦 Quick Stock Entry</button>
+                </article>
+
+                <!-- WareBot Suggestions -->
+                <div class="bot-card">
+                    <div class="bot-head">
+                        <span>🤖 WareBot AI</span>
+                        <span class="bot-icon">💡</span>
+                    </div>
+                    <div class="alert warn">
+                        <span class="alert-text">Rack 1A critical - Headphones demand at 87%. Restock within 48 hrs.</span>
+                        <button class="alert-done-btn" type="button">Done</button>
+                    </div>
+                    <div class="alert info">
+                        <span class="alert-text">Optimization done. Pick distance: 34m to 11m. Score +22 pts.</span>
+                        <button class="alert-done-btn" type="button">Done</button>
+                    </div>
+                    <div class="alert">
+                        <span class="alert-text">+3 weeks: Perishables spike 61%. Move Rack 4B closer to terminal now.</span>
+                        <button class="alert-done-btn" type="button">Done</button>
+                    </div>
+                    <div class="alert warn">
+                        <span class="alert-text">Low stock alert: Batteries falling below safety threshold in 5 days.</span>
+                        <button class="alert-done-btn" type="button">Done</button>
+                    </div>
+                    <div class="alert info">
+                        <span class="alert-text">Seasonal trend detected: Prepare for 40% increase in orders next month.</span>
+                        <button class="alert-done-btn" type="button">Done</button>
+                    </div>
+                    <div class="alert">
+                        <span class="alert-text">Shelf 2C underutilized. Consider relocating slow-moving items there.</span>
+                        <button class="alert-done-btn" type="button">Done</button>
+                    </div>
+                    <div class="alert warn">
+                        <span class="alert-text">Temperature anomaly in Zone B. Check cooling system immediately.</span>
+                        <button class="alert-done-btn" type="button">Done</button>
+                    </div>
+                    <div class="alert info">
+                        <span class="alert-text">New optimization routine available. Run tonight at 2 AM?</span>
+                        <button class="alert-done-btn" type="button">Done</button>
+                    </div>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="box-modal-overlay">
+        <div class="box-modal" role="dialog" aria-modal="true" aria-labelledby="box-modal-title">
+            <div class="box-modal-head">
+                <h3 class="box-modal-title" id="box-modal-title">Box Details</h3>
+                <button class="box-modal-close" id="box-modal-close" type="button">Close</button>
+            </div>
+            <div class="box-modal-content" id="box-modal-content"></div>
+        </div>
+    </div>
+
+    <script>
+        let shelves = 6; 
+        let racks = 4; 
+        let boxes = 3;   
+
+        const shelvesContainer = document.getElementById("shelves");
+        const boxModalOverlay = document.getElementById("box-modal-overlay");
+        const boxModalTitle = document.getElementById("box-modal-title");
+        const boxModalContent = document.getElementById("box-modal-content");
+        const boxModalClose = document.getElementById("box-modal-close");
+
+        for (let i = 0; i < shelves; i++) {
+            const shelfCardEl = document.createElement("div");
+            shelfCardEl.className = "shelf-card";
+
+            const shelfIdEl = document.createElement("p");
+            shelfIdEl.className = "shelf-id";
+            shelfIdEl.textContent = `#shelf${String(i + 1).padStart(3, "0")}`;
+
+            const shelfTitleEl = document.createElement("p");
+            shelfTitleEl.className = "shelf-title";
+            if (i === 0){
+                shelfTitleEl.textContent = "Close To Terminal";
+                shelfTitleEl.style.textAlign = "center";
+            }
+            if (i === shelves - 1){
+                shelfTitleEl.textContent = "Further Away From Terminal";
+                shelfTitleEl.style.textAlign = "center";
+            }
+
+            const rackEl = document.createElement("div");
+            rackEl.className = "rack";
+            rackEl.style.gridTemplateColumns = `repeat(${boxes}, minmax(0, 1fr))`;
+            rackEl.style.gridTemplateRows = `repeat(${racks}, 1fr)`;
+            rackEl.style.minHeight = `${Math.max(200, racks * 55)}px`;
+
+            for (let k = 0; k < racks * boxes; k++) {
+                const boxEl = document.createElement("div");
+                boxEl.className = "box";
+
+                const rackNo = Math.floor(k / boxes) + 1;
+                const colNo = (k % boxes) + 1;
+                const boxNumber = (i * racks * boxes) + k + 1;
+                const shelfNo = i + 1;
+
+                boxEl.dataset.shelf = String(shelfNo);
+                boxEl.dataset.rack = String(rackNo);
+                boxEl.dataset.col = String(colNo);
+
+                const boxIdEl = document.createElement("div");
+                boxIdEl.className = "box-id";
+                boxIdEl.textContent = `#box${String(boxNumber).padStart(4, "0")} S${String(shelfNo).padStart(3, "0")} R${rackNo}C${colNo}`;
+
+                const boxInfoEl = document.createElement("div");
+                boxInfoEl.className = "box-info";
+                boxInfoEl.innerHTML = `
+                    <div class="box-line">Item 1 qty: 10</div>
+                    <div class="box-line">Item 2 qty: 30</div>
+                `;
+
+                boxEl.appendChild(boxIdEl);
+                boxEl.appendChild(boxInfoEl);
+                rackEl.appendChild(boxEl);
+            }
+
+            shelfCardEl.appendChild(shelfIdEl);
+            shelfCardEl.appendChild(shelfTitleEl);
+            shelfCardEl.appendChild(rackEl);
+            shelvesContainer.appendChild(shelfCardEl);
+        }
+
+        function openBoxModal(boxEl) {
+            const idText = boxEl.querySelector(".box-id")?.textContent || "Box";
+            const lines = Array.from(boxEl.querySelectorAll(".box-line")).map((line) => line.textContent.trim());
+
+            boxModalTitle.textContent = `Details: ${idText}`;
+            boxModalContent.innerHTML = "";
+
+            if (lines.length === 0) {
+                const emptyLine = document.createElement("div");
+                emptyLine.className = "box-line";
+                emptyLine.textContent = "No items";
+                boxModalContent.appendChild(emptyLine);
+            } else {
+                lines.forEach((text) => {
+                    const itemLine = document.createElement("div");
+                    itemLine.className = "box-line";
+                    itemLine.textContent = text;
+                    boxModalContent.appendChild(itemLine);
+                });
+            }
+
+            boxModalOverlay.classList.add("open");
+        }
+
+        function closeBoxModal() {
+            boxModalOverlay.classList.remove("open");
+        }
+
+        shelvesContainer.addEventListener("click", (event) => {
+            const clickedBox = event.target.closest(".box");
+            if (!clickedBox) return;
+            openBoxModal(clickedBox);
+        });
+
+        boxModalClose.addEventListener("click", closeBoxModal);
+        boxModalOverlay.addEventListener("click", (event) => {
+            if (event.target === boxModalOverlay) closeBoxModal();
+        });
+        document.addEventListener("keydown", (event) => {
+            if (event.key === "Escape") closeBoxModal();
+        });
+
+        function normalizeShelfId(shelfId) {
+            if (typeof shelfId === "number") return shelfId;
+            const numeric = String(shelfId).replace(/\D/g, "");
+            return Number(numeric);
+        }
+
+        function getBoxEl(shelfId, rackNo, colNo) {
+            const shelf = normalizeShelfId(shelfId);
+            return document.querySelector(
+                `.box[data-shelf="${shelf}"][data-rack="${rackNo}"][data-col="${colNo}"]`
+            );
+        }
+
+        async function animateBoxMove(fromShelf, fromRack, fromCol, toShelf, toRack, toCol, duration = 900) {
+            const sourceBox = getBoxEl(fromShelf, fromRack, fromCol);
+            const targetBox = getBoxEl(toShelf, toRack, toCol);
+
+            if (!sourceBox || !targetBox) {
+                console.warn("Invalid move location.", { fromShelf, fromRack, fromCol, toShelf, toRack, toCol });
+                return;
+            }
+
+            const sourceRect = sourceBox.getBoundingClientRect();
+            const targetRect = targetBox.getBoundingClientRect();
+
+            const ghost = sourceBox.cloneNode(true);
+            ghost.style.position = "fixed";
+            ghost.style.left = `${sourceRect.left}px`;
+            ghost.style.top = `${sourceRect.top}px`;
+            ghost.style.width = `${sourceRect.width}px`;
+            ghost.style.height = `${sourceRect.height}px`;
+            ghost.style.margin = "0";
+            ghost.style.zIndex = "9999";
+            ghost.style.pointerEvents = "none";
+            ghost.style.opacity = "0.95";
+            document.body.appendChild(ghost);
+
+            sourceBox.classList.add("is-source");
+            targetBox.classList.add("is-target");
+
+            const dx = targetRect.left - sourceRect.left;
+            const dy = targetRect.top - sourceRect.top;
+
+            await ghost.animate(
+                [
+                    { transform: "translate(0, 0) scale(1)", opacity: 0.95 },
+                    { transform: `translate(${dx}px, ${dy}px) scale(0.98)`, opacity: 1 }
+                ],
+                { duration, easing: "ease-in-out", fill: "forwards" }
+            ).finished;
+
+            targetBox.innerHTML = sourceBox.innerHTML;
+
+            const sourceLabel = sourceBox.querySelector(".box-id");
+            const sourceData = sourceBox.querySelector(".box-info");
+            if (sourceLabel) sourceLabel.textContent = "Empty";
+            if (sourceData) sourceData.innerHTML = `<div class="box-line">No items</div>`;
+
+            ghost.remove();
+            sourceBox.classList.remove("is-source");
+            setTimeout(() => targetBox.classList.remove("is-target"), 350);
+        }
+        
+        window.animateBoxMove = animateBoxMove;
+    </script>
+</body>
+</html>

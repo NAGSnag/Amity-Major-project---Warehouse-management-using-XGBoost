@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Warehouse Setup</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --bg:#0a0c10;--surface:#111318;--surface2:#181c24;--border:#1f2535;
+    --accent:#f59e0b;--accent2:#3b82f6;--success:#10b981;--danger:#ef4444;
+    --purple:#8b5cf6;--teal:#14b8a6;--text:#e2e8f0;--muted:#64748b;
+    --mono:'Space Mono',monospace;--sans:'DM Sans',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;}
+
+  .header{background:var(--surface);border-bottom:1px solid var(--border);padding:18px 40px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:100;}
+  .header-icon{width:38px;height:38px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;}
+  .header h1{font-family:var(--mono);font-size:15px;letter-spacing:.05em;}
+  .header span{color:var(--muted);font-size:12px;margin-left:4px;}
+
+  /* ── STEPPER ── */
+  .stepper-wrap{padding:28px 40px 0;display:flex;overflow-x:auto;}
+  .step-item{flex:1;min-width:60px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;position:relative;}
+  .step-item:not(:last-child)::after{content:'';position:absolute;top:18px;left:50%;width:100%;height:2px;background:var(--border);z-index:0;}
+  .step-item.done:not(:last-child)::after{background:var(--accent);}
+  .step-circle{width:36px;height:36px;border-radius:50%;background:var(--surface2);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:700;z-index:1;transition:all .3s;}
+  .step-item.active .step-circle{border-color:var(--accent);background:var(--accent);color:#000;}
+  .step-item.done .step-circle{border-color:var(--accent);background:transparent;color:var(--accent);}
+  .step-label{font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;text-align:center;}
+  .step-item.active .step-label{color:var(--accent);}
+
+  /* ── MAIN ── */
+  .main{padding:28px 40px 60px;max-width:940px;}
+  .panel{display:none;animation:fadeUp .3s ease;}
+  .panel.active{display:block;}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  .panel-header{margin-bottom:22px;}
+  .panel-header h2{font-family:var(--mono);font-size:19px;margin-bottom:5px;}
+  .panel-header p{color:var(--muted);font-size:13px;}
+
+  /* ── FORMS ── */
+  .form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:20px;}
+  .form-group{display:flex;flex-direction:column;gap:5px;}
+  label{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;}
+  input,select{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:9px 13px;color:var(--text);font-family:var(--sans);font-size:13px;outline:none;transition:border-color .2s;width:100%;}
+  input:focus,select:focus{border-color:var(--accent);}
+  input::placeholder{color:var(--muted);}
+  select option{background:var(--surface2);}
+
+  /* ── BUTTONS ── */
+  .btn-row{display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap;}
+  .btn{padding:9px 20px;border:none;border-radius:6px;font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:7px;}
+  .btn-primary{background:var(--accent);color:#000;}.btn-primary:hover{background:#d97706;}
+  .btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border);}.btn-secondary:hover{border-color:var(--accent);}
+  .btn-success{background:var(--success);color:#fff;}.btn-success:hover{background:#059669;}
+  .btn-blue{background:var(--accent2);color:#fff;}.btn-blue:hover{background:#2563eb;}
+  .btn-teal{background:var(--teal);color:#fff;}.btn-teal:hover{background:#0d9488;}
+  .btn-outline{background:transparent;color:var(--text);border:1px solid var(--border);}.btn-outline:hover{border-color:var(--accent);}
+  .btn-danger{background:var(--danger);color:#fff;}
+  .btn-sm{padding:6px 13px;font-size:12px;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+
+  /* ── CHOICE SCREEN ── */
+  .choice-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;text-align:center;gap:32px;}
+  .choice-title{font-family:var(--mono);font-size:24px;color:var(--text);}
+  .choice-sub{color:var(--muted);font-size:14px;max-width:480px;line-height:1.7;}
+  .choice-cards{display:flex;gap:20px;flex-wrap:wrap;justify-content:center;}
+  .choice-card{background:var(--surface);border:2px solid var(--border);border-radius:12px;padding:28px 32px;cursor:pointer;transition:all .25s;min-width:240px;max-width:280px;text-align:center;}
+  .choice-card:hover{border-color:var(--accent);transform:translateY(-3px);box-shadow:0 12px 32px rgba(0,0,0,.4);}
+  .choice-card.card-import:hover{border-color:var(--success);}
+  .choice-card .c-icon{font-size:40px;margin-bottom:14px;display:block;}
+  .choice-card h3{font-family:var(--mono);font-size:14px;margin-bottom:8px;color:var(--text);}
+  .choice-card p{font-size:12px;color:var(--muted);line-height:1.6;}
+  .choice-card .c-badge{display:inline-block;margin-top:12px;padding:4px 12px;border-radius:999px;font-size:11px;font-weight:600;}
+  .card-step  .c-badge{background:rgba(245,158,11,.15);color:var(--accent);}
+  .card-import .c-badge{background:rgba(16,185,129,.15);color:var(--success);}
+
+  /* ── QUICK IMPORT PANEL ── */
+  .qi-section{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px 24px;margin-bottom:20px;}
+  .qi-title{font-family:var(--mono);font-size:12px;letter-spacing:.08em;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+  .qi-note{background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);border-radius:6px;padding:10px 14px;font-size:12px;color:#93c5fd;margin-bottom:14px;line-height:1.6;}
+  .qi-note.green{background:rgba(16,185,129,.08);border-color:rgba(16,185,129,.2);color:#6ee7b7;}
+
+  /* ── IMPORT ZONE ── */
+  .import-zone{border:2px dashed var(--border);border-radius:10px;padding:32px 20px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:16px;position:relative;}
+  .import-zone:hover,.import-zone.drag{border-color:var(--accent);background:rgba(245,158,11,.03);}
+  .import-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+  .import-zone .icon{font-size:28px;margin-bottom:8px;}
+  .import-zone p{color:var(--muted);font-size:13px;}
+
+  /* ── LOCATION PICKER ── */
+  .location-picker{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:18px;}
+  .lp-title{font-family:var(--mono);font-size:10px;color:var(--success);letter-spacing:.08em;margin-bottom:12px;}
+  .location-cascade{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
+  .location-cascade .form-group{flex:1;min-width:150px;}
+  .location-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);border-radius:6px;padding:7px 12px;font-family:var(--mono);font-size:11px;color:var(--success);margin-top:10px;}
+  .sep{color:var(--muted);}
+
+  /* ── TABLES ── */
+  .badge-row{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px;}
+  .badge{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:4px 10px;font-family:var(--mono);font-size:11px;color:var(--accent);}
+  .table-wrap{overflow-x:auto;border-radius:8px;border:1px solid var(--border);margin-top:18px;}
+  table{width:100%;border-collapse:collapse;font-size:12px;}
+  thead{background:var(--surface2);border-bottom:1px solid var(--border);}
+  thead th{padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--muted);font-weight:400;white-space:nowrap;}
+  tbody tr{border-bottom:1px solid var(--border);transition:background .15s;}
+  tbody tr:last-child{border-bottom:none;}
+  tbody tr:hover{background:var(--surface2);}
+  tbody td{padding:10px 14px;color:var(--text);}
+  .td-mono{font-family:var(--mono);font-size:11px;color:var(--accent);}
+  .td-teal{font-family:var(--mono);font-size:11px;color:var(--teal);}
+  .td-num{font-family:var(--mono);font-size:11px;color:var(--accent2);}
+  .td-loc{font-family:var(--mono);font-size:11px;color:var(--success);}
+
+  /* ── MISC ── */
+  .divider{display:flex;align-items:center;gap:10px;margin:20px 0;color:var(--muted);font-size:11px;letter-spacing:.1em;}
+  .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border);}
+  .pill{display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:600;}
+  .pill-green{background:rgba(16,185,129,.15);color:#10b981;}
+  .pill-yellow{background:rgba(245,158,11,.15);color:#f59e0b;}
+  .pill-teal{background:rgba(20,184,166,.15);color:#14b8a6;}
+  .pill-err{background:rgba(239,68,68,.15);color:#ef4444;}
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:20px;}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px;}
+  .stat-card .s-val{font-family:var(--mono);font-size:18px;font-weight:700;margin-bottom:3px;}
+  .stat-card .s-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;}
+  .stat-card.c-green .s-val{color:var(--success);}
+  .stat-card.c-yellow .s-val{color:var(--accent);}
+  .stat-card.c-red .s-val{color:var(--danger);}
+  .stat-card.c-blue .s-val{color:var(--accent2);}
+  .stat-card.c-teal .s-val{color:var(--teal);}
+  .preview-block{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:16px;}
+  .preview-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
+  .preview-header span{font-family:var(--mono);font-size:12px;color:var(--accent);}
+  .progress-wrap{margin-bottom:16px;}
+  .progress-label-row{display:flex;justify-content:space-between;margin-bottom:5px;font-size:11px;color:var(--muted);}
+  .progress-track{height:5px;background:var(--surface2);border-radius:999px;overflow:hidden;}
+  .progress-fill{height:100%;background:linear-gradient(90deg,var(--purple),var(--accent2));border-radius:999px;width:0%;transition:width .3s;}
+  .import-result{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);border-radius:8px;padding:14px 18px;display:flex;align-items:center;gap:12px;margin-top:14px;}
+  .import-result .r-icon{font-size:24px;}
+  .import-result h4{font-family:var(--mono);font-size:13px;color:var(--success);margin-bottom:3px;}
+  .import-result p{font-size:12px;color:var(--muted);}
+  .toast-container{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:7px;z-index:999;}
+  .toast{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--success);border-radius:8px;padding:10px 16px;font-size:12px;box-shadow:0 8px 24px rgba(0,0,0,.4);animation:slideIn .3s ease,fadeOut .3s ease 2.7s forwards;min-width:200px;}
+  .toast.error{border-left-color:var(--danger);}
+  @keyframes slideIn{from{transform:translateX(40px);opacity:0}to{transform:translateX(0);opacity:1}}
+  @keyframes fadeOut{to{opacity:0;transform:translateX(40px)}}
+  .empty-state{text-align:center;padding:32px;color:var(--muted);font-size:13px;}
+  .info-note{background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.2);border-radius:6px;padding:10px 14px;font-size:12px;color:#fcd34d;margin-bottom:16px;}
+  @media(max-width:640px){.header,.main{padding-left:18px;padding-right:18px;}.stepper-wrap{padding:18px 18px 0;}.choice-cards{flex-direction:column;align-items:center;}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-icon">📦</div>
+  <div><h1>WAREHOUSE SETUP <span>/ Configuration</span></h1></div>
+</div>
+
+<!-- ── STEPPER (hidden on choice screen) ── -->
+<div class="stepper-wrap" id="stepper" style="display:none;">
+  <div class="step-item active" id="step-0" onclick="goStep(0)"><div class="step-circle">01</div><div class="step-label">Rack</div></div>
+  <div class="step-item" id="step-1" onclick="goStep(1)"><div class="step-circle">02</div><div class="step-label">Shelf</div></div>
+  <div class="step-item" id="step-2" onclick="goStep(2)"><div class="step-circle">03</div><div class="step-label">Boxes</div></div>
+  <div class="step-item" id="step-3" onclick="goStep(3)"><div class="step-circle">04</div><div class="step-label">Products</div></div>
+  <div class="step-item" id="step-4" onclick="goStep(4)"><div class="step-circle">05</div><div class="step-label">Sales Data</div></div>
+  <div class="step-item" id="step-5" onclick="goStep(5)"><div class="step-circle">06</div><div class="step-label">Raw Materials</div></div>
+</div>
+
+<div class="main">
+
+<!-- ══ PANEL -1: CHOICE SCREEN ══ -->
+<div class="panel active" id="panel-choice">
+  <div class="choice-screen">
+    <div>
+      <div class="choice-title">How would you like to set up?</div>
+      <div class="choice-sub">Choose how you want to add your products and raw materials to the warehouse.</div>
+    </div>
+    <div class="choice-cards">
+      <div class="choice-card card-step" onclick="startStepByStep()">
+        <span class="c-icon">🪜</span>
+        <h3>Step by Step</h3>
+        <p>Create racks, shelves, boxes first — then add products and raw materials one by one or via Excel.</p>
+        <span class="c-badge">Manual Setup</span>
+      </div>
+      <div class="choice-card card-import" onclick="startQuickImport()">
+        <span class="c-icon">⚡</span>
+        <h3>Quick Import</h3>
+        <p>Already have your data? Upload Excel files for products and raw materials. Location columns (rack, shelf, box) are created automatically.</p>
+        <span class="c-badge">With Location CSV</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PANEL 0: RACK ══ -->
+<div class="panel" id="panel-0">
+  <div class="panel-header"><h2>Create Racks</h2><p>Define storage racks with unique codes and types.</p></div>
+  <div class="form-grid">
+    <div class="form-group"><label>Rack Code</label><input id="rack_code" placeholder="e.g. RK-A01"></div>
+    <div class="form-group"><label>Rack Type</label>
+      <select id="rack_type"><option value="product">Product</option><option value="raw_material">Raw Material</option></select>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="createRack()">⊕ Create Rack</button>
+    <button class="btn btn-secondary" onclick="goStep(1)">Next: Shelves →</button>
+  </div>
+  <div id="rack_badges" class="badge-row"></div>
+</div>
+
+<!-- ══ PANEL 1: SHELF ══ -->
+<div class="panel" id="panel-1">
+  <div class="panel-header"><h2>Create Shelves</h2><p>Each rack gets 3 shelves (levels).</p></div>
+  <div class="form-grid">
+    <div class="form-group"><label>Select Rack</label><select id="rack_select"></select></div>
+    <div class="form-group"><label>Number of Levels</label><input id="levels" type="number" placeholder="e.g. 3" min="1" max="3"></div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="createShelves()">⊕ Create Shelves</button>
+    <button class="btn btn-secondary" onclick="goStep(2)">Next: Boxes →</button>
+  </div>
+  <div id="shelf_badges" class="badge-row"></div>
+</div>
+
+<!-- ══ PANEL 2: BOXES ══ -->
+<div class="panel" id="panel-2">
+  <div class="panel-header"><h2>Create Boxes</h2><p>Max 3 boxes per shelf. Set max units to 30 (large) or 50 (small/medium).</p></div>
+  <div class="form-grid">
+    <div class="form-group"><label>Select Shelf</label><select id="shelf_select"></select></div>
+    <div class="form-group"><label>Box Count (max 3)</label><input id="box_count" type="number" placeholder="1–3" min="1" max="3"></div>
+    <div class="form-group"><label>Max Units per Box</label><input id="max_units" type="number" placeholder="30 or 50" min="1"></div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="createBoxes()">⊕ Create Boxes</button>
+    <button class="btn btn-secondary" onclick="goStep(3)">Next: Products →</button>
+  </div>
+  <div id="box_badges" class="badge-row"></div>
+</div>
+
+<!-- ══ PANEL 3: PRODUCTS ══ -->
+<div class="panel" id="panel-3">
+  <div class="panel-header"><h2>Add Products</h2><p>Add products manually with a box assignment, or import via Excel.</p></div>
+
+  <!-- Manual form -->
+  <div class="form-grid">
+    <div class="form-group"><label>Product Code</label><input id="product_code" placeholder="e.g. PRD-001"></div>
+    <div class="form-group"><label>Product Name</label><input id="product_name" placeholder="e.g. Steel Bolt M8"></div>
+    <div class="form-group"><label>Category</label><input id="p_category" placeholder="e.g. Fasteners"></div>
+    <div class="form-group"><label>Unit Price (₹)</label><input id="unit_price" type="number" placeholder="0.00" step="0.01"></div>
+    <div class="form-group"><label>Mfg Cost (₹)</label><input id="mfg_cost" type="number" placeholder="0.00" step="0.01"></div>
+    <div class="form-group"><label>Stock Qty</label><input id="stock" type="number" placeholder="0"></div>
+    <div class="form-group"><label>Reorder Level</label><input id="reorder" type="number" placeholder="0"></div>
+    <div class="form-group"><label>Size Category</label>
+      <select id="size_category"><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option></select>
+    </div>
+    <div class="form-group"><label>Assign Box</label><select id="product_box"></select></div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-success" onclick="createProduct()">⊕ Add Product</button>
+    <button class="btn btn-secondary" onclick="goStep(4)">Next: Sales →</button>
+  </div>
+
+  <div class="divider">OR IMPORT FROM EXCEL</div>
+  <div class="qi-note">
+    <strong>Columns:</strong> product_code, product_name, category, unit_price, mfg_cost, stock_qty, reorder_level, size_category, rack_code, shelf_level, box_code
+    <button class="btn btn-blue btn-sm" style="margin-left:8px;" onclick="downloadProductTemplate()">⬇ Template</button>
+  </div>
+  <div class="import-zone" id="p-import-zone"
+    ondragover="event.preventDefault();this.classList.add('drag')"
+    ondragleave="this.classList.remove('drag')"
+    ondrop="handleProductDrop(event)">
+    <input type="file" id="p_file" accept=".xlsx,.xls,.csv" onchange="handleProductFile(event)">
+    <div class="icon">📊</div>
+    <p><strong>Click to upload</strong> or drag & drop — rack_code, shelf_level, box_code auto-creates locations</p>
+  </div>
+  <div id="p_preview"></div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>CODE</th><th>NAME</th><th>CATEGORY</th><th>PRICE</th><th>MFG COST</th><th>STOCK</th><th>REORDER</th><th>SIZE</th><th>LOCATION</th><th>STATUS</th></tr></thead>
+      <tbody id="product_table"><tr><td colspan="10" class="empty-state">No products yet.</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══ PANEL 4: SALES ══ -->
+<div class="panel" id="panel-4">
+  <div class="panel-header"><h2>Upload Sales Data</h2><p>Import 2+ years of daily sales. Columns: date, store, item (product_code), sales.</p></div>
+  <div class="import-zone" id="sales-zone"
+    ondragover="event.preventDefault();this.classList.add('drag')"
+    ondragleave="this.classList.remove('drag')"
+    ondrop="handleSalesDrop(event)">
+    <input type="file" id="sales_file" accept=".xlsx,.xls,.csv" onchange="handleSalesFile(event)">
+    <div style="font-size:32px;margin-bottom:8px;">📈</div>
+    <p><strong>Click to upload</strong> Sales CSV / Excel — date · store · item · sales</p>
+  </div>
+  <div id="sales_mapper" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px;">
+    <div style="font-family:var(--mono);font-size:11px;color:var(--purple);margin-bottom:12px;">MAP COLUMNS</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:12px;">
+      <div class="form-group"><label>Date</label><select id="map_date" style="background:var(--surface);"></select></div>
+      <div class="form-group"><label>Store</label><select id="map_store" style="background:var(--surface);"></select></div>
+      <div class="form-group"><label>Item</label><select id="map_item" style="background:var(--surface);"></select></div>
+      <div class="form-group"><label>Sales</label><select id="map_sales" style="background:var(--surface);"></select></div>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="confirmSalesMapping()">✓ Confirm & Preview</button>
+  </div>
+  <div class="stats-grid" id="sales_stats" style="display:none;">
+    <div class="stat-card c-blue"><div class="s-val" id="stat_total">—</div><div class="s-lbl">Total Rows</div></div>
+    <div class="stat-card c-green"><div class="s-val" id="stat_valid">—</div><div class="s-lbl">Valid</div></div>
+    <div class="stat-card c-red"><div class="s-val" id="stat_invalid">—</div><div class="s-lbl">Invalid</div></div>
+    <div class="stat-card c-yellow"><div class="s-val" id="stat_stores">—</div><div class="s-lbl">Stores</div></div>
+    <div class="stat-card c-blue"><div class="s-val" id="stat_items">—</div><div class="s-lbl">Items</div></div>
+    <div class="stat-card c-teal"><div class="s-val" id="stat_range">—</div><div class="s-lbl">Date Range</div></div>
+  </div>
+  <div id="sales_preview"></div>
+  <div class="progress-wrap" id="sales_progress" style="display:none;">
+    <div class="progress-label-row"><span id="progress_label">Uploading…</span><span id="progress_pct">0%</span></div>
+    <div class="progress-track"><div class="progress-fill" id="progress_fill"></div></div>
+  </div>
+  <div class="import-result" id="import_result" style="display:none;">
+    <div class="r-icon">✅</div><div><h4>Import Complete</h4><p id="import_result_msg">—</p></div>
+  </div>
+  <div class="btn-row" style="margin-top:20px;">
+    <button class="btn btn-secondary" onclick="goStep(5)">Next: Raw Materials →</button>
+  </div>
+</div>
+
+<!-- ══ PANEL 5: RAW MATERIALS ══ -->
+<div class="panel" id="panel-5">
+  <div class="panel-header"><h2>Raw Materials</h2><p>Register raw materials, link to products, and assign warehouse locations.</p></div>
+
+  <div class="stats-grid" id="rm_stats" style="display:none;">
+    <div class="stat-card c-teal"><div class="s-val" id="rm_stat_total">—</div><div class="s-lbl">Total</div></div>
+    <div class="stat-card c-red"><div class="s-val" id="rm_stat_low">—</div><div class="s-lbl">Low Stock</div></div>
+    <div class="stat-card c-blue"><div class="s-val" id="rm_stat_cats">—</div><div class="s-lbl">Categories</div></div>
+    <div class="stat-card c-teal"><div class="s-val" id="rm_stat_suppliers">—</div><div class="s-lbl">Suppliers</div></div>
+    <div class="stat-card c-blue"><div class="s-val" id="rm_stat_linked">—</div><div class="s-lbl">Linked to Product</div></div>
+  </div>
+
+  <!-- Manual form -->
+  <div class="form-grid">
+    <div class="form-group"><label>Material Code</label><input id="rm_code" placeholder="e.g. RM-001"></div>
+    <div class="form-group"><label>Material Name</label><input id="rm_name" placeholder="e.g. Copper Wire"></div>
+    <div class="form-group"><label>Category</label><input id="rm_category" placeholder="e.g. Electrical"></div>
+    <div class="form-group"><label>Unit</label><input id="rm_unit" placeholder="kg / pcs / litre"></div>
+    <div class="form-group"><label>Stock Qty</label><input id="rm_stock" type="number" placeholder="0"></div>
+    <div class="form-group"><label>Qty Required / Product</label><input id="rm_qty_req" type="number" placeholder="e.g. 1.2" step="0.01"></div>
+    <div class="form-group"><label>Reorder Level</label><input id="rm_reorder" type="number" placeholder="0"></div>
+    <div class="form-group"><label>Daily Consumption</label><input id="rm_daily" type="number" placeholder="0" step="0.01"></div>
+    <div class="form-group"><label>Size Category</label>
+      <select id="rm_size"><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option></select>
+    </div>
+    <div class="form-group"><label>Lead Time (days)</label><input id="rm_lead" type="number" placeholder="0"></div>
+    <div class="form-group"><label>Supplier</label><input id="rm_supplier" placeholder="e.g. ABC Ltd"></div>
+    <div class="form-group">
+      <label>Linked Product <span style="font-weight:400;color:var(--muted);font-size:9px;">optional</span></label>
+      <select id="rm_product_sel"><option value="">— Not linked —</option></select>
+    </div>
+    <div class="form-group"><label>Assign Box</label><select id="rm_box_sel"></select></div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-teal" onclick="createRawMaterial()">⊕ Add Material</button>
+  </div>
+
+  <div class="divider">OR IMPORT FROM EXCEL</div>
+  <div class="qi-note green">
+    <strong>Columns:</strong> material_code, material_name, category, unit, quantity_required, stock_qty, reorder_level, daily_consumption, size_category, lead_time_days, supplier_name, product_id, rack, shelf, box_id
+    <button class="btn btn-teal btn-sm" style="margin-left:8px;" onclick="downloadRMTemplate()">⬇ Template</button>
+  </div>
+  <div class="import-zone" id="rm-import-zone"
+    ondragover="event.preventDefault();this.classList.add('drag')"
+    ondragleave="this.classList.remove('drag')"
+    ondrop="handleRMDrop(event)">
+    <input type="file" id="rm_file" accept=".xlsx,.xls,.csv" onchange="handleRMFile(event)">
+    <div class="icon">🏭</div>
+    <p><strong>Click to upload</strong> or drag & drop — rack, shelf, box_id resolve locations automatically</p>
+  </div>
+  <div id="rm_preview"></div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>CODE</th><th>NAME</th><th>CATEGORY</th><th>UNIT</th>
+        <th>STOCK</th><th>QTY REQ</th><th>REORDER</th><th>DAILY</th>
+        <th>LEAD</th><th>SUPPLIER</th><th>PRODUCT</th><th>LOCATION</th><th>SIZE</th><th>STATUS</th>
+      </tr></thead>
+      <tbody id="rm_table"><tr><td colspan="14" class="empty-state">No raw materials yet.</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══ PANEL QI: QUICK IMPORT ══ -->
+<div class="panel" id="panel-qi">
+  <div class="panel-header">
+    <h2>Quick Import</h2>
+    <p>Upload your products and raw materials files with location columns (rack, shelf, box). Racks, shelves and boxes are created automatically.</p>
+  </div>
+
+  <div class="info-note">
+    💡 The import will auto-create any racks, shelves and boxes referenced in your files if they don't exist yet. Max 3 shelves per rack, 3 boxes per shelf.
+  </div>
+
+  <!-- Products import -->
+  <div class="qi-section">
+    <div class="qi-title" style="color:var(--accent2);">📦 PRODUCTS</div>
+    <div class="qi-note">
+      Columns: <strong>product_code, product_name, category, unit_price, mfg_cost, stock_qty, reorder_level, size_category, rack_code, shelf_level, box_code</strong>
+      <button class="btn btn-blue btn-sm" style="margin-left:8px;" onclick="downloadProductTemplate()">⬇ Template</button>
+    </div>
+    <div class="import-zone" id="qi-p-zone"
+      ondragover="event.preventDefault();this.classList.add('drag')"
+      ondragleave="this.classList.remove('drag')"
+      ondrop="handleQIProductDrop(event)">
+      <input type="file" id="qi_p_file" accept=".xlsx,.xls,.csv" onchange="handleQIProductFile(event)">
+      <div class="icon">📊</div>
+      <p><strong>Click to upload</strong> Products Excel / CSV</p>
+    </div>
+    <div id="qi_p_preview"></div>
+  </div>
+
+  <!-- Raw Materials import -->
+  <div class="qi-section">
+    <div class="qi-title" style="color:var(--teal);">🏭 RAW MATERIALS</div>
+    <div class="qi-note green">
+      Columns: <strong>material_code, material_name, category, unit, quantity_required, stock_qty, reorder_level, daily_consumption, size_category, lead_time_days, supplier_name, product_id, rack, shelf, box_id</strong>
+      <button class="btn btn-teal btn-sm" style="margin-left:8px;" onclick="downloadRMTemplate()">⬇ Template</button>
+    </div>
+    <div class="import-zone" id="qi-rm-zone"
+      ondragover="event.preventDefault();this.classList.add('drag')"
+      ondragleave="this.classList.remove('drag')"
+      ondrop="handleQIRMDrop(event)">
+      <input type="file" id="qi_rm_file" accept=".xlsx,.xls,.csv" onchange="handleQIRMFile(event)">
+      <div class="icon">🏭</div>
+      <p><strong>Click to upload</strong> Raw Materials Excel / CSV</p>
+    </div>
+    <div id="qi_rm_preview"></div>
+  </div>
+
+  <div class="btn-row" style="margin-top:8px;">
+    <button class="btn btn-outline btn-sm" onclick="backToChoice()">← Back</button>
+    <button class="btn btn-secondary btn-sm" onclick="startStepByStep()">Switch to Step-by-Step</button>
+  </div>
+</div>
+
+</div><!-- /.main -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+const API = "http://localhost:8080";
+let _currentPanel = 'choice';
+
+// ── TOAST ──
+function toast(msg, type='success') {
+  const c = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = `toast${type==='error'?' error':''}`;
+  t.textContent = (type==='success'?'✓ ':'✕ ') + msg;
+  c.appendChild(t); setTimeout(() => t.remove(), 3100);
+}
+
+// ── API ──
+async function api(path, body=null, method=null) {
+  const m = method||(body?'POST':'GET');
+  const opts = body ? {method:m,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)} : {method:m};
+  const r = await fetch(API+path, opts);
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+// ── CHOICE SCREEN ──
+function startStepByStep() {
+  document.getElementById('stepper').style.display = 'flex';
+  showPanel('panel-0');
+  loadRacks();
+}
+function startQuickImport() {
+  document.getElementById('stepper').style.display = 'none';
+  showPanel('panel-qi');
+}
+function backToChoice() {
+  document.getElementById('stepper').style.display = 'none';
+  showPanel('panel-choice');
+}
+function showPanel(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  _currentPanel = id;
+}
+
+// ── STEPPER ──
+function goStep(n) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.step-item').forEach((s,i) => { s.classList.toggle('active',i===n); s.classList.toggle('done',i<n); });
+  document.getElementById(`panel-${n}`).classList.add('active');
+  if(n===1) loadRacks();
+  if(n===2) loadShelves();
+  if(n===3) { loadBoxes(); loadProducts(); }
+  if(n===5) { loadRMDropdowns(); loadRawMaterials(); loadRMStats(); }
+}
+
+// ── RACK ──
+async function createRack() {
+  const code=document.getElementById('rack_code').value.trim(), type=document.getElementById('rack_type').value;
+  if(!code) return toast('Enter rack code','error');
+  try { await api('/create-rack',{rack_code:code,type,created_by:null}); toast(`Rack "${code}" created`); document.getElementById('rack_code').value=''; loadRacks(); }
+  catch(e) { toast(e.message,'error'); }
+}
+async function loadRacks() {
+  try {
+    const d = await api('/get-racks');
+    document.getElementById('rack_select').innerHTML = d.map(x=>`<option value="${x.id}">${x.rack_code} (${x.type})</option>`).join('');
+    document.getElementById('rack_badges').innerHTML = d.map(x=>`<span class="badge">${x.rack_code}</span>`).join('');
+  } catch {}
+}
+
+// ── SHELF ──
+async function createShelves() {
+  const rack_id=document.getElementById('rack_select').value, levels=document.getElementById('levels').value;
+  if(!rack_id||!levels) return toast('Select rack and levels','error');
+  if(+levels>3) return toast('Max 3 shelves per rack','error');
+  try { await api('/create-shelves',{rack_id:+rack_id,levels:+levels,created_by:null}); toast(`${levels} shelf(ves) created`); document.getElementById('levels').value=''; loadShelves(); }
+  catch(e) { toast(e.message,'error'); }
+}
+async function loadShelves() {
+  try {
+    const d = await api('/get-shelves');
+    document.getElementById('shelf_select').innerHTML = d.map(x=>`<option value="${x.id}">${x.shelf_code}</option>`).join('');
+    document.getElementById('shelf_badges').innerHTML = d.map(x=>`<span class="badge">${x.shelf_code}</span>`).join('');
+  } catch {}
+}
+
+// ── BOXES ──
+async function createBoxes() {
+  const shelf_id=document.getElementById('shelf_select').value, count=document.getElementById('box_count').value, max_units=document.getElementById('max_units').value;
+  if(!shelf_id||!count||!max_units) return toast('Fill all fields','error');
+  if(+count>3) return toast('Max 3 boxes per shelf','error');
+  try { await api('/create-boxes',{shelf_id:+shelf_id,count:+count,max_units:+max_units,created_by:null}); toast(`${count} box(es) created`); document.getElementById('box_count').value=''; document.getElementById('max_units').value=''; loadBoxes(); }
+  catch(e) { toast(e.message,'error'); }
+}
+async function loadBoxes() {
+  try {
+    const d = await api('/get-boxes');
+    document.getElementById('product_box').innerHTML = d.map(x=>`<option value="${x.id}">${x.box_code}</option>`).join('');
+    document.getElementById('box_badges').innerHTML = d.map(x=>`<span class="badge">${x.box_code}</span>`).join('');
+  } catch {}
+}
+
+// ── PRODUCTS ──
+async function createProduct() {
+  const data = {
+    product_code:  document.getElementById('product_code').value.trim(),
+    product_name:  document.getElementById('product_name').value.trim(),
+    category:      document.getElementById('p_category').value.trim(),
+    unit_price:   +document.getElementById('unit_price').value||0,
+    mfg_cost:     +document.getElementById('mfg_cost').value||0,
+    stock_qty:    +document.getElementById('stock').value||0,
+    reorder_level:+document.getElementById('reorder').value||0,
+    size_category: document.getElementById('size_category').value,
+    box_id:       +document.getElementById('product_box').value||null,
+    created_by: null
+  };
+  if(!data.product_code||!data.product_name) return toast('Code and Name required','error');
+  try {
+    await api('/create-product', data);
+    toast(`Product "${data.product_name}" added`);
+    ['product_code','product_name','p_category','unit_price','mfg_cost','stock','reorder'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    loadProducts();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function loadProducts() {
+  try {
+    const d = await api('/get-products');
+    const tbody = document.getElementById('product_table');
+    if(!d.length){tbody.innerHTML=`<tr><td colspan="10" class="empty-state">No products yet.</td></tr>`;return;}
+    tbody.innerHTML = d.map(p=>`
+      <tr>
+        <td class="td-mono">${p.product_code}</td><td>${p.product_name}</td>
+        <td>${p.category||'—'}</td><td>₹${(+p.unit_price).toFixed(2)}</td>
+        <td>₹${(+p.mfg_cost).toFixed(2)}</td>
+        <td class="td-num">${p.stock_qty}</td><td class="td-num">${p.reorder_level}</td>
+        <td><span class="pill pill-yellow">${p.size_category||'—'}</span></td>
+        <td class="td-loc">${p.box_code||'—'}</td>
+        <td><span class="pill ${p.stock_qty>p.reorder_level?'pill-green':'pill-yellow'}">${p.stock_qty>p.reorder_level?'OK':'Low'}</span></td>
+      </tr>`).join('');
+  } catch {}
+}
+
+function downloadProductTemplate() {
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['product_code','product_name','category','unit_price','mfg_cost','stock_qty','reorder_level','size_category','rack_code','shelf_level','box_code'],
+    ['PRD-001','Sample Product','Electronics',100,60,200,50,'medium','RK-E01',1,'RK-E01-SH01-BX01']
+  ]);
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Products');
+  XLSX.writeFile(wb,'products_template.xlsx');
+}
+
+function handleProductDrop(e){e.preventDefault();document.getElementById('p-import-zone').classList.remove('drag');const f=e.dataTransfer.files[0];if(f)parseProductFile(f,'p_preview');}
+function handleProductFile(e){const f=e.target.files[0];if(f)parseProductFile(f,'p_preview');}
+function handleQIProductDrop(e){e.preventDefault();document.getElementById('qi-p-zone').classList.remove('drag');const f=e.dataTransfer.files[0];if(f)parseProductFile(f,'qi_p_preview');}
+function handleQIProductFile(e){const f=e.target.files[0];if(f)parseProductFile(f,'qi_p_preview');}
+
+function parseProductFile(file, previewId) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const wb = XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+    if(!rows.length) return toast('File is empty','error');
+    window._pRows = rows;
+    window._pPreviewId = previewId;
+    renderPreview(previewId, rows, `importProducts()`);
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+async function importProducts() {
+  const rows = window._pRows; if (!rows) return;
+
+  // Debug: log actual column names from the Excel file
+  if (rows[0]) console.log("📋 Excel columns found:", Object.keys(rows[0]));
+
+  const products = rows.map(r => ({
+    product_code:  (r.product_code  || r.code || '').toString().trim(),
+    product_name:  (r.product_name  || r.name || '').toString().trim(),
+    category:      (r.category      || '').toString().trim(),
+    unit_price:   +r.unit_price     || 0,
+    mfg_cost:     +r.mfg_cost       || 0,
+    stock_qty:    +r.stock_qty      || +r.stock || 0,
+    reorder_level:+r.reorder_level  || +r.reorder || 0,
+    size_category: (r.size_category || r.size || 'medium').toString().trim(),
+    // ← accept every likely variant for location columns
+    rack_code:    (r.rack_code  || r.rack   || '').toString().trim(),
+    shelf_level: +(r.shelf_level|| r.shelf  || r.level || 0),
+    box_code:     (r.box_code   || r.box    || r.box_id || '').toString().trim(),
+    created_by: null,
+  }));
+
+  console.log("📤 First product row being sent:", products[0]);
+
+  try {
+    const res = await api('/import-products-with-location', { products });
+    toast(`Imported ${res.inserted} product(s)${res.skipped ? ', ' + res.skipped + ' skipped' : ''}${res.unresolved ? ', ⚠️ ' + res.unresolved + ' unresolved' : ''}`);
+    document.getElementById(window._pPreviewId).innerHTML = '';
+    window._pRows = null;
+    if (_currentPanel === 'panel-3') loadProducts();
+  } catch (e) { toast(e.message, 'error'); }
+}
+// ── RAW MATERIALS ──
+async function loadRMDropdowns() {
+  try {
+    const [boxes, products] = await Promise.all([api('/get-boxes'), api('/get-products')]);
+    document.getElementById('rm_box_sel').innerHTML = `<option value="">— No box —</option>` + boxes.map(x=>`<option value="${x.id}">${x.box_code}</option>`).join('');
+    document.getElementById('rm_product_sel').innerHTML = `<option value="">— Not linked —</option>` + products.map(p=>`<option value="${p.id}">${p.product_code} — ${p.product_name}</option>`).join('');
+  } catch {}
+}
+
+async function loadRMStats() {
+  try {
+    const s = await api('/get-raw-materials-summary');
+    document.getElementById('rm_stats').style.display='';
+    document.getElementById('rm_stat_total').textContent     = s.total||'0';
+    document.getElementById('rm_stat_low').textContent       = s.low_stock_count||'0';
+    document.getElementById('rm_stat_cats').textContent      = s.categories||'0';
+    document.getElementById('rm_stat_suppliers').textContent = s.suppliers||'0';
+    document.getElementById('rm_stat_linked').textContent    = s.linked_to_product||'0';
+  } catch {}
+}
+
+async function createRawMaterial() {
+  const data = {
+    material_code:     document.getElementById('rm_code').value.trim(),
+    material_name:     document.getElementById('rm_name').value.trim(),
+    category:          document.getElementById('rm_category').value.trim(),
+    unit:              document.getElementById('rm_unit').value.trim(),
+    stock_qty:        +document.getElementById('rm_stock').value||0,
+    qty_per_unit:     +document.getElementById('rm_qty_req').value||0,
+    reorder_level:    +document.getElementById('rm_reorder').value||0,
+    daily_consumption:+document.getElementById('rm_daily').value||0,
+    size_category:     document.getElementById('rm_size').value,
+    lead_time_days:   +document.getElementById('rm_lead').value||0,
+    supplier_name:     document.getElementById('rm_supplier').value.trim(),
+    product_id:       +document.getElementById('rm_product_sel').value||null,
+    box_id:           +document.getElementById('rm_box_sel').value||null,
+    created_by: null
+  };
+  if(!data.material_code||!data.material_name) return toast('Code and Name required','error');
+  try {
+    await api('/create-raw-material', data);
+    toast(`Material "${data.material_name}" added`);
+    ['rm_code','rm_name','rm_category','rm_unit','rm_stock','rm_qty_req','rm_reorder','rm_daily','rm_lead','rm_supplier'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    loadRawMaterials(); loadRMStats();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function loadRawMaterials() {
+  try {
+    const d = await api('/get-raw-materials');
+    const tbody = document.getElementById('rm_table');
+    if(!d.length){tbody.innerHTML=`<tr><td colspan="14" class="empty-state">No raw materials yet.</td></tr>`;return;}
+    tbody.innerHTML = d.map(m=>`
+      <tr>
+        <td class="td-teal">${m.material_code}</td><td>${m.material_name}</td>
+        <td>${m.category||'—'}</td><td style="font-family:var(--mono);font-size:11px;">${m.unit||'—'}</td>
+        <td class="td-num">${m.stock_qty}</td>
+        <td class="td-num">${m.qty_per_unit||'—'}</td>
+        <td class="td-num">${m.reorder_level}</td>
+        <td class="td-num">${m.daily_consumption||'—'}</td>
+        <td style="font-family:var(--mono);font-size:11px;">${m.lead_time_days}d</td>
+        <td style="font-size:11px;">${m.supplier_name||'—'}</td>
+        <td>${m.product_code?`<span class="pill pill-yellow">${m.product_code}</span>`:'<span style="color:var(--muted)">—</span>'}</td>
+        <td class="td-loc">${m.box_code||'—'}</td>
+        <td><span class="pill pill-teal">${m.size_category||'—'}</span></td>
+        <td><span class="pill ${m.stock_qty>m.reorder_level?'pill-green':'pill-yellow'}">${m.stock_qty>m.reorder_level?'OK':'Low'}</span></td>
+      </tr>`).join('');
+  } catch {}
+}
+
+function downloadRMTemplate() {
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['material_code','material_name','category','unit','quantity_required','stock_qty','reorder_level','daily_consumption','size_category','lead_time_days','supplier_name','product_id','rack','shelf','box_id'],
+    ['RM-001','Copper Wire 1.5mm','Electrical','kg',1.2,5000,750,10.96,'medium',10,'CopperLine Ltd',1,'RK-M01',1,'RK-M01-SH01-BX01']
+  ]);
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'RawMaterials');
+  XLSX.writeFile(wb,'raw_materials_template.xlsx');
+}
+
+function handleRMDrop(e){e.preventDefault();document.getElementById('rm-import-zone').classList.remove('drag');const f=e.dataTransfer.files[0];if(f)parseRMFile(f,'rm_preview');}
+function handleRMFile(e){const f=e.target.files[0];if(f)parseRMFile(f,'rm_preview');}
+function handleQIRMDrop(e){e.preventDefault();document.getElementById('qi-rm-zone').classList.remove('drag');const f=e.dataTransfer.files[0];if(f)parseRMFile(f,'qi_rm_preview');}
+function handleQIRMFile(e){const f=e.target.files[0];if(f)parseRMFile(f,'qi_rm_preview');}
+
+function parseRMFile(file, previewId) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const wb = XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+    if(!rows.length) return toast('File is empty','error');
+    window._rmRows = rows;
+    window._rmPreviewId = previewId;
+    renderPreview(previewId, rows, `importRawMaterials()`);
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+async function importRawMaterials() {
+  const rows = window._rmRows; if (!rows) return;
+  const materials = rows.map(r => ({
+    material_code:     r.material_code     || '',
+    material_name:     r.material_name     || '',
+    category:          r.category          || '',
+    unit:              r.unit              || '',
+    unit_cost:        +r.unit_cost         || 0,   // ← ADDED (was missing entirely)
+    qty_per_unit:     +r.quantity_required || 0,
+    stock_qty:        +r.stock_qty         || 0,
+    reorder_level:    +r.reorder_level     || 0,
+    daily_consumption:+r.daily_consumption || 0,
+    size_category:     r.size_category     || 'medium',
+    lead_time_days:   +r.lead_time_days    || 0,
+    supplier_name:     r.supplier_name     || '',
+    product_id:        r.product_id        || null,  // ← pass raw value, server resolves
+    rack_code:         r.rack              || '',
+    shelf_level:      +r.shelf             || 0,
+    box_code:          r.box_id            || '',
+    created_by: null
+  }));
+  try {
+    const res = await api('/import-raw-materials-with-location', { materials });
+    toast(`Imported ${res.inserted} material(s)${res.skipped ? ', ' + res.skipped + ' skipped' : ''}${res.unresolved ? ', ' + res.unresolved + ' location unresolved' : ''}`);
+    document.getElementById(window._rmPreviewId).innerHTML = '';
+    window._rmRows = null;
+    if (_currentPanel === 'panel-5') { loadRawMaterials(); loadRMStats(); }
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// ── SHARED PREVIEW RENDERER ──
+function renderPreview(previewId, rows, importCall) {
+  document.getElementById(previewId).innerHTML = `
+    <div class="preview-block">
+      <div class="preview-header">
+        <span>Preview — ${rows.length} row(s)</span>
+        <button class="btn btn-success btn-sm" onclick="${importCall}">⬆ Import All</button>
+      </div>
+      <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:11px;">
+        <thead><tr style="background:var(--surface);color:var(--muted);">
+          ${Object.keys(rows[0]).map(k=>`<th style="padding:7px;text-align:left;font-family:var(--mono);font-size:9px;">${k}</th>`).join('')}
+        </tr></thead>
+        <tbody>${rows.slice(0,5).map(r=>`<tr>${Object.values(r).map(v=>`<td style="padding:7px;border-top:1px solid var(--border);">${v}</td>`).join('')}</tr>`).join('')}</tbody>
+      </table>
+      ${rows.length>5?`<div style="color:var(--muted);font-size:11px;padding:7px;">…and ${rows.length-5} more rows</div>`:''}</div>
+    </div>`;
+}
+
+// ── SALES DATA ──
+let _salesRawRows=[], _salesValidRows=[], _showErrorsOnly=false, _salesAllValidated=[];
+
+function handleSalesDrop(e){e.preventDefault();document.getElementById('sales-zone').classList.remove('drag');const f=e.dataTransfer.files[0];if(f)parseSalesFile(f);}
+function handleSalesFile(e){const f=e.target.files[0];if(f)parseSalesFile(f);}
+function parseSalesFile(file){
+  const reader=new FileReader();
+  reader.onload=(e)=>{
+    const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true});
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{raw:false});
+    if(!rows.length)return toast('File is empty','error');
+    _salesRawRows=rows;
+    const cols=Object.keys(rows[0]),defaults=['date','store','item','sales'];
+    ['map_date','map_store','map_item','map_sales'].forEach((id,i)=>{
+      const sel=document.getElementById(id);
+      sel.innerHTML=cols.map(c=>`<option value="${c}" ${c.toLowerCase()===defaults[i]?'selected':''}>${c}</option>`).join('');
+    });
+    document.getElementById('sales_mapper').style.display='block';
+    toast(`Parsed ${rows.length.toLocaleString()} rows — confirm mapping`);
+  };
+  reader.readAsArrayBuffer(file);
+}
+function confirmSalesMapping(){
+  if(!_salesRawRows.length)return toast('Upload a file first','error');
+  const dC=document.getElementById('map_date').value,sC=document.getElementById('map_store').value,
+        iC=document.getElementById('map_item').value,vC=document.getElementById('map_sales').value;
+  processSalesRows(_salesRawRows.map(r=>({date:r[dC],store:r[sC],item:r[iC],sales:r[vC]})));
+}
+function validateSalesRow(raw,idx){
+  const errors=[],date=raw.date,store=parseInt(raw.store),
+        item=raw.item!=null?String(raw.item):null,sales=parseFloat(raw.sales);
+  if(!date)errors.push('Invalid date');if(isNaN(store))errors.push('Missing store');
+  if(!item)errors.push('Missing item');if(isNaN(sales)||sales<0)errors.push('Invalid sales');
+  return{rowNum:idx+2,date,store,item,sales:isNaN(sales)?null:sales,errors,valid:!errors.length};
+}
+function processSalesRows(rawRows){
+  const validated=rawRows.map((r,i)=>validateSalesRow(r,i));
+  _salesValidRows=validated.filter(r=>r.valid);
+  const invalid=validated.filter(r=>!r.valid),dates=_salesValidRows.map(r=>r.date).sort(),stores=new Set(_salesValidRows.map(r=>r.store)),items=new Set(_salesValidRows.map(r=>r.item));
+  document.getElementById('sales_stats').style.display='';
+  document.getElementById('stat_total').textContent=validated.length.toLocaleString();
+  document.getElementById('stat_valid').textContent=_salesValidRows.length.toLocaleString();
+  document.getElementById('stat_invalid').textContent=invalid.length.toLocaleString();
+  document.getElementById('stat_stores').textContent=stores.size;
+  document.getElementById('stat_items').textContent=items.size;
+  document.getElementById('stat_range').textContent=dates.length?`${dates[0].slice(0,7)} → ${dates[dates.length-1].slice(0,7)}`:'—';
+  if(dates.length>=2){const days=(new Date(dates[dates.length-1])-new Date(dates[0]))/86400000;if(days<365)toast('Warning: <1 year of data','error');else if(days<730)toast('Note: <2 years');else toast(`${(days/365).toFixed(1)} years loaded`);}
+  _salesAllValidated=validated;
+  // Show preview with import button
+  document.getElementById('sales_preview').innerHTML=`
+    <div class="preview-block">
+      <div class="preview-header">
+        <span>${_salesValidRows.length.toLocaleString()} valid rows</span>
+        <button class="btn btn-success btn-sm" onclick="importSalesData()" ${_salesValidRows.length===0?'disabled':''}>⬆ Import ${_salesValidRows.length.toLocaleString()} Rows</button>
+      </div>
+      <div style="font-size:12px;color:var(--muted);">Date range: ${dates[0]||'—'} → ${dates[dates.length-1]||'—'} · ${stores.size} stores · ${items.size} items${invalid.length?` · <span style="color:var(--danger)">${invalid.length} invalid rows</span>`:''}</div>
+    </div>`;
+}
+async function importSalesData(){
+  if(!_salesValidRows.length)return toast('No valid rows','error');
+  const CHUNK=1000,total=_salesValidRows.length,chunks=Math.ceil(total/CHUNK);
+  document.getElementById('sales_progress').style.display='block';
+  document.getElementById('sales_preview').innerHTML='';
+  let inserted=0,skipped=0;
+  for(let i=0;i<chunks;i++){
+    const slice=_salesValidRows.slice(i*CHUNK,(i+1)*CHUNK).map(r=>({sale_date:r.date,store_id:r.store,item_id:r.item,sales:r.sales}));
+    const pct=Math.round(((i+1)/chunks)*100);
+    document.getElementById('progress_fill').style.width=pct+'%';
+    document.getElementById('progress_pct').textContent=pct+'%';
+    document.getElementById('progress_label').textContent=`Batch ${i+1}/${chunks}…`;
+    try{const res=await api('/import-sales',{records:slice});inserted+=res.inserted||0;skipped+=res.skipped||0;}
+    catch(e){toast(`Batch ${i+1} failed: ${e.message}`,'error');}
+    await new Promise(r=>setTimeout(r,30));
+  }
+  document.getElementById('progress_label').textContent='Done!';
+  document.getElementById('import_result').style.display='flex';
+  document.getElementById('import_result_msg').textContent=`${inserted.toLocaleString()} inserted · ${skipped.toLocaleString()} skipped`;
+  toast(`Imported ${inserted.toLocaleString()} sales records`);
+  _salesValidRows=[];
+}
+
+// Init
+loadRacks();
+</script>
+</body>
+</html>
