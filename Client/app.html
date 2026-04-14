@@ -548,7 +548,7 @@
 const API = 'http://localhost:8080';
 
 // ── State ──────────────────────────────────────────────────────
-let currentSection = 0; // 0 = products, 1 = raw materials
+let currentSection = 0; 
 const sections = [
     { title: 'Finished Goods Section',  badge: 'Products → Racks → Shelves → Boxes', type: 'product' },
     { title: 'Raw Materials Section',   badge: 'Raw Materials → Racks → Shelves → Boxes', type: 'raw_material' }
@@ -557,24 +557,21 @@ const sections = [
 let allRacks = [], allShelves = [], allBoxes = [];
 let allProducts = [], allRawMaterials = [];
 
-// ── Fetch helpers ──────────────────────────────────────────────
 async function get(path) {
     try {
         const r = await fetch(API + path);
-        const data = await r.json();
-        if (!r.ok || data.error) throw new Error(data.error || 'Server Error');
-        return data;
+        if (!r.ok) return [];
+        return await r.json();
     } catch (e) {
-        console.warn(`⚠️ Route ${path} failed:`, e.message);
-        return []; // Return empty array so the app keeps running
+        console.error(e);
+        return [];
     }
 }
 
-// ── Bootstrap ─────────────────────────────────────────────────
 async function init() {
     try {
         const container = document.getElementById('shelves');
-        container.innerHTML = '<div class="loading-state">Loading warehouse data...</div>';
+        container.innerHTML = '<div class="loading-state">Syncing Warehouse Data...</div>';
 
         let results = await Promise.all([
             get('/get-racks'),
@@ -584,28 +581,22 @@ async function init() {
             get('/get-raw-materials'),
         ]);
 
-        // ✅ Force arrays and handle potential server errors
-        allRacks = Array.isArray(results[0]) ? results[0] : [];
-        allShelves = Array.isArray(results[1]) ? results[1] : [];
-        allBoxes = Array.isArray(results[2]) ? results[2] : [];
-        allProducts = Array.isArray(results[3]) ? results[3] : [];
-        allRawMaterials = Array.isArray(results[4]) ? results[4] : [];
+        allRacks = results[0] || [];
+        allShelves = results[1] || [];
+        allBoxes = results[2] || [];
+        allProducts = results[3] || [];
+        allRawMaterials = results[4] || [];
 
-        // ✅ FRONTEND SORTING: Sort racks logically (R1, R2, R10)
-        allRacks.sort((a, b) => {
-            return a.rack_code.localeCompare(b.rack_code, undefined, { numeric: true, sensitivity: 'base' });
-        });
+        // Natural Sort Racks (R1, R2, R10)
+        allRacks.sort((a, b) => a.rack_code.localeCompare(b.rack_code, undefined, { numeric: true }));
 
         buildAlerts();
         renderSection();
-
     } catch (e) {
-        console.error("Initialization Error:", e);
-        document.getElementById('shelves').innerHTML =
-            `<div class="loading-state">⚠️ Could not load data: ${e.message}<br>Check if server.js is running on port 8080</div>`;
+        document.getElementById('shelves').innerHTML = `<div class="loading-state">⚠️ Error loading data</div>`;
     }
 }
-// ── Section switcher ──────────────────────────────────────────
+
 function switchSection(dir) {
     currentSection = (currentSection + dir + sections.length) % sections.length;
     renderSection();
@@ -616,57 +607,50 @@ function renderSection() {
     document.getElementById('section-title').textContent = sec.title;
     document.getElementById('section-badge').textContent = sec.badge;
 
-    // Filter racks to show only the ones belonging to the current section
+    // 1. Filter racks strictly by type
     const sectionRacks = allRacks.filter(r => r.type === sec.type);
 
     if (!sectionRacks.length) {
-        document.getElementById('shelves').innerHTML =
-            `<div class="loading-state">
-                No ${sec.type} racks found.<br>
-                <small>(Found ${allRacks.length} total racks in DB)</small>
-            </div>`;
+        document.getElementById('shelves').innerHTML = `<div class="loading-state">No ${sec.type} racks found.</div>`;
         document.getElementById('stats-bar').innerHTML = '';
         return;
     }
 
-    // Pass the specific item list (products or materials) to the map builder
+    // 2. Build map using ONLY items belonging to this section type
+
     const boxItems = buildBoxItemMap(sec.type);
 
     renderStats(sectionRacks, boxItems, sec.type);
     renderShelves(sectionRacks, boxItems);
 }
-// ── Map box_id → items ─────────────────────────────────────────
+
 function buildBoxItemMap(type) {
     const map = {};
-    // Switch between the two tables based on the active section
+    // FIX: Choose the correct array based on section type
     const items = (type === 'product') ? allProducts : allRawMaterials;
-
-    if (!Array.isArray(items)) return map;
+    
 
     items.forEach(item => {
-        const boxId = item.box_id;
-        if (!boxId) return;
-
-        if (!map[boxId]) map[boxId] = [];
-        map[boxId].push(item);
+        
+        if (!item.box_id) return;
+        if (!map[item.box_id]) map[item.box_id] = [];
+        map[item.box_id].push(item);
     });
-
     return map;
 }
-// ── Stats bar ─────────────────────────────────────────────────
+
 function renderStats(sectionRacks, boxItems, type) {
     const rackIds = new Set(sectionRacks.map(r => r.id));
     const sectionShelves = allShelves.filter(s => rackIds.has(s.rack_id));
     const shelfIds = new Set(sectionShelves.map(s => s.id));
     const sectionBoxes = allBoxes.filter(b => shelfIds.has(b.shelf_id));
 
-    // Count items
     let totalItems = 0, lowItems = 0;
     sectionBoxes.forEach(b => {
         const items = boxItems[b.id] || [];
         items.forEach(item => {
             totalItems++;
-            if (item.stock_qty <= item.reorder_level) lowItems++;
+            if (item.stock_qty <= (item.reorder_level || 0)) lowItems++;
         });
     });
 
@@ -674,7 +658,6 @@ function renderStats(sectionRacks, boxItems, type) {
 
     document.getElementById('stats-bar').innerHTML = `
         <div class="stat-chip blue"><strong>${sectionRacks.length}</strong>Racks</div>
-        <div class="stat-chip blue"><strong>${sectionShelves.length}</strong>Shelves</div>
         <div class="stat-chip blue"><strong>${sectionBoxes.length}</strong>Boxes</div>
         <div class="stat-chip"><strong>${occupiedBoxes}</strong>Occupied</div>
         <div class="stat-chip green"><strong>${totalItems}</strong>Items</div>
@@ -682,175 +665,180 @@ function renderStats(sectionRacks, boxItems, type) {
     `;
 }
 
-// ── Render shelves/boxes ───────────────────────────────────────
 function renderShelves(sectionRacks, boxItems) {
     const container = document.getElementById('shelves');
-    container.innerHTML = '';
 
+    // 🔥 HARD RESET (important)
+    container.innerHTML = '';
+    container.replaceChildren(); // extra safety
+
+    // Build shelf map fresh
     const shelvesByRack = {};
     allShelves.forEach(s => {
         if (!shelvesByRack[s.rack_id]) shelvesByRack[s.rack_id] = [];
         shelvesByRack[s.rack_id].push(s);
     });
 
-    const colCount = Math.min(sectionRacks.length, 4);
-    container.style.setProperty('--shelf-cols', colCount);
+    container.style.setProperty('--shelf-cols', Math.min(sectionRacks.length, 4));
 
     sectionRacks.forEach((rack, rackIdx) => {
-        const shelves = (shelvesByRack[rack.id] || []).sort((a, b) => a.level - b.level);
+        const shelves = (shelvesByRack[rack.id] || [])
+            .sort((a, b) => a.level - b.level);
+
         const card = document.createElement('div');
         card.className = 'shelf-card';
 
-        // Rack header
-        card.innerHTML = `
+        // Header
+        const header = document.createElement('div');
+        header.innerHTML = `
             <p class="shelf-id">#${rack.rack_code}</p>
-            <p class="shelf-title">${rackIdx === 0 ? 'Close To Terminal' : (rackIdx === sectionRacks.length - 1 ? 'Further From Terminal' : '')}</p>
+            <p class="shelf-title">${rackIdx === 0 ? 'Terminal Front' : ''}</p>
         `;
+        card.appendChild(header);
 
         const rackEl = document.createElement('div');
         rackEl.className = 'rack';
 
-        if (!shelves.length) {
-            rackEl.innerHTML = `<div style="color:rgba(255,255,255,0.4);font-size:11px;text-align:center;padding:15px;">Empty Rack</div>`;
-        } else {
-            shelves.forEach(shelf => {
-                const shelfBoxes = allBoxes.filter(b => b.shelf_id === shelf.id);
-                const shelfRow = document.createElement('div');
-                shelfRow.style.cssText = 'display:grid;gap:6px;margin-bottom:8px;';
-                shelfRow.innerHTML = `<div style="font-size:9px;color:rgba(255,255,255,0.5);">${shelf.shelf_code}</div>`;
+        shelves.forEach(shelf => {
+            const shelfBoxes = allBoxes
+                .filter(b => b.shelf_id === shelf.id)
+                .sort((a, b) => a.box_code.localeCompare(b.box_code, undefined, { numeric: true }));
 
-                const boxRow = document.createElement('div');
-                boxRow.style.cssText = `display:grid;grid-template-columns:repeat(${Math.max(1, shelfBoxes.length)}, 1fr);gap:6px;`;
+            const shelfRow = document.createElement('div');
+            shelfRow.style.cssText = 'display:grid; gap:4px; margin-bottom:8px;';
 
-                shelfBoxes.forEach(box => {
-                    const items = boxItems[box.id] || [];
-                    const hasLow = items.some(i => i.stock_qty <= i.reorder_level);
+            // Shelf label
+            const label = document.createElement('div');
+            label.style.cssText = 'font-size:9px; color:#555;';
+            label.textContent = shelf.shelf_code;
+            shelfRow.appendChild(label);
 
-                    const boxEl = document.createElement('div');
-                    boxEl.className = 'box' + (items.length === 0 ? ' empty' : '') + (hasLow ? ' low-stock' : '');
-                    
-                    // ✅ SHOW CODE AND NAME
-                    const content = items.length === 0 
-                        ? `<div class="box-line" style="color:#666; font-size:9px;">Empty</div>`
-                        : items.slice(0, 2).map(item => {
-                            const code = item.product_code || item.material_code || '??';
-                            const name = item.product_name || item.material_name || 'No Name';
-                            return `
-                                <div class="box-line ${item.stock_qty <= item.reorder_level ? 'low' : ''}" style="margin-bottom:2px;">
-                                    <strong style="font-size:10px; color:#f59e0b;">${code}</strong>
-                                    <div style="font-size:8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${name}</div>
-                                    <div style="font-size:9px; opacity:0.8;">Qty: ${item.stock_qty}</div>
-                                </div>`;
-                        }).join('<hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:2px 0;">');
+            const boxRow = document.createElement('div');
+            boxRow.style.cssText = `display:grid; grid-template-columns:repeat(${shelfBoxes.length || 1}, 1fr); gap:6px;`;
 
-                    boxEl.innerHTML = `<div class="box-id">${box.box_code}</div><div class="box-info">${content}</div>`;
-                    boxEl.onclick = () => openModal(box, items);
-                    boxRow.appendChild(boxEl);
-                });
-                shelfRow.appendChild(boxRow);
-                rackEl.appendChild(shelfRow);
+            shelfBoxes.forEach(box => {
+
+                // 🔥 ALWAYS GET FRESH ITEMS
+                const items = (boxItems[box.id] || []);
+
+                const hasLow = items.some(i => i.stock_qty <= (i.reorder_level || 0));
+
+                const boxEl = document.createElement('div');
+                boxEl.className =
+                    'box' +
+                    (items.length === 0 ? ' empty' : '') +
+                    (hasLow ? ' low-stock' : '');
+
+                // Build content safely
+                let contentHTML = '';
+                console.log(items)
+
+                if (items.length === 0) {
+                    contentHTML = `<div class="box-line" style="color:#888;">Empty</div>`;
+                } else {
+                    contentHTML = items.slice(0, 2).map(item => {
+                        const code =item.material_code   || item.product_code || '??';
+                        const name = item.material_name || item.product_name || 'Item';
+
+                        return `
+                            <div class="box-line">
+                                <strong>${code}</strong><br>
+                                <span style="font-size:8px;">${name}</span>
+                            </div>
+                        `;
+                    }).join('');
+                }
+
+                boxEl.innerHTML = `
+                    <div class="box-id">${box.box_code}</div>
+                    <div class="box-info">${contentHTML}</div>
+                `;
+
+                // 🔥 CRITICAL FIX: NO STALE DATA
+                boxEl.onclick = () => {
+                    const freshItems = (boxItems[box.id] || []);
+                    openModal(box, freshItems);
+                };
+
+                boxRow.appendChild(boxEl);
             });
-        }
+
+            shelfRow.appendChild(boxRow);
+            rackEl.appendChild(shelfRow);
+        });
+
         card.appendChild(rackEl);
         container.appendChild(card);
     });
 }
-
-// ── Modal ──────────────────────────────────────────────────────
 function openModal(box, items) {
     document.getElementById('box-modal-title').textContent = `Box: ${box.box_code}`;
-
     const shelf = allShelves.find(s => s.id === box.shelf_id);
-    const rack  = shelf ? allRacks.find(r => r.id === shelf.rack_id) : null;
+    const rack = shelf ? allRacks.find(r => r.id === shelf.rack_id) : null;
 
-    const lowCount = items.filter(i => i.stock_qty <= i.reorder_level).length;
-
-    let html = `
-        <div class="modal-meta">
-            <div class="modal-meta-item">Location<strong>${rack?.rack_code || '—'} › ${shelf?.shelf_code || '—'}</strong></div>
-            <div class="modal-meta-item">Box Code<strong>${box.box_code}</strong></div>
-            <div class="modal-meta-item">Max Units<strong>${box.max_units}</strong></div>
-            <div class="modal-meta-item">Items<strong>${items.length} ${lowCount > 0 ? `(${lowCount} low)` : ''}</strong></div>
-        </div>
-    `;
+    let html = `<div class="modal-meta">
+        <div class="modal-meta-item">Location<strong>${rack?.rack_code || '--'} › ${shelf?.shelf_code || '--'}</strong></div>
+        <div class="modal-meta-item">Box<strong>${box.box_code}</strong></div>
+    </div>`;
 
     if (!items.length) {
         html += `<div class="empty-modal">📦 This box is empty</div>`;
     } else {
-        html += `<div class="modal-items-title">Contents</div>`;
         items.forEach(item => {
-            const isProduct = !!item.product_code;
-            const code = isProduct ? item.product_code : item.material_code;
-            const name = isProduct ? item.product_name : item.material_name;
-            const qty  = item.stock_qty;
-            const low  = qty <= item.reorder_level;
-            const unit = isProduct ? 'units' : (item.unit || 'units');
-
-            html += `
+            const code =  item.material_code || item.product_code ;
+            const name = item.material_name || item.product_name ;
+            const low = item.stock_qty <= (item.reorder_level || 0);
+            if(item.material_name){
+                html += `
                 <div class="modal-item-row ${low ? 'low-stock-row' : ''}">
                     <div>
                         <div class="modal-item-code">${code}</div>
-                        <div class="modal-item-name">${name}</div>
-                        ${isProduct ? '' : `<div style="font-size:10px;color:#7a4a20;">Supplier: ${item.supplier_name || '—'}</div>`}
+                        <div class="modal-item-name">${name} for ${item.product_name}</div>
                     </div>
-                    <div style="font-size:12px;text-align:right;">
-                        <strong>${qty}</strong> ${unit}
-                        <div style="font-size:10px;color:#9a7a5a;">Reorder @ ${item.reorder_level}</div>
+                    <div style="text-align:right;">
+                        <strong>${item.stock_qty}</strong><br>
+                        <span class="stock-badge ${low ? 'stock-low' : 'stock-ok'}">${low ? 'LOW' : 'OK'}</span>
                     </div>
-                    <span class="stock-badge ${low ? 'stock-low' : 'stock-ok'}">${low ? 'LOW' : 'OK'}</span>
                 </div>`;
+            }else{
+                html += `
+                <div class="modal-item-row ${low ? 'low-stock-row' : ''}">
+                    <div>
+                        <div class="modal-item-code">${code}</div>
+                        <div class="modal-item-name">${name} </div>
+                    </div>
+                    <div style="text-align:right;">
+                        <strong>${item.stock_qty}</strong><br>
+                        <span class="stock-badge ${low ? 'stock-low' : 'stock-ok'}">${low ? 'LOW' : 'OK'}</span>
+                    </div>
+                </div>`;
+            }
+           
         });
     }
-
     document.getElementById('box-modal-body').innerHTML = html;
     document.getElementById('box-modal-overlay').classList.add('open');
 }
 
-function closeModal() {
-    document.getElementById('box-modal-overlay').classList.remove('open');
-}
-
-// Close on backdrop click / Escape
-document.getElementById('box-modal-overlay').addEventListener('click', e => {
-    if (e.target === e.currentTarget) closeModal();
-});
+function closeModal() { document.getElementById('box-modal-overlay').classList.remove('open'); }
+document.getElementById('box-modal-overlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
-// ── Alerts from low-stock items ────────────────────────────────
 function buildAlerts() {
     const alerts = [];
+    const lowP = allProducts.filter(p => p.stock_qty <= p.reorder_level);
+    const lowM = allRawMaterials.filter(m => m.stock_qty <= m.reorder_level);
 
-    const lowProducts = allProducts.filter(p => p.stock_qty <= p.reorder_level);
-    const lowMaterials = allRawMaterials.filter(m => m.stock_qty <= m.reorder_level);
+    lowP.slice(0, 3).forEach(p => alerts.push({ type: 'warn', text: `Low stock: ${p.product_name}` }));
+    lowM.slice(0, 3).forEach(m => alerts.push({ type: 'warn', text: `Low material: ${m.material_name}` }));
 
-    lowProducts.slice(0, 4).forEach(p => {
-        alerts.push({ type: 'warn', text: `Low stock: ${p.product_name} (${p.product_code}) — ${p.stock_qty} left, reorder @ ${p.reorder_level}` });
-    });
-
-    lowMaterials.slice(0, 4).forEach(m => {
-        alerts.push({ type: 'warn', text: `Low material: ${m.material_name} (${m.material_code}) — ${m.stock_qty} ${m.unit} left` });
-    });
-
-    if (alerts.length === 0) {
-        alerts.push({ type: 'info', text: 'All stock levels are healthy ✓' });
-    }
-
-    const totalLow = lowProducts.length + lowMaterials.length;
-    if (totalLow > 0) {
-        const badge = document.getElementById('low-stock-badge');
-        badge.textContent = `${totalLow} alerts`;
-        badge.style.display = 'inline-block';
-    }
+    if (!alerts.length) alerts.push({ type: 'info', text: 'All stock levels healthy ✓' });
 
     document.getElementById('alerts-container').innerHTML = alerts.map(a => `
-        <div class="alert ${a.type}">
-            <span class="alert-text">${a.text}</span>
-            <button class="alert-done-btn" onclick="this.closest('.alert').remove()">Done</button>
-        </div>
+        <div class="alert ${a.type}"><span class="alert-text">${a.text}</span></div>
     `).join('');
 }
 
-// ── Boot ───────────────────────────────────────────────────────
 init();
 </script>
 </body>

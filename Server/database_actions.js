@@ -115,26 +115,35 @@ export async function setupDatabase() {
     await q(`
       CREATE TABLE IF NOT EXISTS raw_materials (
         id                INT AUTO_INCREMENT PRIMARY KEY,
-        material_code     VARCHAR(50) UNIQUE,
+    
+        material_code     VARCHAR(50),
         material_name     VARCHAR(255),
         category          VARCHAR(100),
+    
         unit              VARCHAR(50),
         unit_cost         FLOAT DEFAULT 0,
+    
         stock_qty         FLOAT DEFAULT 0,
         reorder_level     FLOAT DEFAULT 0,
         daily_consumption FLOAT DEFAULT 0,
+    
         size_category     VARCHAR(50) DEFAULT 'medium',
         lead_time_days    INT DEFAULT 0,
         supplier_name     VARCHAR(255),
+  
         product_id        INT DEFAULT NULL,
-        qty_per_unit      FLOAT DEFAULT 0
-          COMMENT 'qty of this material needed to produce 1 unit of linked product',
+        qty_per_unit      FLOAT DEFAULT 0,
+    
         box_id            INT,
         created_by        INT,
+    
         updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
         FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL,
         FOREIGN KEY (box_id)     REFERENCES boxes(id)    ON DELETE SET NULL,
-        FOREIGN KEY (created_by) REFERENCES users(id)    ON DELETE SET NULL
+        FOREIGN KEY (created_by) REFERENCES users(id)    ON DELETE SET NULL,
+  
+        UNIQUE KEY uq_box_material (box_id, material_code)
       )
     `);
 
@@ -151,6 +160,26 @@ export async function setupDatabase() {
         generated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (current_box_id)   REFERENCES boxes(id) ON DELETE SET NULL,
         FOREIGN KEY (suggested_box_id) REFERENCES boxes(id) ON DELETE SET NULL
+      )
+    `);
+    await q(`
+      CREATE TABLE IF NOT EXISTS product_boms (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        
+        product_id INT NOT NULL,
+        material_code VARCHAR(50) NOT NULL,
+        material_name VARCHAR(255),
+    
+        qty_per_unit FLOAT DEFAULT 0,
+        
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+        -- Prevent duplicate mapping
+        UNIQUE KEY uq_product_material (product_id, material_code),
+    
+        -- Foreign key to product
+        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
       )
     `);
 
