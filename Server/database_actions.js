@@ -66,11 +66,9 @@ export async function setupDatabase() {
       )
     `);
 
-    // ── CRITICAL: composite unique so INSERT IGNORE works in ensureLocation ──
-    // Runs safely on existing DBs — ignored if key already exists
     await pool.query(`
       ALTER TABLE shelves
-        ADD UNIQUE KEY IF NOT EXISTS uq_shelf_rack_level (rack_id, level)
+      ADD UNIQUE KEY IF NOT EXISTS uq_shelf_rack_level (rack_id, level)
     `).catch(() => {});
 
     await q(`
@@ -85,10 +83,9 @@ export async function setupDatabase() {
       )
     `);
 
-    // ── CRITICAL: composite unique so INSERT IGNORE works in ensureLocation ──
     await pool.query(`
       ALTER TABLE boxes
-        ADD UNIQUE KEY IF NOT EXISTS uq_box_shelf_code (shelf_id, box_code)
+      ADD UNIQUE KEY IF NOT EXISTS uq_box_shelf_code (shelf_id, box_code)
     `).catch(() => {});
 
     await q(`
@@ -115,37 +112,35 @@ export async function setupDatabase() {
     await q(`
       CREATE TABLE IF NOT EXISTS raw_materials (
         id                INT AUTO_INCREMENT PRIMARY KEY,
-    
-        material_code     VARCHAR(50),
+        material_code     VARCHAR(50) UNIQUE,
         material_name     VARCHAR(255),
         category          VARCHAR(100),
-    
         unit              VARCHAR(50),
         unit_cost         FLOAT DEFAULT 0,
-    
         stock_qty         FLOAT DEFAULT 0,
-        reorder_level     FLOAT DEFAULT 0,
+        reorder_level     FLOAT DEFAULT 0,  
         daily_consumption FLOAT DEFAULT 0,
-    
         size_category     VARCHAR(50) DEFAULT 'medium',
         lead_time_days    INT DEFAULT 0,
         supplier_name     VARCHAR(255),
-  
-        product_id        INT DEFAULT NULL,
+        product_id        VARCHAR(50) DEFAULT NULL,
         qty_per_unit      FLOAT DEFAULT 0,
-    
         box_id            INT,
         created_by        INT,
-    
         updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
-        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL,
+        FOREIGN KEY (product_id) REFERENCES products(product_code) ON DELETE SET NULL,
         FOREIGN KEY (box_id)     REFERENCES boxes(id)    ON DELETE SET NULL,
-        FOREIGN KEY (created_by) REFERENCES users(id)    ON DELETE SET NULL,
-  
-        UNIQUE KEY uq_box_material (box_id, material_code)
+        FOREIGN KEY (created_by) REFERENCES users(id)    ON DELETE SET NULL
       )
     `);
+
+    await pool.query(`ALTER TABLE raw_materials ADD COLUMN IF NOT EXISTS product_id VARCHAR(50) DEFAULT NULL`).catch(() => {});
+    await pool.query(`ALTER TABLE raw_materials ADD COLUMN IF NOT EXISTS qty_per_unit FLOAT DEFAULT 0`).catch(() => {});
+    await pool.query(`
+      ALTER TABLE raw_materials
+      ADD CONSTRAINT IF NOT EXISTS fk_rm_product
+      FOREIGN KEY (product_id) REFERENCES products(product_code) ON DELETE SET NULL
+    `).catch(() => {});
 
     await q(`
       CREATE TABLE IF NOT EXISTS ann_suggestions (
@@ -162,24 +157,18 @@ export async function setupDatabase() {
         FOREIGN KEY (suggested_box_id) REFERENCES boxes(id) ON DELETE SET NULL
       )
     `);
+
     await q(`
       CREATE TABLE IF NOT EXISTS product_boms (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        
+                id INT AUTO_INCREMENT PRIMARY KEY,
         product_id INT NOT NULL,
-        material_code VARCHAR(50) NOT NULL,
-        material_name VARCHAR(255),
-    
+        material_id INT NOT NULL,
         qty_per_unit FLOAT DEFAULT 0,
-        
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
-        -- Prevent duplicate mapping
-        UNIQUE KEY uq_product_material (product_id, material_code),
-    
-        -- Foreign key to product
-        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+
+        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+        FOREIGN KEY (material_id) REFERENCES raw_materials(id) ON DELETE CASCADE,
+
+        UNIQUE KEY uq_product_material (product_id, material_id)
       )
     `);
 
@@ -215,11 +204,11 @@ export async function setupDatabase() {
       )
     `);
 
-    console.log("✅  Database & tables ready!");
+    console.log("Database & tables ready!");
     await pool.end();
 
   } catch (error) {
-    console.error("❌  Error setting up database:", error.message);
+    console.error("Error setting up database:", error.message);
     throw error;
   }
 }

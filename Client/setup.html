@@ -461,7 +461,30 @@ function toast(msg, type='success') {
   t.textContent = (type==='success'?'✓ ':'✕ ') + msg;
   c.appendChild(t); setTimeout(() => t.remove(), 3100);
 }
+async function createBOM() {
+  const product_code = document.getElementById('bom_product').value;
+  const material_code = document.getElementById('bom_material').value;
+  const qty_per_unit = +document.getElementById('bom_qty').value || 0;
 
+  if (!product_code || !material_code || !qty_per_unit) {
+    return toast('Fill all BOM fields', 'error');
+  }
+
+  try {
+    await api('/create-bom', {
+      product_code,
+      material_code,
+      qty_per_unit
+    });
+
+    toast(`BOM linked: ${product_code} → ${material_code}`);
+
+    document.getElementById('bom_qty').value = '';
+
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
 // ── API ──
 async function api(path, body=null, method=null) {
   const m = method||(body?'POST':'GET');

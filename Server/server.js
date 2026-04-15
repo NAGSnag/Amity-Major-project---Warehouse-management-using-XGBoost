@@ -602,17 +602,24 @@ app.post("/import-products-with-location", async (req, res) => {
   }
 });
 
+
+
+
+
+
  
 // ── POST /import-raw-materials-with-location ─────────────────
 app.post("/import-raw-materials-with-location", async (req, res) => {
   try {
     const { materials } = req.body;
+
     if (!Array.isArray(materials) || !materials.length)
       return res.status(400).json({ error: "materials array required" });
 
     let inserted = 0, skipped = 0, unresolved = 0;
 
     for (const m of materials) {
+
       const box_id = await ensureLocation(
         m.rack_code || m.rack || '',
         +m.shelf_level || +m.shelf || 0,
@@ -621,60 +628,76 @@ app.post("/import-raw-materials-with-location", async (req, res) => {
 
       if ((m.rack_code || m.rack) && !box_id) unresolved++;
 
-      // ── FIXED: resolve product_id from product_code if it's a string ──
-      let product_id = null;
-      const rawPid = m.product_id;
-      if (rawPid) {
-        const numPid = +rawPid;
-        if (!isNaN(numPid) && numPid > 0) {
-          product_id = numPid;  // it's a numeric ID
-        } else {
-          // it's a product_code string — look it up
-          const [p] = await db(
-            `SELECT id FROM products WHERE product_code = ?`,
-            [String(rawPid).trim()]
-          );
-          product_id = p?.id || null;
-        }
-      }
-
       try {
         await db(
           `INSERT INTO raw_materials
             (material_code, material_name, category, unit, unit_cost,
              stock_qty, reorder_level, daily_consumption, size_category,
-             lead_time_days, supplier_name, product_id, qty_per_unit,
-             box_id, created_by)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
+             lead_time_days, supplier_name, box_id, created_by, product_id, qty_per_unit)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
           [
-            m.material_code      || '',
-            m.material_name      || '',
-            m.category           || '',
-            m.unit               || '',
-            +m.unit_cost         || 0,      // ← was being sent as 0 always
-            +m.stock_qty         || 0,
-            +m.reorder_level     || 0,
+            m.material_code || '',
+            m.material_name || '',
+            m.category || '',
+            m.unit || '',
+            +m.unit_cost || 0,
+            +m.stock_qty || 0,
+            +m.reorder_level || 0,
             +m.daily_consumption || 0,
-            m.size_category      || 'medium',
-            +m.lead_time_days    || 0,
-            m.supplier_name      || '',
-            product_id,                     // ← FIXED: resolved above
-            +m.qty_per_unit      || 0,
-            box_id,                         // ← FIXED: via ensureLocation fix
+            m.size_category || 'medium',
+            +m.lead_time_days || 0,
+            m.supplier_name || '',
+            box_id,
+            m.product_id || null,
+            +m.qty_per_unit || 0
           ]
         );
         inserted++;
       } catch (e) {
-        if (e.code === 'ER_DUP_ENTRY') skipped++; else throw e;
+        if (e.code === 'ER_DUP_ENTRY') skipped++;
+        else throw e;
       }
     }
 
-    res.json({ inserted, skipped, unresolved });
+    const materialsForBom = await db(`
+      SELECT 
+        rm.id AS material_id,       -- This gets the numeric ID (e.g., 12)
+        p.id AS product_id,         -- This gets the numeric ID (e.g., 5)
+        rm.qty_per_unit
+      FROM raw_materials rm
+      JOIN products p ON p.product_code = rm.product_id
+      WHERE rm.product_id IS NOT NULL 
+        AND rm.qty_per_unit > 0
+    `);
+
+    let bomInserted = 0, bomSkipped = 0;
+
+    for (const m of materialsForBom) {
+      try {
+        await db(`
+          INSERT IGNORE INTO product_boms (product_id, material_id, qty_per_unit)
+          VALUES (?, ?, ?)`, 
+          [m.product_id, m.material_id, m.qty_per_unit]
+        );
+        bomInserted++;
+      } catch (e) {
+        if (e.code === "ER_DUP_ENTRY") bomSkipped++;
+        else throw e;
+      }
+    }
+
+    res.json({
+      inserted,
+      skipped,
+      unresolved,
+      bomInserted,
+      bomSkipped
+    });
+
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
- 
 
 app.post("/create-raw-material", async (req, res) => {
   try {
@@ -684,63 +707,163 @@ app.post("/create-raw-material", async (req, res) => {
       stock_qty = 0, reorder_level = 0,
       daily_consumption = 0, size_category = "medium",
       lead_time_days = 0, supplier_name = "",
-      product_id = null, qty_per_unit = 0,
       box_id = null, created_by = null,
     } = req.body;
- 
+
     if (!material_code || !material_name)
       return res.status(400).json({ error: "material_code and material_name required" });
- 
+
     const r = await db(
       `INSERT INTO raw_materials
         (material_code, material_name, category, unit, unit_cost,
          stock_qty, reorder_level, daily_consumption, size_category,
-         lead_time_days, supplier_name, product_id, qty_per_unit,
-         box_id, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [material_code, material_name, category, unit, unit_cost,
-       stock_qty, reorder_level, daily_consumption, size_category,
-       lead_time_days, supplier_name, product_id, qty_per_unit,
-       box_id, created_by]
+         lead_time_days, supplier_name, box_id, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        material_code, material_name, category, unit, unit_cost,
+        stock_qty, reorder_level, daily_consumption, size_category,
+        lead_time_days, supplier_name, box_id, created_by
+      ]
     );
+
     res.json({ id: r.insertId, material_code, material_name });
+
   } catch (e) {
     if (e.code === "ER_DUP_ENTRY")
       return res.status(409).json({ error: "Material code already exists" });
+
     res.status(500).json({ error: e.message });
   }
 });
- 
+app.post("/auto-create-boms", async (req, res) => {
+  try {
+    const materials = await db(`
+      SELECT 
+        rm.material_code, 
+        p.id AS product_id, 
+        rm.qty_per_unit
+      FROM raw_materials rm
+      JOIN products p ON p.product_code = rm.product_id
+      WHERE rm.product_id IS NOT NULL AND rm.qty_per_unit > 0
+    `);
+
+    if (!materials.length) {
+      return res.json({ inserted: 0, skipped: 0, message: "No linked materials found" });
+    }
+
+    let inserted = 0, skipped = 0;
+
+    for (const m of materials) {
+      try {
+        await db(
+          `INSERT INTO product_boms (product_id, material_id, qty_per_unit)
+           VALUES (?, ?, ?)
+           ON DUPLICATE KEY UPDATE qty_per_unit = VALUES(qty_per_unit)`,
+          [
+            m.product_id,        // must be product_code
+            m.material_code,     // must be material_code
+            +m.qty_per_unit || 1
+          ]
+        );
+        inserted++;
+      } catch (e) {
+        if (e.code === "ER_DUP_ENTRY") skipped++;
+        else throw e;
+      }
+    }
+
+    res.json({ inserted, skipped, total: materials.length });
+
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get("/get-bom/:product_code", async (req, res) => {
+  try {
+    const rows = await db(`
+      SELECT
+        pb.qty_per_unit,
+        rm.material_code, rm.material_name, rm.category,
+        rm.unit, rm.unit_cost, rm.stock_qty, rm.reorder_level,
+        rm.size_category, rm.supplier_name,
+        b.box_code,
+        FLOOR(rm.stock_qty / pb.qty_per_unit) AS producible_units
+      FROM product_boms pb
+      JOIN raw_materials rm ON rm.material_code = pb.material_id
+      JOIN products p ON p.product_code = pb.product_id
+      LEFT JOIN boxes b ON b.id = rm.box_id
+      WHERE p.product_code = ?
+      ORDER BY rm.category, rm.material_name
+    `, [req.params.product_code]);
+
+    if (!rows.length) return res.status(404).json({ error: "No BOM found" });
+
+    const bottleneck = rows.reduce((min, r) =>
+      r.producible_units < min.producible_units ? r : min
+    );
+
+    res.json({
+      product_code: req.params.product_code,
+      bom_lines: rows.length,
+      max_producible_units: bottleneck.producible_units,
+      bottleneck_material: bottleneck.material_name,
+      bom: rows
+    });
+
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get("/get-bom-summary", async (req, res) => {
+  try {
+    const rows = await db(`
+      SELECT
+        p.product_code, p.product_name,
+        COUNT(pb.id) AS total_materials,
+        MIN(FLOOR(rm.stock_qty / pb.qty_per_unit)) AS max_producible_units,
+        SUM(CASE WHEN rm.stock_qty <= rm.reorder_level THEN 1 ELSE 0 END) AS low_stock_materials
+      FROM products p
+      JOIN product_boms pb ON pb.product_id = p.product_code
+      JOIN raw_materials rm ON rm.material_code = pb.material_id
+      GROUP BY p.product_code, p.product_name
+      ORDER BY max_producible_units ASC
+    `);
+    res.json(rows);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 app.post("/import-raw-materials", async (req, res) => {
   try {
     const { materials } = req.body;
     if (!Array.isArray(materials) || !materials.length)
       return res.status(400).json({ error: "materials array required" });
- 
+
     let inserted = 0, skipped = 0;
+
     for (const m of materials) {
-      // resolve product_id from product_code if provided
-      let product_id = m.product_id || null;
-      if (!product_id && m.product_code) {
-        const [p] = await db(`SELECT id FROM products WHERE product_code = ?`, [m.product_code]);
-        product_id = p?.id || null;
-      }
       try {
         await db(
           `INSERT INTO raw_materials
             (material_code, material_name, category, unit, unit_cost,
              stock_qty, reorder_level, daily_consumption, size_category,
-             lead_time_days, supplier_name, product_id, qty_per_unit,
-             box_id, created_by)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             lead_time_days, supplier_name, box_id, created_by)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
           [
-            m.material_code || "", m.material_name || "",
-            m.category || "", m.unit || "",
-            +m.unit_cost || 0, +m.stock_qty || 0,
-            +m.reorder_level || 0, +m.daily_consumption || 0,
-            m.size_category || "medium", +m.lead_time_days || 0,
-            m.supplier_name || "", product_id, +m.qty_per_unit || 0,
-            m.box_id || null, null,
+            m.material_code || "",
+            m.material_name || "",
+            m.category || "",
+            m.unit || "",
+            +m.unit_cost || 0,
+            +m.stock_qty || 0,
+            +m.reorder_level || 0,
+            +m.daily_consumption || 0,
+            m.size_category || "medium",
+            +m.lead_time_days || 0,
+            m.supplier_name || "",
+            m.box_id || null
           ]
         );
         inserted++;
@@ -748,31 +871,69 @@ app.post("/import-raw-materials", async (req, res) => {
         if (e.code === "ER_DUP_ENTRY") skipped++; else throw e;
       }
     }
+
     res.json({ inserted, skipped });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
  
 app.get("/get-raw-materials", async (req, res) => {
-  const { category, size_category, low_stock, product_id } = req.query;
+  const { category, size_category, low_stock } = req.query;
+
   let sql = `
-    SELECT 
-      m.*, 
-      p.product_code, p.product_name, 
+    SELECT
+      m.id,
+      m.material_code,
+      m.material_name,
+      m.category,
+      m.unit,
+      m.unit_cost,
+      m.stock_qty,
+      m.reorder_level,
+      m.daily_consumption,
+      m.size_category,
+      m.lead_time_days,
+      m.supplier_name,
+      m.box_id,
       b.box_code,
+      p.product_name, -- Added product_name from products table
+      m.updated_at,
       IF(m.stock_qty <= m.reorder_level, 'Low', 'OK') AS stock_status
     FROM raw_materials m
-    LEFT JOIN products p ON p.id = m.product_id
     LEFT JOIN boxes b ON b.id = m.box_id
-    WHERE 1=1`;
+    -- Join with products table using the product_code (as per your schema)
+    LEFT JOIN products p ON p.product_code = m.product_id 
+    WHERE 1=1
+  `;
+
   const params = [];
-  if (category)   { sql += ` AND m.category = ?`;      params.push(category); }
-  if (size_category) { sql += ` AND m.size_category = ?`; params.push(size_category); }
-  if (product_id) { sql += ` AND m.product_id = ?`;    params.push(product_id); }
-  if (low_stock === "1") sql += ` AND m.stock_qty <= m.reorder_level`;
+
+  if (category) {
+    sql += ` AND m.category = ?`;
+    params.push(category);
+  }
+
+  if (size_category) {
+    sql += ` AND m.size_category = ?`;
+    params.push(size_category);
+  }
+
+  if (low_stock === "1") {
+    sql += ` AND m.stock_qty <= m.reorder_level`;
+  }
+
   sql += ` ORDER BY m.id DESC`;
-  res.json(await db(sql, params));
+
+  try {
+    const rows = await db(sql, params);
+    res.json(rows);
+  } catch (error) {
+    console.error("Error fetching raw materials:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 });
- 
 app.patch("/update-raw-material/:id", async (req, res) => {
   const allowed = [
     "category","unit","unit_cost","stock_qty","reorder_level",
@@ -881,8 +1042,6 @@ async function ensureLocation(rack_code, shelf_level, box_code) {
     const box_rows = await db(`SELECT id FROM boxes WHERE shelf_id = ? AND box_code = ?`, [shelf_id, box_code]);
     const box_id = box_rows[0]?.id;
     if (!box_id) { console.error('❌ box_id not resolved for', box_code); return null; }
-
-    console.log('✅ Resolved:', { rack_code, shelf_level, box_code, rack_id, shelf_id, box_id });
     return box_id;
 
   } catch (err) {
