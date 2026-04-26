@@ -302,36 +302,9 @@ app.patch("/update-product/:id", async (req, res) => {
 //  SALES DATA
 // ============================================================
  
-// POST /import-sales  (chunked bulk insert)
-// app.post("/import-sales", async (req, res) => {
-//   try {
-//     const { records } = req.body;
-//     if (!Array.isArray(records) || !records.length)
-//       return res.status(400).json({ error: "records array required" });
- 
-//     // Build multi-row INSERT for performance
-//     const placeholders = records.map(() => "(?, ?, ?, ?)").join(", ");
-//     const values = records.flatMap(r => [
-//       r.date  || null,
-//       String(r.store || ""),
-//       String(r.item  || ""),
-//       parseFloat(r.sales) || 0,
-//     ]);
- 
-//     const result = await db(
-//       `INSERT INTO sales_data (date, store, item, sales) VALUES ${placeholders}`,
-//       values
-//     );
-//     res.json({ inserted: result.affectedRows });
-//   } catch (e) {
-//     res.status(500).json({ error: e.message });
-//   }
-// });
- 
-// GET /get-sales  — summary by item or store
 app.get("/get-sales", async (req, res) => {
   const { group_by = "item", from, to } = req.query;
-  const allowed = ["item", "store", "date"];
+  const allowed = ["item", "date"];
   const col = allowed.includes(group_by) ? group_by : "item";
  
   let sql = `SELECT ${col}, SUM(sales) AS total_sales, COUNT(*) AS records FROM sales_data WHERE 1=1`;
@@ -343,50 +316,85 @@ app.get("/get-sales", async (req, res) => {
   const rows = await db(sql, params);
   res.json(rows);
 });
+
 app.post("/import-sales", async (req, res) => {
   try {
     const { records } = req.body;
     if (!Array.isArray(records) || !records.length)
       return res.status(400).json({ error: "records array required" });
- 
-    // ── 1. Normalise & sort by store → item → date ────────────
+
+    /**
+     * Helper: Standardizes dates to YYYY-MM-DD.
+     * Handles: '31-12-2023', '12/31/2023', JS Date objects, and ISO strings.
+     */
+    const parseDate = (d) => {
+      if (!d) return null;
+      let dateObj;
+
+      if (typeof d === "string") {
+        // Handle common DD-MM-YYYY or DD/MM/YYYY formats
+        const parts = d.split(/[-/ ]/);
+        if (parts.length === 3) {
+          // If year is the first part (YYYY-MM-DD)
+          if (parts[0].length === 4) {
+            dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
+          } 
+          // If year is the last part (DD-MM-YYYY)
+          else if (parts[2].length === 4) {
+            dateObj = new Date(parts[2], parts[1] - 1, parts[0]);
+          }
+        }
+      }
+      
+      // Fallback to native constructor if parsing failed or format was different
+      if (!dateObj || isNaN(dateObj)) dateObj = new Date(d);
+
+      if (isNaN(dateObj.getTime())) return null;
+
+      // Extract YYYY-MM-DD without timezone shifts
+      const y = dateObj.getFullYear();
+      const m = String(dateObj.getMonth() + 1).padStart(2, "0");
+      const day = String(dateObj.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    };
+
     const rows = records
       .map(r => ({
-        sale_date: r.sale_date || r.date,
-        store_id:  +r.store_id || +r.store,
+        sale_date: parseDate(r.sale_date || r.date),
         item_id:   String(r.item_id || r.item),
         sales:     parseFloat(r.sales_qty ?? r.sales ?? 0),
       }))
-      .filter(r => r.sale_date && !isNaN(r.store_id) && r.item_id && !isNaN(r.sales))
+      .filter(r => r.sale_date &&  r.item_id && !isNaN(r.sales))
       .sort((a, b) =>
-        a.store_id - b.store_id ||
         a.item_id.localeCompare(b.item_id) ||
         a.sale_date.localeCompare(b.sale_date)
       );
- 
+
     if (!rows.length) return res.json({ inserted: 0, skipped: records.length });
- 
-    // ── 2. Group indices by store+item key ────────────────────
+
     const groups = {};
     rows.forEach((r, i) => {
-      const key = `${r.store_id}__${r.item_id}`;
+      const key = `${r.item_id}`;
       if (!groups[key]) groups[key] = [];
       groups[key].push(i);
     });
- 
+
     // ── 3. Compute features per group ─────────────────────────
     const feat = rows.map(r => {
-      const d = new Date(r.sale_date);
-      const day = d.getUTCDay(); // 0=Sun … 6=Sat → convert to Mon=0
-      const dow = day === 0 ? 6 : day - 1;
+      // sale_date is now strictly YYYY-MM-DD string
+      const [y, m, d] = r.sale_date.split("-").map(Number);
+      const dateObj = new Date(y, m - 1, d);
+      
+      const day = dateObj.getDay(); // 0=Sun ... 6=Sat
+      const dow = day === 0 ? 6 : day - 1; // Convert to 0=Mon ... 6=Sun
+      
       return {
         day_of_week:    dow,
-        month:          d.getUTCMonth() + 1,
-        quarter:        Math.ceil((d.getUTCMonth() + 1) / 3),
+        month:          m,
+        quarter:        Math.ceil(m / 3),
         is_weekend:     dow >= 5 ? 1 : 0,
-        is_month_start: d.getUTCDate() <= 5 ? 1 : 0,
-        is_month_end:   d.getUTCDate() >= 25 ? 1 : 0,
-        // lags & rolling — filled below
+        is_month_start: d <= 5 ? 1 : 0,
+        is_month_end:   d >= 25 ? 1 : 0,
         lag_7: null, lag_14: null, lag_30: null, lag_365: null,
         rolling_mean_7: null, rolling_mean_30: null,
         rolling_mean_90: null, rolling_std_7: null,
@@ -394,21 +402,20 @@ app.post("/import-sales", async (req, res) => {
         sales_next_7: null,
       };
     });
- 
-    // Helper: shift an array of values by n positions
+
     const shift = (vals, n) => {
       if (n > 0) return [...Array(n).fill(null), ...vals.slice(0, -n)];
       if (n < 0) return [...vals.slice(-n), ...Array(-n).fill(null)];
       return [...vals];
     };
- 
-    // Helper: rolling window mean/std on an array (null-safe)
+
     const rollingMean = (vals, w) => vals.map((_, i) => {
       if (i < w - 1) return null;
       const win = vals.slice(i - w + 1, i + 1);
       if (win.some(v => v == null)) return null;
       return win.reduce((s, v) => s + v, 0) / w;
     });
+
     const rollingStd = (vals, w) => vals.map((_, i) => {
       if (i < w - 1) return null;
       const win = vals.slice(i - w + 1, i + 1);
@@ -416,22 +423,21 @@ app.post("/import-sales", async (req, res) => {
       const mean = win.reduce((s, v) => s + v, 0) / w;
       return Math.sqrt(win.reduce((s, v) => s + (v - mean) ** 2, 0) / w);
     });
- 
+
     for (const indices of Object.values(groups)) {
       const sales = indices.map(i => rows[i].sales);
- 
+
       const l7   = shift(sales, 7);
       const l14  = shift(sales, 14);
       const l30  = shift(sales, 30);
       const l365 = shift(sales, 365);
- 
-      const lag1      = shift(sales, 1);          // shift(1) before rolling
+
+      const lag1      = shift(sales, 1);
       const rm7       = rollingMean(lag1, 7);
       const rm30      = rollingMean(lag1, 30);
       const rm90      = rollingMean(lag1, 90);
       const rs7       = rollingStd(lag1, 7);
- 
-      // sales_next_7 = shift(-7) then rolling(7).sum
+
       const shiftedFwd = shift(sales, -7);
       const sn7 = shiftedFwd.map((_, i) => {
         if (i < 6) return null;
@@ -439,7 +445,7 @@ app.post("/import-sales", async (req, res) => {
         if (win.some(v => v == null)) return null;
         return win.reduce((s, v) => s + v, 0);
       });
- 
+
       indices.forEach((rowIdx, j) => {
         const f = feat[rowIdx];
         f.lag_7           = l7[j];
@@ -456,30 +462,30 @@ app.post("/import-sales", async (req, res) => {
         f.sales_next_7    = sn7[j];
       });
     }
- 
+
     // ── 4. Bulk INSERT IGNORE in chunks of 5000 ───────────────
     const CHUNK    = 5000;
     let inserted   = 0;
     let skipped    = 0;
- 
+
     const COL_LIST = `
-      sale_date, store_id, item_id, sales,
+      sale_date,  item_id, sales,
       day_of_week, month, quarter,
       is_weekend, is_month_start, is_month_end,
       lag_7, lag_14, lag_30, lag_365,
       rolling_mean_7, rolling_mean_30, rolling_mean_90, rolling_std_7,
       trend_direction, yoy_growth, sales_next_7
     `;
- 
+
     for (let start = 0; start < rows.length; start += CHUNK) {
       const chunk  = rows.slice(start, start + CHUNK);
-      const ph     = chunk.map(() => "(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").join(",");
+      const ph     = chunk.map(() => "(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").join(",");
       const values = [];
- 
+
       chunk.forEach((r, i) => {
         const f = feat[start + i];
         values.push(
-          r.sale_date, r.store_id, r.item_id, r.sales,
+          r.sale_date,r.item_id, r.sales,
           f.day_of_week, f.month, f.quarter,
           f.is_weekend, f.is_month_start, f.is_month_end,
           f.lag_7, f.lag_14, f.lag_30, f.lag_365,
@@ -487,7 +493,7 @@ app.post("/import-sales", async (req, res) => {
           f.trend_direction, f.yoy_growth, f.sales_next_7
         );
       });
- 
+
       const result = await db(
         `INSERT IGNORE INTO sales_data (${COL_LIST}) VALUES ${ph}`,
         values
@@ -495,20 +501,25 @@ app.post("/import-sales", async (req, res) => {
       inserted += result.affectedRows;
       skipped  += chunk.length - result.affectedRows;
     }
- 
+
     res.json({
       total:    rows.length,
       inserted,
       skipped,
       ann_ready: rows.filter((_, i) => feat[i].sales_next_7 != null).length,
     });
- 
+
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message });
   }
 });
 
+
+// ─────────────────────────────────────────────────────────────
+//  FIX 1: /sales-summary — was using non-existent column
+//  `sales_qty`; correct column name is `sales`
+// ─────────────────────────────────────────────────────────────
 app.get("/sales-summary", async (req, res) => {
   const [rows] = await pool.execute(`
     SELECT
@@ -516,13 +527,13 @@ app.get("/sales-summary", async (req, res) => {
       MIN(sale_date)                    AS earliest_date,
       MAX(sale_date)                    AS latest_date,
       DATEDIFF(MAX(sale_date), MIN(sale_date)) AS date_span_days,
-      COUNT(DISTINCT store_id)          AS unique_stores,
       COUNT(DISTINCT item_id)           AS unique_items,
-      SUM(sales_qty)                    AS total_sales,
-      ROUND(AVG(sales_qty), 2)          AS avg_daily_sales
+      SUM(sales)                        AS total_sales,
+      ROUND(AVG(sales), 2)              AS avg_daily_sales
     FROM sales_data`);
   res.json(rows[0]);
 });
+
  // ============================================================
 //  RAW MATERIALS — add these routes to server.js
 // ============================================================
@@ -543,7 +554,11 @@ async function resolveBoxId(rack_code, shelf_level, box_code) {
   return box?.id || null;
 }
  
-// POST /import-products-with-location
+// ─────────────────────────────────────────────────────────────
+//  FIX 3: /import-products-with-location — VALUES clause had
+//  only 11 `?` for 12 columns. Added missing `?` for
+//  `created_by`.
+// ─────────────────────────────────────────────────────────────
 app.post("/import-products-with-location", async (req, res) => {
   try {
     const { products } = req.body;
@@ -584,8 +599,8 @@ app.post("/import-products-with-location", async (req, res) => {
             +p.daily_consumption || 0,
             p.size_category   || 'medium',
             +p.demand         || 0,
-            box_id,           // ← correctly resolved
-            null,
+            box_id,
+            null,             // created_by
           ]
         );
         inserted++;
@@ -603,12 +618,13 @@ app.post("/import-products-with-location", async (req, res) => {
 });
 
 
-
-
-
-
- 
-// ── POST /import-raw-materials-with-location ─────────────────
+// ─────────────────────────────────────────────────────────────
+//  FIX 4: /import-raw-materials-with-location BOM block —
+//  was fetching rm.id (numeric) and p.id (numeric) but
+//  product_boms stores string codes, matching the JOIN in
+//  /get-bom which uses rm.material_code and p.product_code.
+//  Fixed to select rm.material_code and p.product_code.
+// ─────────────────────────────────────────────────────────────
 app.post("/import-raw-materials-with-location", async (req, res) => {
   try {
     const { materials } = req.body;
@@ -659,10 +675,12 @@ app.post("/import-raw-materials-with-location", async (req, res) => {
       }
     }
 
+    // Use string codes (material_code, product_code) — not numeric IDs —
+    // because product_boms joins on rm.material_code and p.product_code
     const materialsForBom = await db(`
       SELECT 
-        rm.id AS material_id,       -- This gets the numeric ID (e.g., 12)
-        p.id AS product_id,         -- This gets the numeric ID (e.g., 5)
+        rm.material_code AS material_id,
+        p.product_code   AS product_id,
         rm.qty_per_unit
       FROM raw_materials rm
       JOIN products p ON p.product_code = rm.product_id
@@ -735,12 +753,19 @@ app.post("/create-raw-material", async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+// ─────────────────────────────────────────────────────────────
+//  FIX 5: /auto-create-boms — was fetching p.id (numeric)
+//  as product_id. product_boms.product_id must be the
+//  product_code string to match the JOIN in /get-bom.
+//  Fixed to select p.product_code AS product_id.
+// ─────────────────────────────────────────────────────────────
 app.post("/auto-create-boms", async (req, res) => {
   try {
     const materials = await db(`
       SELECT 
         rm.material_code, 
-        p.id AS product_id, 
+        p.product_code AS product_id,
         rm.qty_per_unit
       FROM raw_materials rm
       JOIN products p ON p.product_code = rm.product_id
@@ -760,8 +785,8 @@ app.post("/auto-create-boms", async (req, res) => {
            VALUES (?, ?, ?)
            ON DUPLICATE KEY UPDATE qty_per_unit = VALUES(qty_per_unit)`,
           [
-            m.product_id,        // must be product_code
-            m.material_code,     // must be material_code
+            m.product_id,        // product_code string
+            m.material_code,     // material_code string
             +m.qty_per_unit || 1
           ]
         );
@@ -835,6 +860,7 @@ app.get("/get-bom-summary", async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
 app.post("/import-raw-materials", async (req, res) => {
   try {
     const { materials } = req.body;
@@ -898,12 +924,11 @@ app.get("/get-raw-materials", async (req, res) => {
       m.supplier_name,
       m.box_id,
       b.box_code,
-      p.product_name, -- Added product_name from products table
+      p.product_name,
       m.updated_at,
       IF(m.stock_qty <= m.reorder_level, 'Low', 'OK') AS stock_status
     FROM raw_materials m
     LEFT JOIN boxes b ON b.id = m.box_id
-    -- Join with products table using the product_code (as per your schema)
     LEFT JOIN products p ON p.product_code = m.product_id 
     WHERE 1=1
   `;
@@ -934,6 +959,7 @@ app.get("/get-raw-materials", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
 app.patch("/update-raw-material/:id", async (req, res) => {
   const allowed = [
     "category","unit","unit_cost","stock_qty","reorder_level",
@@ -970,29 +996,30 @@ app.get("/get-raw-materials-summary", async (_, res) => {
     FROM raw_materials`);
   res.json(row);
 });
- 
-// GET /sales-by-item?item_id=1&store_id=1  ───────────────────
+
+// ─────────────────────────────────────────────────────────────
+//  FIX 2: /sales-by-item — was selecting non-existent column
+//  `sales_qty`; correct column name is `sales`
+// ─────────────────────────────────────────────────────────────
 app.get("/sales-by-item", async (req, res) => {
-  const { item_id, store_id } = req.query;
+  const { item_id } = req.query;
   if (!item_id) return res.status(400).json({ error: "item_id required" });
  
-  let sql = `
-    SELECT sale_date, store_id, item_id, sales_qty
-    FROM sales_data WHERE item_id = ?`;
-  const params = [item_id];
-  if (store_id) { sql += ` AND store_id = ?`; params.push(store_id); }
-  sql += ` ORDER BY sale_date`;
+  const sql = `
+    SELECT sale_date, item_id, sales
+    FROM sales_data WHERE item_id = ?
+    ORDER BY sale_date`;
  
-  const [rows] = await pool.execute(sql, params);
+  const rows = await db(sql, [item_id]);
   res.json(rows);
 });
+
 app.get("/get-sales-summary", async (_, res) => {
   const [row] = await db(`
     SELECT COUNT(*)                          AS total_records,
            MIN(sale_date)                    AS earliest_date,
            MAX(sale_date)                    AS latest_date,
            DATEDIFF(MAX(sale_date), MIN(sale_date)) AS date_span_days,
-           COUNT(DISTINCT store_id)          AS unique_stores,
            COUNT(DISTINCT item_id)           AS unique_items,
            SUM(sales)                        AS total_sales,
            COUNT(CASE WHEN sales_next_7 IS NOT NULL THEN 1 END) AS ann_ready_rows
@@ -1006,6 +1033,7 @@ app.listen(port,()=>{
   setupDatabase()
   
 })
+
 // Helper: get-or-create rack → shelf → box, returns box_id
 async function ensureLocation(rack_code, shelf_level, box_code) {
   try {
@@ -1015,15 +1043,12 @@ async function ensureLocation(rack_code, shelf_level, box_code) {
     shelf_level = Number(shelf_level);
     box_code    = (box_code || '').toString().trim();
 
-    // FIX: Use 'isNaN' or check for undefined/null instead of '!shelf_level'
-    // because '0' is a valid shelf level.
     if (isNaN(shelf_level) || !box_code) {
       console.warn(`⚠️ Invalid shelf(${shelf_level}) or box(${box_code}) for rack ${rack_code}`);
       return null;
     }
 
     // ── 1. RACK ──
-    // This logic determines which section the rack belongs to
     const type = rack_code.startsWith('RK-M') ? 'raw_material' : 'product';
     
     await db(`INSERT IGNORE INTO racks (rack_code, type) VALUES (?, ?)`, [rack_code, type]);

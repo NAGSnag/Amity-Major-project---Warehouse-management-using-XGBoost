@@ -176,7 +176,6 @@ export async function setupDatabase() {
       CREATE TABLE IF NOT EXISTS sales_data (
         id                   BIGINT AUTO_INCREMENT PRIMARY KEY,
         sale_date            DATE        NOT NULL,
-        store_id             INT         NOT NULL,
         item_id              VARCHAR(50) NOT NULL,
         sales                FLOAT       NOT NULL DEFAULT 0,
         day_of_week          TINYINT,
@@ -197,9 +196,8 @@ export async function setupDatabase() {
         yoy_growth           FLOAT,
         sales_next_7         FLOAT,
         features_computed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        UNIQUE KEY uq_sale   (sale_date, store_id, item_id),
+        UNIQUE KEY uq_sale   (sale_date, item_id),
         INDEX idx_item_date  (item_id, sale_date),
-        INDEX idx_store_date (store_id, sale_date),
         INDEX idx_date       (sale_date)
       )
     `);

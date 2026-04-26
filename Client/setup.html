@@ -22,7 +22,7 @@
   .header span{color:var(--muted);font-size:12px;margin-left:4px;}
 
   /* ── STEPPER ── */
-  .stepper-wrap{padding:28px 40px 0;display:flex;overflow-x:auto;}
+  .stepper-wrap{padding:28px 40px 0;display:flex;overflow-x:auto;max-width:940px;margin:0 auto;}
   .step-item{flex:1;min-width:60px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;position:relative;}
   .step-item:not(:last-child)::after{content:'';position:absolute;top:18px;left:50%;width:100%;height:2px;background:var(--border);z-index:0;}
   .step-item.done:not(:last-child)::after{background:var(--accent);}
@@ -33,7 +33,7 @@
   .step-item.active .step-label{color:var(--accent);}
 
   /* ── MAIN ── */
-  .main{padding:28px 40px 60px;max-width:940px;}
+  .main{padding:28px 40px 60px;max-width:940px;margin:0 auto;}
   .panel{display:none;animation:fadeUp .3s ease;}
   .panel.active{display:block;}
   @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
@@ -83,6 +83,7 @@
   .qi-title{font-family:var(--mono);font-size:12px;letter-spacing:.08em;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
   .qi-note{background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);border-radius:6px;padding:10px 14px;font-size:12px;color:#93c5fd;margin-bottom:14px;line-height:1.6;}
   .qi-note.green{background:rgba(16,185,129,.08);border-color:rgba(16,185,129,.2);color:#6ee7b7;}
+  .qi-note.purple{background:rgba(139,92,246,.08);border-color:rgba(139,92,246,.2);color:#c4b5fd;}
 
   /* ── IMPORT ZONE ── */
   .import-zone{border:2px dashed var(--border);border-radius:10px;padding:32px 20px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:16px;position:relative;}
@@ -150,7 +151,15 @@
   @keyframes fadeOut{to{opacity:0;transform:translateX(40px)}}
   .empty-state{text-align:center;padding:32px;color:var(--muted);font-size:13px;}
   .info-note{background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.2);border-radius:6px;padding:10px 14px;font-size:12px;color:#fcd34d;margin-bottom:16px;}
-  @media(max-width:640px){.header,.main{padding-left:18px;padding-right:18px;}.stepper-wrap{padding:18px 18px 0;}.choice-cards{flex-direction:column;align-items:center;}}
+
+  /* Sales column mapper inside QI */
+  .sales-mapper-inner{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px;}
+
+  @media(max-width:640px){
+    .header,.main{padding-left:18px;padding-right:18px;}
+    .stepper-wrap{padding:18px 18px 0;}
+    .choice-cards{flex-direction:column;align-items:center;}
+  }
 </style>
 </head>
 <body>
@@ -161,13 +170,14 @@
 </div>
 
 <!-- ── STEPPER (hidden on choice screen) ── -->
+<!-- ORDER: Rack → Shelf → Boxes → Products → Raw Materials → Sales Data -->
 <div class="stepper-wrap" id="stepper" style="display:none;">
   <div class="step-item active" id="step-0" onclick="goStep(0)"><div class="step-circle">01</div><div class="step-label">Rack</div></div>
   <div class="step-item" id="step-1" onclick="goStep(1)"><div class="step-circle">02</div><div class="step-label">Shelf</div></div>
   <div class="step-item" id="step-2" onclick="goStep(2)"><div class="step-circle">03</div><div class="step-label">Boxes</div></div>
   <div class="step-item" id="step-3" onclick="goStep(3)"><div class="step-circle">04</div><div class="step-label">Products</div></div>
-  <div class="step-item" id="step-4" onclick="goStep(4)"><div class="step-circle">05</div><div class="step-label">Sales Data</div></div>
-  <div class="step-item" id="step-5" onclick="goStep(5)"><div class="step-circle">06</div><div class="step-label">Raw Materials</div></div>
+  <div class="step-item" id="step-4" onclick="goStep(4)"><div class="step-circle">05</div><div class="step-label">Raw Mat.</div></div>
+  <div class="step-item" id="step-5" onclick="goStep(5)"><div class="step-circle">06</div><div class="step-label">Sales Data</div></div>
 </div>
 
 <div class="main">
@@ -183,13 +193,13 @@
       <div class="choice-card card-step" onclick="startStepByStep()">
         <span class="c-icon">🪜</span>
         <h3>Step by Step</h3>
-        <p>Create racks, shelves, boxes first — then add products and raw materials one by one or via Excel.</p>
+        <p>Create racks, shelves, boxes first — then add products, raw materials and finally sales data.</p>
         <span class="c-badge">Manual Setup</span>
       </div>
       <div class="choice-card card-import" onclick="startQuickImport()">
         <span class="c-icon">⚡</span>
         <h3>Quick Import</h3>
-        <p>Already have your data? Upload Excel files for products and raw materials. Location columns (rack, shelf, box) are created automatically.</p>
+        <p>Already have your data? Upload Excel files for products, raw materials and sales data. Location columns are created automatically.</p>
         <span class="c-badge">With Location CSV</span>
       </div>
     </div>
@@ -214,7 +224,7 @@
 
 <!-- ══ PANEL 1: SHELF ══ -->
 <div class="panel" id="panel-1">
-  <div class="panel-header"><h2>Create Shelves</h2><p>Each rack gets 3 shelves (levels).</p></div>
+  <div class="panel-header"><h2>Create Shelves</h2><p>Each rack gets up to 3 shelves (levels).</p></div>
   <div class="form-grid">
     <div class="form-group"><label>Select Rack</label><select id="rack_select"></select></div>
     <div class="form-group"><label>Number of Levels</label><input id="levels" type="number" placeholder="e.g. 3" min="1" max="3"></div>
@@ -245,7 +255,6 @@
 <div class="panel" id="panel-3">
   <div class="panel-header"><h2>Add Products</h2><p>Add products manually with a box assignment, or import via Excel.</p></div>
 
-  <!-- Manual form -->
   <div class="form-grid">
     <div class="form-group"><label>Product Code</label><input id="product_code" placeholder="e.g. PRD-001"></div>
     <div class="form-group"><label>Product Name</label><input id="product_name" placeholder="e.g. Steel Bolt M8"></div>
@@ -261,7 +270,8 @@
   </div>
   <div class="btn-row">
     <button class="btn btn-success" onclick="createProduct()">⊕ Add Product</button>
-    <button class="btn btn-secondary" onclick="goStep(4)">Next: Sales →</button>
+    <!-- FIX: was "Next: Sales →" — now correctly points to Raw Materials (step 4) -->
+    <button class="btn btn-secondary" onclick="goStep(4)">Next: Raw Materials →</button>
   </div>
 
   <div class="divider">OR IMPORT FROM EXCEL</div>
@@ -287,50 +297,8 @@
   </div>
 </div>
 
-<!-- ══ PANEL 4: SALES ══ -->
+<!-- ══ PANEL 4: RAW MATERIALS (moved before Sales) ══ -->
 <div class="panel" id="panel-4">
-  <div class="panel-header"><h2>Upload Sales Data</h2><p>Import 2+ years of daily sales. Columns: date, store, item (product_code), sales.</p></div>
-  <div class="import-zone" id="sales-zone"
-    ondragover="event.preventDefault();this.classList.add('drag')"
-    ondragleave="this.classList.remove('drag')"
-    ondrop="handleSalesDrop(event)">
-    <input type="file" id="sales_file" accept=".xlsx,.xls,.csv" onchange="handleSalesFile(event)">
-    <div style="font-size:32px;margin-bottom:8px;">📈</div>
-    <p><strong>Click to upload</strong> Sales CSV / Excel — date · store · item · sales</p>
-  </div>
-  <div id="sales_mapper" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px;">
-    <div style="font-family:var(--mono);font-size:11px;color:var(--purple);margin-bottom:12px;">MAP COLUMNS</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:12px;">
-      <div class="form-group"><label>Date</label><select id="map_date" style="background:var(--surface);"></select></div>
-      <div class="form-group"><label>Store</label><select id="map_store" style="background:var(--surface);"></select></div>
-      <div class="form-group"><label>Item</label><select id="map_item" style="background:var(--surface);"></select></div>
-      <div class="form-group"><label>Sales</label><select id="map_sales" style="background:var(--surface);"></select></div>
-    </div>
-    <button class="btn btn-primary btn-sm" onclick="confirmSalesMapping()">✓ Confirm & Preview</button>
-  </div>
-  <div class="stats-grid" id="sales_stats" style="display:none;">
-    <div class="stat-card c-blue"><div class="s-val" id="stat_total">—</div><div class="s-lbl">Total Rows</div></div>
-    <div class="stat-card c-green"><div class="s-val" id="stat_valid">—</div><div class="s-lbl">Valid</div></div>
-    <div class="stat-card c-red"><div class="s-val" id="stat_invalid">—</div><div class="s-lbl">Invalid</div></div>
-    <div class="stat-card c-yellow"><div class="s-val" id="stat_stores">—</div><div class="s-lbl">Stores</div></div>
-    <div class="stat-card c-blue"><div class="s-val" id="stat_items">—</div><div class="s-lbl">Items</div></div>
-    <div class="stat-card c-teal"><div class="s-val" id="stat_range">—</div><div class="s-lbl">Date Range</div></div>
-  </div>
-  <div id="sales_preview"></div>
-  <div class="progress-wrap" id="sales_progress" style="display:none;">
-    <div class="progress-label-row"><span id="progress_label">Uploading…</span><span id="progress_pct">0%</span></div>
-    <div class="progress-track"><div class="progress-fill" id="progress_fill"></div></div>
-  </div>
-  <div class="import-result" id="import_result" style="display:none;">
-    <div class="r-icon">✅</div><div><h4>Import Complete</h4><p id="import_result_msg">—</p></div>
-  </div>
-  <div class="btn-row" style="margin-top:20px;">
-    <button class="btn btn-secondary" onclick="goStep(5)">Next: Raw Materials →</button>
-  </div>
-</div>
-
-<!-- ══ PANEL 5: RAW MATERIALS ══ -->
-<div class="panel" id="panel-5">
   <div class="panel-header"><h2>Raw Materials</h2><p>Register raw materials, link to products, and assign warehouse locations.</p></div>
 
   <div class="stats-grid" id="rm_stats" style="display:none;">
@@ -341,7 +309,6 @@
     <div class="stat-card c-blue"><div class="s-val" id="rm_stat_linked">—</div><div class="s-lbl">Linked to Product</div></div>
   </div>
 
-  <!-- Manual form -->
   <div class="form-grid">
     <div class="form-group"><label>Material Code</label><input id="rm_code" placeholder="e.g. RM-001"></div>
     <div class="form-group"><label>Material Name</label><input id="rm_name" placeholder="e.g. Copper Wire"></div>
@@ -364,6 +331,8 @@
   </div>
   <div class="btn-row">
     <button class="btn btn-teal" onclick="createRawMaterial()">⊕ Add Material</button>
+    <!-- Next step is now Sales Data (step 5) -->
+    <button class="btn btn-secondary" onclick="goStep(5)">Next: Sales Data →</button>
   </div>
 
   <div class="divider">OR IMPORT FROM EXCEL</div>
@@ -393,18 +362,56 @@
   </div>
 </div>
 
+<!-- ══ PANEL 5: SALES DATA (moved to last step) ══ -->
+<div class="panel" id="panel-5">
+  <div class="panel-header"><h2>Upload Sales Data</h2><p>Import 2+ years of daily sales. Columns: date, item (product_code), sales.</p></div>
+  <div class="import-zone" id="sales-zone"
+    ondragover="event.preventDefault();this.classList.add('drag')"
+    ondragleave="this.classList.remove('drag')"
+    ondrop="handleSalesDrop(event)">
+    <input type="file" id="sales_file" accept=".xlsx,.xls,.csv" onchange="handleSalesFile(event)">
+    <div style="font-size:32px;margin-bottom:8px;">📈</div>
+    <p><strong>Click to upload</strong> Sales CSV / Excel — date · item · sales</p>
+  </div>
+  <div id="sales_mapper" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px;">
+    <div style="font-family:var(--mono);font-size:11px;color:var(--purple);margin-bottom:12px;">MAP COLUMNS</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:12px;">
+      <div class="form-group"><label>Date</label><select id="map_date" style="background:var(--surface);"></select></div>
+      <div class="form-group"><label>Item</label><select id="map_item" style="background:var(--surface);"></select></div>
+      <div class="form-group"><label>Sales</label><select id="map_sales" style="background:var(--surface);"></select></div>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="confirmSalesMapping()">✓ Confirm & Preview</button>
+  </div>
+  <div class="stats-grid" id="sales_stats" style="display:none;">
+    <div class="stat-card c-blue"><div class="s-val" id="stat_total">—</div><div class="s-lbl">Total Rows</div></div>
+    <div class="stat-card c-green"><div class="s-val" id="stat_valid">—</div><div class="s-lbl">Valid</div></div>
+    <div class="stat-card c-red"><div class="s-val" id="stat_invalid">—</div><div class="s-lbl">Invalid</div></div>
+    <div class="stat-card c-blue"><div class="s-val" id="stat_items">—</div><div class="s-lbl">Items</div></div>
+    <div class="stat-card c-teal"><div class="s-val" id="stat_range">—</div><div class="s-lbl">Date Range</div></div>
+  </div>
+  <div id="sales_preview"></div>
+  <div class="progress-wrap" id="sales_progress" style="display:none;">
+    <div class="progress-label-row"><span id="progress_label">Uploading…</span><span id="progress_pct">0%</span></div>
+    <div class="progress-track"><div class="progress-fill" id="progress_fill"></div></div>
+  </div>
+  <div class="import-result" id="import_result" style="display:none;">
+    <div class="r-icon">✅</div><div><h4>Import Complete</h4><p id="import_result_msg">—</p></div>
+  </div>
+  <!-- Sales is the last step — no "Next" button -->
+</div>
+
 <!-- ══ PANEL QI: QUICK IMPORT ══ -->
 <div class="panel" id="panel-qi">
   <div class="panel-header">
     <h2>Quick Import</h2>
-    <p>Upload your products and raw materials files with location columns (rack, shelf, box). Racks, shelves and boxes are created automatically.</p>
+    <p>Upload your products, raw materials and sales data. Racks, shelves and boxes are created automatically from location columns.</p>
   </div>
 
   <div class="info-note">
     💡 The import will auto-create any racks, shelves and boxes referenced in your files if they don't exist yet. Max 3 shelves per rack, 3 boxes per shelf.
   </div>
 
-  <!-- Products import -->
+  <!-- ── Products ── -->
   <div class="qi-section">
     <div class="qi-title" style="color:var(--accent2);">📦 PRODUCTS</div>
     <div class="qi-note">
@@ -422,7 +429,7 @@
     <div id="qi_p_preview"></div>
   </div>
 
-  <!-- Raw Materials import -->
+  <!-- ── Raw Materials ── -->
   <div class="qi-section">
     <div class="qi-title" style="color:var(--teal);">🏭 RAW MATERIALS</div>
     <div class="qi-note green">
@@ -438,6 +445,56 @@
       <p><strong>Click to upload</strong> Raw Materials Excel / CSV</p>
     </div>
     <div id="qi_rm_preview"></div>
+  </div>
+
+  <!-- ── Sales Data ── -->
+  <div class="qi-section">
+    <div class="qi-title" style="color:var(--purple);">📈 SALES DATA</div>
+    <div class="qi-note purple">
+      Columns: <strong>date, item (product_code), sales</strong> — Import 2+ years of daily sales records for forecasting.
+    </div>
+    <div class="import-zone" id="qi-sales-zone"
+      ondragover="event.preventDefault();this.classList.add('drag')"
+      ondragleave="this.classList.remove('drag')"
+      ondrop="handleQISalesDrop(event)">
+      <input type="file" id="qi_sales_file" accept=".xlsx,.xls,.csv" onchange="handleQISalesFile(event)">
+      <div class="icon">📈</div>
+      <p><strong>Click to upload</strong> Sales CSV / Excel — date · item · sales</p>
+    </div>
+
+    <!-- Column mapper -->
+    <div id="qi_sales_mapper" style="display:none;" class="sales-mapper-inner">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--purple);margin-bottom:12px;">MAP COLUMNS</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:12px;">
+        <div class="form-group"><label>Date</label><select id="qi_map_date" style="background:var(--surface);"></select></div>
+        <div class="form-group"><label>Item</label><select id="qi_map_item" style="background:var(--surface);"></select></div>
+        <div class="form-group"><label>Sales</label><select id="qi_map_sales" style="background:var(--surface);"></select></div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="confirmQISalesMapping()">✓ Confirm & Preview</button>
+    </div>
+
+    <!-- Stats grid -->
+    <div class="stats-grid" id="qi_sales_stats" style="display:none;margin-top:14px;">
+      <div class="stat-card c-blue"><div class="s-val" id="qi_stat_total">—</div><div class="s-lbl">Total Rows</div></div>
+      <div class="stat-card c-green"><div class="s-val" id="qi_stat_valid">—</div><div class="s-lbl">Valid</div></div>
+      <div class="stat-card c-red"><div class="s-val" id="qi_stat_invalid">—</div><div class="s-lbl">Invalid</div></div>
+      <div class="stat-card c-blue"><div class="s-val" id="qi_stat_items">—</div><div class="s-lbl">Items</div></div>
+      <div class="stat-card c-teal"><div class="s-val" id="qi_stat_range">—</div><div class="s-lbl">Date Range</div></div>
+    </div>
+
+    <div id="qi_sales_preview"></div>
+
+    <!-- Progress bar -->
+    <div class="progress-wrap" id="qi_sales_progress" style="display:none;">
+      <div class="progress-label-row"><span id="qi_progress_label">Uploading…</span><span id="qi_progress_pct">0%</span></div>
+      <div class="progress-track"><div class="progress-fill" id="qi_progress_fill"></div></div>
+    </div>
+
+    <!-- Success result -->
+    <div class="import-result" id="qi_import_result" style="display:none;">
+      <div class="r-icon">✅</div>
+      <div><h4>Sales Import Complete</h4><p id="qi_import_result_msg">—</p></div>
+    </div>
   </div>
 
   <div class="btn-row" style="margin-top:8px;">
@@ -461,30 +518,7 @@ function toast(msg, type='success') {
   t.textContent = (type==='success'?'✓ ':'✕ ') + msg;
   c.appendChild(t); setTimeout(() => t.remove(), 3100);
 }
-async function createBOM() {
-  const product_code = document.getElementById('bom_product').value;
-  const material_code = document.getElementById('bom_material').value;
-  const qty_per_unit = +document.getElementById('bom_qty').value || 0;
 
-  if (!product_code || !material_code || !qty_per_unit) {
-    return toast('Fill all BOM fields', 'error');
-  }
-
-  try {
-    await api('/create-bom', {
-      product_code,
-      material_code,
-      qty_per_unit
-    });
-
-    toast(`BOM linked: ${product_code} → ${material_code}`);
-
-    document.getElementById('bom_qty').value = '';
-
-  } catch (e) {
-    toast(e.message, 'error');
-  }
-}
 // ── API ──
 async function api(path, body=null, method=null) {
   const m = method||(body?'POST':'GET');
@@ -515,14 +549,21 @@ function showPanel(id) {
 }
 
 // ── STEPPER ──
+// Step order: 0=Rack, 1=Shelf, 2=Boxes, 3=Products, 4=Raw Materials, 5=Sales Data
 function goStep(n) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.step-item').forEach((s,i) => { s.classList.toggle('active',i===n); s.classList.toggle('done',i<n); });
+  document.querySelectorAll('.step-item').forEach((s,i) => {
+    s.classList.toggle('active', i === n);
+    s.classList.toggle('done', i < n);
+  });
   document.getElementById(`panel-${n}`).classList.add('active');
-  if(n===1) loadRacks();
-  if(n===2) loadShelves();
-  if(n===3) { loadBoxes(); loadProducts(); }
-  if(n===5) { loadRMDropdowns(); loadRawMaterials(); loadRMStats(); }
+  _currentPanel = `panel-${n}`;
+  if (n === 1) loadRacks();
+  if (n === 2) loadShelves();
+  if (n === 3) { loadBoxes(); loadProducts(); }
+  // FIX: step 4 is now Raw Materials (was step 5)
+  if (n === 4) { loadRMDropdowns(); loadRawMaterials(); loadRMStats(); }
+  // step 5 is now Sales Data — no pre-load needed
 }
 
 // ── RACK ──
@@ -642,10 +683,7 @@ function parseProductFile(file, previewId) {
 
 async function importProducts() {
   const rows = window._pRows; if (!rows) return;
-
-  // Debug: log actual column names from the Excel file
   if (rows[0]) console.log("📋 Excel columns found:", Object.keys(rows[0]));
-
   const products = rows.map(r => ({
     product_code:  (r.product_code  || r.code || '').toString().trim(),
     product_name:  (r.product_name  || r.name || '').toString().trim(),
@@ -655,15 +693,11 @@ async function importProducts() {
     stock_qty:    +r.stock_qty      || +r.stock || 0,
     reorder_level:+r.reorder_level  || +r.reorder || 0,
     size_category: (r.size_category || r.size || 'medium').toString().trim(),
-    // ← accept every likely variant for location columns
     rack_code:    (r.rack_code  || r.rack   || '').toString().trim(),
     shelf_level: +(r.shelf_level|| r.shelf  || r.level || 0),
     box_code:     (r.box_code   || r.box    || r.box_id || '').toString().trim(),
     created_by: null,
   }));
-
-  console.log("📤 First product row being sent:", products[0]);
-
   try {
     const res = await api('/import-products-with-location', { products });
     toast(`Imported ${res.inserted} product(s)${res.skipped ? ', ' + res.skipped + ' skipped' : ''}${res.unresolved ? ', ⚠️ ' + res.unresolved + ' unresolved' : ''}`);
@@ -672,6 +706,7 @@ async function importProducts() {
     if (_currentPanel === 'panel-3') loadProducts();
   } catch (e) { toast(e.message, 'error'); }
 }
+
 // ── RAW MATERIALS ──
 async function loadRMDropdowns() {
   try {
@@ -726,15 +761,20 @@ async function loadRawMaterials() {
     if(!d.length){tbody.innerHTML=`<tr><td colspan="14" class="empty-state">No raw materials yet.</td></tr>`;return;}
     tbody.innerHTML = d.map(m=>`
       <tr>
-        <td class="td-teal">${m.material_code}</td><td>${m.material_name}</td>
-        <td>${m.category||'—'}</td><td style="font-family:var(--mono);font-size:11px;">${m.unit||'—'}</td>
+        <td class="td-teal">${m.material_code}</td>
+        <td>${m.material_name}</td>
+        <td>${m.category||'—'}</td>
+        <td style="font-family:var(--mono);font-size:11px;">${m.unit||'—'}</td>
         <td class="td-num">${m.stock_qty}</td>
         <td class="td-num">${m.qty_per_unit||'—'}</td>
         <td class="td-num">${m.reorder_level}</td>
         <td class="td-num">${m.daily_consumption||'—'}</td>
         <td style="font-family:var(--mono);font-size:11px;">${m.lead_time_days}d</td>
         <td style="font-size:11px;">${m.supplier_name||'—'}</td>
-        <td>${m.product_code?`<span class="pill pill-yellow">${m.product_code}</span>`:'<span style="color:var(--muted)">—</span>'}</td>
+        <!-- FIX: was m.product_code — API returns product_name from the JOIN -->
+        <td>${m.product_name
+              ? `<span class="pill pill-yellow">${m.product_name}</span>`
+              : '<span style="color:var(--muted)">—</span>'}</td>
         <td class="td-loc">${m.box_code||'—'}</td>
         <td><span class="pill pill-teal">${m.size_category||'—'}</span></td>
         <td><span class="pill ${m.stock_qty>m.reorder_level?'pill-green':'pill-yellow'}">${m.stock_qty>m.reorder_level?'OK':'Low'}</span></td>
@@ -776,7 +816,7 @@ async function importRawMaterials() {
     material_name:     r.material_name     || '',
     category:          r.category          || '',
     unit:              r.unit              || '',
-    unit_cost:        +r.unit_cost         || 0,   // ← ADDED (was missing entirely)
+    unit_cost:        +r.unit_cost         || 0,
     qty_per_unit:     +r.quantity_required || 0,
     stock_qty:        +r.stock_qty         || 0,
     reorder_level:    +r.reorder_level     || 0,
@@ -784,7 +824,7 @@ async function importRawMaterials() {
     size_category:     r.size_category     || 'medium',
     lead_time_days:   +r.lead_time_days    || 0,
     supplier_name:     r.supplier_name     || '',
-    product_id:        r.product_id        || null,  // ← pass raw value, server resolves
+    product_id:        r.product_id        || null,
     rack_code:         r.rack              || '',
     shelf_level:      +r.shelf             || 0,
     box_code:          r.box_id            || '',
@@ -795,7 +835,8 @@ async function importRawMaterials() {
     toast(`Imported ${res.inserted} material(s)${res.skipped ? ', ' + res.skipped + ' skipped' : ''}${res.unresolved ? ', ' + res.unresolved + ' location unresolved' : ''}`);
     document.getElementById(window._rmPreviewId).innerHTML = '';
     window._rmRows = null;
-    if (_currentPanel === 'panel-5') { loadRawMaterials(); loadRMStats(); }
+    // FIX: panel-4 is now Raw Materials
+    if (_currentPanel === 'panel-4') { loadRawMaterials(); loadRMStats(); }
   } catch (e) { toast(e.message, 'error'); }
 }
 
@@ -817,86 +858,124 @@ function renderPreview(previewId, rows, importCall) {
     </div>`;
 }
 
-// ── SALES DATA ──
-let _salesRawRows=[], _salesValidRows=[], _showErrorsOnly=false, _salesAllValidated=[];
+// ── SALES DATA (Step-by-Step, panel-5) ──
+let _salesRawRows=[], _salesValidRows=[];
 
-function handleSalesDrop(e){e.preventDefault();document.getElementById('sales-zone').classList.remove('drag');const f=e.dataTransfer.files[0];if(f)parseSalesFile(f);}
-function handleSalesFile(e){const f=e.target.files[0];if(f)parseSalesFile(f);}
-function parseSalesFile(file){
-  const reader=new FileReader();
-  reader.onload=(e)=>{
-    const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true});
-    const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{raw:false});
-    if(!rows.length)return toast('File is empty','error');
-    _salesRawRows=rows;
-    const cols=Object.keys(rows[0]),defaults=['date','store','item','sales'];
-    ['map_date','map_store','map_item','map_sales'].forEach((id,i)=>{
-      const sel=document.getElementById(id);
-      sel.innerHTML=cols.map(c=>`<option value="${c}" ${c.toLowerCase()===defaults[i]?'selected':''}>${c}</option>`).join('');
+function handleSalesDrop(e){e.preventDefault();document.getElementById('sales-zone').classList.remove('drag');const f=e.dataTransfer.files[0];if(f)parseSalesFile(f,'sales');}
+function handleSalesFile(e){const f=e.target.files[0];if(f)parseSalesFile(f,'sales');}
+
+// ── SALES DATA (Quick Import) ──
+let _qiSalesRawRows=[], _qiSalesValidRows=[];
+
+function handleQISalesDrop(e){e.preventDefault();document.getElementById('qi-sales-zone').classList.remove('drag');const f=e.dataTransfer.files[0];if(f)parseSalesFile(f,'qi_sales');}
+function handleQISalesFile(e){const f=e.target.files[0];if(f)parseSalesFile(f,'qi_sales');}
+
+// ── UNIFIED SALES PARSER (context = 'sales' | 'qi_sales') ──
+function parseSalesFile(file, context) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const wb = XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true});
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{raw:false});
+    if(!rows.length) return toast('File is empty','error');
+
+    if(context === 'sales') _salesRawRows = rows;
+    else _qiSalesRawRows = rows;
+
+    const cols = Object.keys(rows[0]), defaults = ['date','item','sales'];
+    const prefix = context === 'qi_sales' ? 'qi_' : '';
+    ['map_date','map_item','map_sales'].forEach((id,i) => {
+      const sel = document.getElementById(prefix + id);
+      sel.innerHTML = cols.map(c=>`<option value="${c}" ${c.toLowerCase()===defaults[i]?'selected':''}>${c}</option>`).join('');
     });
-    document.getElementById('sales_mapper').style.display='block';
+    document.getElementById(context === 'qi_sales' ? 'qi_sales_mapper' : 'sales_mapper').style.display = 'block';
     toast(`Parsed ${rows.length.toLocaleString()} rows — confirm mapping`);
   };
   reader.readAsArrayBuffer(file);
 }
-function confirmSalesMapping(){
-  if(!_salesRawRows.length)return toast('Upload a file first','error');
-  const dC=document.getElementById('map_date').value,sC=document.getElementById('map_store').value,
-        iC=document.getElementById('map_item').value,vC=document.getElementById('map_sales').value;
-  processSalesRows(_salesRawRows.map(r=>({date:r[dC],store:r[sC],item:r[iC],sales:r[vC]})));
+
+function confirmSalesMapping() {
+  if(!_salesRawRows.length) return toast('Upload a file first','error');
+  const dC=document.getElementById('map_date').value, iC=document.getElementById('map_item').value, vC=document.getElementById('map_sales').value;
+  processSalesRows(_salesRawRows.map(r=>({date:r[dC],item:r[iC],sales:r[vC]})), 'sales');
 }
-function validateSalesRow(raw,idx){
-  const errors=[],date=raw.date,store=parseInt(raw.store),
-        item=raw.item!=null?String(raw.item):null,sales=parseFloat(raw.sales);
-  if(!date)errors.push('Invalid date');if(isNaN(store))errors.push('Missing store');
-  if(!item)errors.push('Missing item');if(isNaN(sales)||sales<0)errors.push('Invalid sales');
-  return{rowNum:idx+2,date,store,item,sales:isNaN(sales)?null:sales,errors,valid:!errors.length};
+
+function confirmQISalesMapping() {
+  if(!_qiSalesRawRows.length) return toast('Upload a file first','error');
+  const dC=document.getElementById('qi_map_date').value, iC=document.getElementById('qi_map_item').value, vC=document.getElementById('qi_map_sales').value;
+  processSalesRows(_qiSalesRawRows.map(r=>({date:r[dC],item:r[iC],sales:r[vC]})), 'qi_sales');
 }
-function processSalesRows(rawRows){
-  const validated=rawRows.map((r,i)=>validateSalesRow(r,i));
-  _salesValidRows=validated.filter(r=>r.valid);
-  const invalid=validated.filter(r=>!r.valid),dates=_salesValidRows.map(r=>r.date).sort(),stores=new Set(_salesValidRows.map(r=>r.store)),items=new Set(_salesValidRows.map(r=>r.item));
-  document.getElementById('sales_stats').style.display='';
-  document.getElementById('stat_total').textContent=validated.length.toLocaleString();
-  document.getElementById('stat_valid').textContent=_salesValidRows.length.toLocaleString();
-  document.getElementById('stat_invalid').textContent=invalid.length.toLocaleString();
-  document.getElementById('stat_stores').textContent=stores.size;
-  document.getElementById('stat_items').textContent=items.size;
-  document.getElementById('stat_range').textContent=dates.length?`${dates[0].slice(0,7)} → ${dates[dates.length-1].slice(0,7)}`:'—';
-  if(dates.length>=2){const days=(new Date(dates[dates.length-1])-new Date(dates[0]))/86400000;if(days<365)toast('Warning: <1 year of data','error');else if(days<730)toast('Note: <2 years');else toast(`${(days/365).toFixed(1)} years loaded`);}
-  _salesAllValidated=validated;
-  // Show preview with import button
-  document.getElementById('sales_preview').innerHTML=`
+
+function validateSalesRow(raw, idx) {
+  const errors=[], date=raw.date, item=raw.item!=null?String(raw.item):null, sales=parseFloat(raw.sales);
+  if(!date) errors.push('Invalid date');
+  if(!item) errors.push('Missing item');
+  if(isNaN(sales)||sales<0) errors.push('Invalid sales');
+  return{rowNum:idx+2,date,item,sales:isNaN(sales)?null:sales,errors,valid:!errors.length};
+}
+
+function processSalesRows(rawRows, context) {
+  const isQI = context === 'qi_sales';
+  const prefix = isQI ? 'qi_' : '';
+
+  const validated = rawRows.map((r,i) => validateSalesRow(r,i));
+  const validRows = validated.filter(r => r.valid);
+  const invalid   = validated.filter(r => !r.valid);
+  const dates     = validRows.map(r=>r.date).sort();
+  const items     = new Set(validRows.map(r=>r.item));
+
+  if(isQI) _qiSalesValidRows = validRows; else _salesValidRows = validRows;
+
+  // Update stats
+  const statsEl = document.getElementById(prefix + 'sales_stats');
+  statsEl.style.display = '';
+  document.getElementById(prefix + 'stat_total').textContent   = validated.length.toLocaleString();
+  document.getElementById(prefix + 'stat_valid').textContent   = validRows.length.toLocaleString();
+  document.getElementById(prefix + 'stat_invalid').textContent = invalid.length.toLocaleString();
+  document.getElementById(prefix + 'stat_items').textContent   = items.size;
+  document.getElementById(prefix + 'stat_range').textContent   = dates.length ? `${dates[0].slice(0,7)} → ${dates[dates.length-1].slice(0,7)}` : '—';
+
+  if(dates.length >= 2) {
+    const days = (new Date(dates[dates.length-1]) - new Date(dates[0])) / 86400000;
+    if(days < 365) toast('Warning: <1 year of data','error');
+    else if(days < 730) toast('Note: <2 years of data');
+    else toast(`${(days/365).toFixed(1)} years of sales data loaded`);
+  }
+
+  const importFn = isQI ? 'importQISalesData()' : 'importSalesData()';
+  document.getElementById(prefix + 'sales_preview').innerHTML = `
     <div class="preview-block">
       <div class="preview-header">
-        <span>${_salesValidRows.length.toLocaleString()} valid rows</span>
-        <button class="btn btn-success btn-sm" onclick="importSalesData()" ${_salesValidRows.length===0?'disabled':''}>⬆ Import ${_salesValidRows.length.toLocaleString()} Rows</button>
+        <span>${validRows.length.toLocaleString()} valid rows</span>
+        <button class="btn btn-success btn-sm" onclick="${importFn}" ${validRows.length===0?'disabled':''}>⬆ Import ${validRows.length.toLocaleString()} Rows</button>
       </div>
-      <div style="font-size:12px;color:var(--muted);">Date range: ${dates[0]||'—'} → ${dates[dates.length-1]||'—'} · ${stores.size} stores · ${items.size} items${invalid.length?` · <span style="color:var(--danger)">${invalid.length} invalid rows</span>`:''}</div>
+      <div style="font-size:12px;color:var(--muted);">Date range: ${dates[0]||'—'} → ${dates[dates.length-1]||'—'} · ${items.size} items${invalid.length ? ` · <span style="color:var(--danger)">${invalid.length} invalid rows</span>` : ''}</div>
     </div>`;
 }
-async function importSalesData(){
-  if(!_salesValidRows.length)return toast('No valid rows','error');
-  const CHUNK=1000,total=_salesValidRows.length,chunks=Math.ceil(total/CHUNK);
-  document.getElementById('sales_progress').style.display='block';
-  document.getElementById('sales_preview').innerHTML='';
-  let inserted=0,skipped=0;
-  for(let i=0;i<chunks;i++){
-    const slice=_salesValidRows.slice(i*CHUNK,(i+1)*CHUNK).map(r=>({sale_date:r.date,store_id:r.store,item_id:r.item,sales:r.sales}));
-    const pct=Math.round(((i+1)/chunks)*100);
-    document.getElementById('progress_fill').style.width=pct+'%';
-    document.getElementById('progress_pct').textContent=pct+'%';
-    document.getElementById('progress_label').textContent=`Batch ${i+1}/${chunks}…`;
-    try{const res=await api('/import-sales',{records:slice});inserted+=res.inserted||0;skipped+=res.skipped||0;}
-    catch(e){toast(`Batch ${i+1} failed: ${e.message}`,'error');}
+
+async function runSalesImport(validRows, prefix) {
+  if(!validRows.length) return toast('No valid rows','error');
+  const CHUNK=1000, total=validRows.length, chunks=Math.ceil(total/CHUNK);
+  document.getElementById(prefix+'sales_progress').style.display = 'block';
+  document.getElementById(prefix+'sales_preview').innerHTML = '';
+  let inserted=0, skipped=0;
+  for(let i=0; i<chunks; i++) {
+    const slice = validRows.slice(i*CHUNK,(i+1)*CHUNK).map(r=>({sale_date:r.date,item_id:r.item,sales:r.sales}));
+    const pct = Math.round(((i+1)/chunks)*100);
+    document.getElementById(prefix+'progress_fill').style.width = pct+'%';
+    document.getElementById(prefix+'progress_pct').textContent = pct+'%';
+    document.getElementById(prefix+'progress_label').textContent = `Batch ${i+1}/${chunks}…`;
+    try { const res=await api('/import-sales',{records:slice}); inserted+=res.inserted||0; skipped+=res.skipped||0; }
+    catch(e) { toast(`Batch ${i+1} failed: ${e.message}`,'error'); }
     await new Promise(r=>setTimeout(r,30));
   }
-  document.getElementById('progress_label').textContent='Done!';
-  document.getElementById('import_result').style.display='flex';
-  document.getElementById('import_result_msg').textContent=`${inserted.toLocaleString()} inserted · ${skipped.toLocaleString()} skipped`;
+  document.getElementById(prefix+'progress_label').textContent = 'Done!';
+  document.getElementById(prefix+'import_result').style.display = 'flex';
+  document.getElementById(prefix+'import_result_msg').textContent = `${inserted.toLocaleString()} inserted · ${skipped.toLocaleString()} skipped`;
   toast(`Imported ${inserted.toLocaleString()} sales records`);
-  _salesValidRows=[];
 }
+
+function importSalesData()   { runSalesImport(_salesValidRows,   ''); _salesValidRows=[]; }
+function importQISalesData() { runSalesImport(_qiSalesValidRows, 'qi_'); _qiSalesValidRows=[]; }
 
 // Init
 loadRacks();
