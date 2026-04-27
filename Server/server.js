@@ -64,7 +64,7 @@ app.get('/setup',(req,res)=>{
 
 
 app.get('/stimulations',(req,res)=>{
-  res.sendFile(path.join(__dirname, "../Client/stimulations.html"))
+  res.sendFile(path.join(__dirname, "../Client/stimulations_c.html"))
 })
 // POST /create-rack
 app.post("/create-rack", async (req, res) => {
@@ -251,6 +251,12 @@ app.post("/import-products", async (req, res) => {
   }
 });
  
+app.get("/get_all_products", async (req, res) => {
+  const sql='SELECT * from products';
+  const rows = await db(sql);
+  res.json(rows);
+})
+
 // GET /get-products
 app.get("/get-products", async (req, res) => {
   const { category, size_category, low_stock } = req.query;

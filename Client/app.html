@@ -5,7 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inventory Management</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
         body {
             font-family: "Monospac821 BT", "Lucida Console", "Courier New", monospace;
@@ -19,8 +23,8 @@
         .app {
             min-height: 100vh;
             display: grid;
-            grid-template-rows: 76px 1fr;
-            gap: 14px;
+            grid-template-rows: auto auto 1fr;
+            gap: 12px;
             padding: 12px;
         }
 
@@ -32,8 +36,20 @@
             align-items: center;
             justify-content: space-between;
             gap: 16px;
-            padding: 8px 14px;
+            padding: 16px 24px;
         }
+
+        .topbar h2 {
+            font-size: 20px;
+            color: #eef2f9;
+        }
+
+        .topbar-right {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
 
         .pill {
             border: none;
@@ -41,16 +57,19 @@
             background: #2f3345;
             border-radius: 999px;
             padding: 8px 18px;
-            font-size: 18px;
+            font-size: 16px;
             cursor: pointer;
-            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        .pill:hover {
+            background: #3a3e52;
         }
 
         .pill.active {
             background: #52c28f;
             color: #071811;
             font-weight: 700;
-            min-width: 280px;
         }
 
         .pill.dashboard-active {
@@ -60,7 +79,12 @@
             box-shadow: 0 0 0 2px rgba(74, 85, 216, 0.28);
         }
 
-        .avatar { width: 54px; height: 54px; border-radius: 50%; background: #eceef4; margin-left: auto; }
+        .avatar {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #eceef4, #cbd0d9);
+        }
 
         .content {
             display: grid;
@@ -92,7 +116,7 @@
             border: 1px solid #1f2f5c;
             border-radius: 34px;
             padding: 22px;
-            max-height: 900px;
+            height: 830px;
             overflow-y: auto;
         }
 
@@ -483,36 +507,65 @@
 </head>
 <body>
 <div class="app">
-    <header class="topbar">
-        <h2 style="white-space:nowrap;font-size:16px;">Manage Your Inventory with WareBot</h2>
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-            <button class="pill active">Efficiency: 80/100</button>
-            <button class="pill dashboard-active">Dashboard</button>
-            <button class="pill" onclick="window.location.href='stimulations'">Simulations</button>
-            <button class="pill">Reports</button>
-            <button class="pill">Products</button>
-            <button class="pill">Heat Map</button>
-            <div class="avatar"></div>
-        </div>
-    </header>
+        <header class="topbar">
+            <h2>OptiWare</h2>
+            <div class="topbar-right">
+                <button class="pill active">Efficiency: 80/100</button>
+                <button class="pill dashboard-active" onclick="window.location.href='/app'">Dashboard</button>
+                <button class="pill" onclick="window.location.href='/stimulations'">Simulations</button>
+                <button class="pill">Reports</button>
+                <button class="pill">Products</button>
+                <div class="avatar"></div>
+            </div>
+        </header>
 
     <main class="content">
         <section class="left-column">
             <article class="panel action-panel">
-                <h3 class="action-title">Actions</h3>
-                <button class="action-btn">Ai Driven Stimulations</button>
-                <button class="action-btn">User Details</button>
-                <button class="action-btn">Manage Products</button>
-                <button class="action-btn">Quick Stock Entry</button>
+
+                <button class="action-btn">Optimize Current Layout </button>
             </article>
-            <article class="panel warebot" style="max-height:900px;padding:0;">
+            <article class="panel" style="height:100%;padding:0;">
                 <div class="bot-card">
                     <div class="bot-head">
-                        <span>WareBot Suggestions</span>
+                        <span>Optiware AI</span> 
+                        <span class="bot-icon">💡</span>
                         <span id="low-stock-badge" style="font-size:13px;background:#ea7b39;color:#fff;padding:3px 10px;border-radius:999px;display:none;"></span>
                     </div>
-                    <div id="alerts-container">
-                        <div class="alert warn"><span class="alert-text">Loading warehouse data…</span></div>
+                    <div id="alerts-container" style="max-height:auto;">
+
+                    <div class="alert warn">
+                        <span class="alert-text">Rack 1A critical - Ceiling Fan demand at 87%. Restock within 48 hrs.</span>
+                        <button class="alert-done-btn" type="button">Done</button>
+                    </div>
+                    <div class="alert info">
+                        <span class="alert-text">Optimization done. Pick distance: 34m to 11m. Score +22 pts.</span>
+                        <button class="alert-done-btn" type="button">Done</button>
+                    </div>
+                    <div class="alert">
+                        <span class="alert-text">+3 weeks: Perishables spike 61%. Move Rack 4B closer to terminal now.</span>
+                        <button class="alert-done-btn" type="button">Done</button>
+                    </div>
+                    <div class="alert warn">
+                        <span class="alert-text">Low stock alert: Batteries falling below safety threshold in 5 days.</span>
+                        <button class="alert-done-btn" type="button">Done</button>
+                    </div>
+                    <div class="alert info">
+                        <span class="alert-text">Seasonal trend detected: Prepare for 40% increase in orders next month.</span>
+                        <button class="alert-done-btn" type="button">Done</button>
+                    </div>
+                    <div class="alert">
+                        <span class="alert-text">Shelf 2C underutilized. Consider relocating slow-moving items there.</span>
+                        <button class="alert-done-btn" type="button">Done</button>
+                    </div>
+                    <div class="alert warn">
+                        <span class="alert-text">Temperature anomaly in Zone B. Check cooling system immediately.</span>
+                        <button class="alert-done-btn" type="button">Done</button>
+                    </div>
+                    <div class="alert info">
+                        <span class="alert-text">New optimization routine available. Run tonight at 2 AM?</span>
+                        <button class="alert-done-btn" type="button">Done</button>
+                    </div>
                     </div>
                 </div>
             </article>
@@ -590,7 +643,7 @@ async function init() {
         // Natural Sort Racks (R1, R2, R10)
         allRacks.sort((a, b) => a.rack_code.localeCompare(b.rack_code, undefined, { numeric: true }));
 
-        buildAlerts();
+        // buildAlerts();
         renderSection();
     } catch (e) {
         document.getElementById('shelves').innerHTML = `<div class="loading-state">⚠️ Error loading data</div>`;

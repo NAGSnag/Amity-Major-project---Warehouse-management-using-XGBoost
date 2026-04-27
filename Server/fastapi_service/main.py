@@ -59,25 +59,7 @@ FEATURE_COLS = [
     "trend_direction", "yoy_growth"
 ]
 
-# =============================================================
-#  ANN — must match architecture used during training
-# =============================================================
-class SalesANN(nn.Module):
-    def __init__(self, input_dim: int):
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(input_dim, 128), nn.ReLU(), nn.Dropout(0.2),
-            nn.Linear(128, 64),        nn.ReLU(), nn.Dropout(0.2),
-            nn.Linear(64,  32),        nn.ReLU(),
-            nn.Linear(32,  1)
-        )
-    def forward(self, x):
-        return self.net(x)
 
-
-# =============================================================
-#  LOAD MODEL ONCE AT STARTUP
-# =============================================================
 _model    = None
 _scaler_X = None
 _scaler_y = None

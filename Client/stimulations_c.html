@@ -1,0 +1,1441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OptiWare - Simulation Mode</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: "Monospac821 BT", "Lucida Console", "Courier New", monospace;
+            background:
+                radial-gradient(1000px 400px at 50% -100px, #29324a 0%, #0d0f18 60%),
+                #0b0d13;
+            color: #e9edf4;
+            min-height: 100vh;
+        }
+
+        .app {
+            min-height: 100vh;
+            display: grid;
+            grid-template-rows: auto auto 1fr;
+            gap: 12px;
+            padding: 12px;
+        }
+
+        .topbar {
+            border-radius: 18px;
+            border: 1px solid #262b3b;
+            background: rgba(12, 15, 24, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 16px 24px;
+        }
+
+        .topbar h2 {
+            font-size: 20px;
+            color: #eef2f9;
+        }
+
+        .topbar-right {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .pill {
+            border: none;
+            color: #eef2f9;
+            background: #2f3345;
+            border-radius: 999px;
+            padding: 8px 18px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .pill:hover {
+            background: #3a3e52;
+        }
+
+        .pill.active {
+            background: #52c28f;
+            color: #071811;
+            font-weight: 700;
+        }
+
+        .pill.dashboard-active {
+            background: #4a55d8;
+            color: #eff2fe;
+            font-weight: 700;
+            box-shadow: 0 0 0 2px rgba(74, 85, 216, 0.28);
+        }
+
+        .avatar {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #eceef4, #cbd0d9);
+        }
+
+        /* Simulation Banner */
+        .simulation-banner {
+            background: linear-gradient(135deg, #ff8c42, #ff6b35);
+            border-radius: 16px;
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+            animation: pulse-glow 2s ease-in-out infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3); }
+            50% { box-shadow: 0 4px 20px rgba(255, 107, 53, 0.5); }
+        }
+
+        .simulation-icon {
+            font-size: 24px;
+        }
+
+        .simulation-text {
+            color: #fff;
+            font-weight: 700;
+            font-size: 16px;
+            text-align: center;
+        }
+
+        .simulation-subtext {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        /* Scenario Cards */
+        .scenarios-container {
+            display: flex;
+            flex-wrap: wrap;
+            width: 100%;
+            gap: 24px;
+            align-self: start;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .scenario-card {
+            width: 350px;
+            height: 280px;
+            background: #2a2e34;
+            border: 1px solid #4a55d8;
+            border-radius: 16px;
+            padding: 24px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .scenario-card:hover {
+            transform: translateY(-5px);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1), 0 12px 24px rgba(74, 85, 216, 0.25);
+            background: #31363e;
+        }
+
+        .scenario-card h3 {
+            color: #52c28f;
+            font-size: 18px;
+            margin-bottom: 12px;
+            margin-top: 15px;
+            letter-spacing: 0.5px;
+        }
+
+        .scenario-card p {
+            color: #cbd0d9;
+            font-size: 13px;
+            line-height: 1.6;
+            margin-top: 15px;
+            flex-grow: 1;
+        }
+
+        .scenario-card .function-tag {
+            background: rgba(74, 85, 216, 0.2);
+            color: #a3abff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            align-self: flex-start;
+            margin-top: 12px;
+            border: 1px solid rgba(74, 85, 216, 0.4);
+        }
+
+        /* Modal Overrides for Dark Theme */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(10, 14, 24, 0.85);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 20000;
+            padding: 18px;
+            backdrop-filter: blur(6px);
+        }
+
+        .modal-overlay.open {
+            display: flex;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .box-modal {
+            width: min(500px, 96vw);
+            background: #1e2128;
+            border: 1px solid #4a55d8;
+            border-radius: 16px;
+            color: #e9edf4;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+            padding: 24px;
+            transform: translateY(0);
+        }
+        .simulation-header {
+    padding: 40px 20px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    border-bottom: 1px solid #3d444d;
+    background: linear-gradient(90deg, rgba(42, 46, 52, 1) 0%, rgba(30, 34, 40, 0) 100%);
+}
+
+.header-content {
+    max-width: 1200px;
+}
+
+.header-content h1 {
+    font-size: 2.2rem;
+    color: #ffffff;
+    margin-bottom: 12px;
+    border-left: 5px solid #52c28f; /* OptiWare Green */
+    padding-left: 15px;
+}
+
+.header-content p {
+    color: #a0a8b3; /* Lighter grey for description */
+    font-size: 1.1rem;
+    line-height: 1.6;
+}
+
+.header-stats {
+    display: flex;
+    gap: 15px;
+}
+
+.stat-pill {
+    background: #1e2228;
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: 1px solid #3d444d;
+    text-align: right;
+}
+
+.stat-label {
+    display: block;
+    font-size: 0.75rem;
+    color: #52c28f;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+}
+
+.stat-value {
+    font-size: 1rem;
+    color: #ffffff;
+    font-weight: 600;
+}
+
+/* Responsiveness */
+@media (max-width: 1000px) {
+    .simulation-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 20px;
+    }
+}
+        .box-modal-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #323847;
+        }
+
+        .box-modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #52c28f;
+        }
+
+        .box-modal-close {
+            border: none;
+            background: transparent;
+            color: #cbd0d9;
+            font-size: 24px;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .box-modal-close:hover {
+            color: #ff6b35;
+        }
+
+        .box-modal-content {
+            display: grid;
+            gap: 16px;
+        }
+
+        /* Form Inputs */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-group label {
+            font-size: 13px;
+            color: #a3abff;
+            font-weight: 600;
+        }
+        /* Container Layout */
+        .scenarios-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            padding: 20px;
+        }
+
+        /* Card Styling */
+        .scenario-card {
+            background: #2a2e34; /* Your theme color */
+            border: 1px solid #3d444d;
+            border-radius: 12px;
+            padding: 24px;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Icons */
+        .card-icon {
+            font-size: 2rem;
+            margin-bottom: 15px;
+            color: #52c28f; /* Your OptiWare Green */
+        }
+
+        /* Hover State */
+        .scenario-card:hover {
+            transform: translateY(-5px);
+            border-color: #52c28f;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            background: #323841;
+        }
+
+        /* Action Hint (The "Run" button indicator) */
+        .card-action-hint {
+            margin-top: 15px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: #52c28f;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.6;
+            transition: opacity 0.3s;
+        }
+
+        .scenario-card:hover .card-action-hint {
+            opacity: 1;
+        }
+
+        /* Optional: Pulse effect on hover for the icon */
+        .scenario-card:hover .card-icon {
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        .form-group input, .form-group select {
+            background: #0b0d13;
+            border: 1px solid #323847;
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: #e9edf4;
+            font-family: inherit;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #52c28f;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid #323847;
+        }
+                .alert {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
+            border-radius: 14px;
+            border: 1px solid #324670;
+            background: rgba(206, 221, 255, 0.05);
+            padding: 10px 12px;
+            margin-bottom: 10px;
+            line-height: 1.25;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .alert-text { flex: 1; }
+
+        .alert-done-btn {
+            border: none;
+            border-radius: 8px;
+            background: #2ac481;
+            color: #082316;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 6px 10px;
+            cursor: pointer;
+            white-space: nowrap;
+            font-family: inherit;
+        }
+
+        .alert.warn  { border-left: 3px solid #ea7b39; }
+        .alert.info  { border-left: 3px solid #34c7d8; }
+
+        .action-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            padding-bottom: 30px;
+            justify-content: flex-start;
+            max-height: 360px;
+        }
+
+        .action-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #e9edf4;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+
+        .action-btn {
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(180deg, #4a55d8, #4250c8);
+            color: #eff2fe;
+            font-size: 18px;
+            letter-spacing: 1px;
+            text-align: left;
+            width: 100%;
+            padding: 14px 16px;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        /* ── MAP PANEL ── */
+        .map-panel {
+            background: #f6f6f6;
+            color: #111827;
+            border-radius: 34px;
+            padding: 18px 22px;
+            border: 1px solid #d4d8dd;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .left-column {
+            display: grid;
+            grid-template-rows: auto auto;
+            align-content: start;
+            gap: 10px;
+            margin-bottom: 50px;
+            max-height: 900px;
+        }
+
+        .panel {
+            background: rgba(30, 33, 40, 0.95);
+            border: 1px solid #323847;
+            border-radius: 30px;
+            padding: 8px;
+            max-height: 500px;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+        }
+
+        .bot-card {
+            background: linear-gradient(145deg, #0b1430, #101b3b);
+            border: 1px solid #1f2f5c;
+            border-radius: 34px;
+            padding-left: 10px;
+            padding-right: 10px ;
+            padding-top: 40px;
+            height: 1000px;
+            overflow-y: auto;
+        }
+
+        .bot-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .alert {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
+            border-radius: 14px;
+            border: 1px solid #324670;
+            background: rgba(206, 221, 255, 0.05);
+            padding: 10px 12px;
+            margin-bottom: 10px;
+            line-height: 1.25;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+
+        .map-header {
+            display: grid;
+            grid-template-columns: 50px 1fr 50px;
+            align-items: center;
+            margin-bottom: 14px;
+            position: sticky;
+            top: 0;
+            background: #f6f6f6;
+            z-index: 10;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .arrow {
+            font-size: 42px;
+            font-weight: 700;
+            color: #161616;
+            text-align: center;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-family: inherit;
+            border-radius: 8px;
+            transition: background 0.15s;
+            padding: 4px;
+        }
+
+        .arrow:hover { background: rgba(0,0,0,0.08); }
+
+        .map-title {
+            text-align: center;
+            font-size: 26px;
+            letter-spacing: 2px;
+            font-weight: 700;
+            color: #111827;
+        }
+
+        .section-badge {
+            text-align: center;
+            font-size: 11px;
+            color: #6b7280;
+            margin-top: 2px;
+            letter-spacing: 1px;
+        }
+
+        /* ── STATS BAR ── */
+        .stats-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .stat-chip {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 6px 14px;
+            font-size: 12px;
+            color: #374151;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1px;
+        }
+
+        .stat-chip strong { font-size: 18px; color: #111827; }
+        .stat-chip.green strong { color: #059669; }
+        .stat-chip.red   strong { color: #dc2626; }
+        .stat-chip.blue  strong { color: #2563eb; }
+
+        /* ── SHELVES GRID ── */
+        .shelves {
+            display: grid;
+            grid-template-columns: repeat(var(--shelf-cols, 3), minmax(200px, 1fr));
+            gap: 24px 32px;
+            padding: 4px 8px 28px;
+        }
+
+        .shelf-card { display: grid; gap: 8px; }
+
+        .shelf-id {
+            font-size: 12px;
+            color: #374151;
+            font-family: inherit;
+            text-transform: lowercase;
+            margin-bottom: 2px;
+        }
+
+        .shelf-title {
+            min-height: 18px;
+            font-size: 13px;
+            color: #111827;
+        }
+
+        .rack {
+            min-height: 200px;
+            border-radius: 8px;
+            display: grid;
+            gap: 8px;
+            align-content: start;
+            padding: 12px;
+            background:
+                repeating-linear-gradient(
+                    to right,
+                    #a76543 0,
+                    #b97753 16px,
+                    #a96845 32px
+                );
+            border: 5px solid #9a5d3e;
+            box-shadow: inset 0 -8px 0 rgba(65, 33, 17, 0.2);
+        }
+
+        .box {
+            display: grid;
+            grid-template-rows: auto 1fr;
+            gap: 4px;
+            align-content: start;
+            width: 100%;
+            min-height: 90px;
+            padding: 6px;
+            background: linear-gradient(145deg, #f0d4a8, #cfab77);
+            border: 2px solid #f5dfbb;
+            box-shadow: 0 4px 0 rgba(95, 64, 29, 0.3);
+            border-radius: 3px;
+            color: #4b2c12;
+            font-size: 11px;
+            line-height: 1.2;
+            transition: opacity 200ms ease, transform 200ms ease, box-shadow 250ms ease;
+            cursor: pointer;
+        }
+
+        .box:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 0 rgba(95, 64, 29, 0.3);
+        }
+
+        .box.empty {
+            background: linear-gradient(145deg, #e8e8e8, #d0d0d0);
+            border-color: #ccc;
+            color: #888;
+            opacity: 0.6;
+        }
+
+        .box.low-stock {
+            border-color: #f59e0b;
+            box-shadow: 0 4px 0 rgba(95, 64, 29, 0.3), inset 0 0 0 1px rgba(245, 158, 11, 0.4);
+        }
+
+        .box-id { font-weight: 700; font-size: 9px; color: #7a4a20; margin-bottom: 2px; }
+
+        .box-info {
+            background: rgba(255, 245, 220, 0.7);
+            border: 1px dashed rgba(120, 74, 36, 0.45);
+            border-radius: 3px;
+            padding: 3px 4px;
+            overflow: hidden;
+        }
+
+        .box-line { font-size: 10px; line-height: 1.3; }
+        .box-line + .box-line { margin-top: 1px; }
+        .box-line.low { color: #c05621; font-weight: 700; }
+
+        /* ── LOADING / EMPTY ── */
+        .loading-state {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 60px;
+            color: #6b7280;
+            font-size: 14px;
+            gap: 10px;
+        }
+
+        .spinner {
+            width: 20px; height: 20px;
+            border: 2px solid #d1d5db;
+            border-top-color: #374151;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── MODAL ── */
+        /* .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(10, 14, 24, 0.68);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 20000;
+            padding: 18px;
+        }
+
+        .modal-overlay.open { display: flex; } */
+
+        .box-modal {
+            width: min(620px, 96vw);
+            max-height: 85vh;
+            overflow: auto;
+            background: #f8f1e6;
+            border: 2px solid #a67a50;
+            border-radius: 12px;
+            color: #352210;
+            box-shadow: 0 16px 35px rgba(0, 0, 0, 0.35);
+            padding: 20px;
+        }
+
+        .box-modal-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(120, 74, 36, 0.2);
+        }
+
+        .box-modal-title { font-size: 17px; font-weight: 700; }
+
+        .box-modal-close {
+            border: none;
+            border-radius: 8px;
+            background: #d94949;
+            color: #fff;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 700;
+            font-family: inherit;
+        }
+
+        .modal-meta {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .modal-meta-item {
+            background: rgba(255,255,255,0.5);
+            border: 1px solid rgba(120,74,36,0.2);
+            border-radius: 6px;
+            padding: 8px 10px;
+            font-size: 12px;
+        }
+        /* Strategy Section Styling */
+.strategy-group {
+    background: rgba(42, 46, 52, 0.5);
+    border: 1px solid #3d444d;
+    border-radius: 8px;
+    padding: 10px;
+    margin: 10px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.strategy-header {
+    background: #323841;
+    padding: 10px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #3d444d;
+}
+
+.strategy-title {
+    font-weight: bold;
+    font-size: 13px;
+    color: #52c28f; /* OptiWare Green */
+    text-transform: uppercase;
+}
+
+.strategy-controls {
+    display: flex;
+    gap: 8px;
+}
+
+.strat-btn {
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    border: none;
+    font-weight: bold;
+    transition: 0.2s;
+}
+
+.strat-btn.apply { background: #52c28f; color: #1a1d21; }
+.strat-btn.discard { background: #3d444d; color: #fff; }
+
+.strat-btn:hover { opacity: 0.8; transform: scale(1.05); }
+
+/* Inactive state for when another strategy is applied */
+.strategy-group.disabled {
+    opacity: 0.4;
+    pointer-events: none;
+    filter: grayscale(1);
+}
+
+/* Active Highlight */
+.strategy-group.active-mode {
+    border-color: #52c28f;
+    box-shadow: 0 0 15px rgba(82, 194, 143, 0.2);
+}
+
+        .modal-meta-item strong { display: block; font-size: 15px; margin-top: 2px; }
+
+        .modal-items-title {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #7a4a20;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .modal-item-row {
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            gap: 10px;
+            align-items: center;
+            background: rgba(255,255,255,0.5);
+            border: 1px dashed rgba(120,74,36,0.3);
+            border-radius: 6px;
+            padding: 8px 10px;
+            margin-bottom: 6px;
+            font-size: 12px;
+        }
+
+        .modal-item-row.low-stock-row { border-color: #f59e0b; background: rgba(245,158,11,0.08); }
+        .modal-item-code { font-weight: 700; font-size: 11px; color: #7a4a20; }
+        .modal-item-name { font-size: 13px; }
+        .stock-badge {
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .stock-ok  { background: #d1fae5; color: #065f46; }
+        .stock-low { background: #fef3c7; color: #92400e; }
+
+        .empty-modal { text-align: center; padding: 30px; color: #9a7a5a; font-size: 13px; }
+
+        @media (max-width: 1100px) {
+            .content { grid-template-columns: 1fr; }
+            .topbar { justify-content: flex-start; overflow-x: auto; }
+            .avatar { display: none; }
+            .shelves { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 720px) {
+            .shelves { grid-template-columns: 1fr; }
+            .map-panel { padding: 14px; }
+            .pill { white-space: nowrap; }
+        }
+
+    </style>
+</head>
+<body>
+<!-- FIX 1: div.app now wraps ALL content including main and map-panel -->
+<div class="app">
+    <header class="topbar">
+        <h2>OptiWare</h2>
+        <div class="topbar-right">
+            <button class="pill active">Efficiency: 80/100</button>
+            <button class="pill" onclick="window.location.href='/app'">Dashboard</button>
+            <button class="pill dashboard-active">Simulations</button>
+            <button class="pill">Reports</button>
+            <button class="pill">Products</button>
+            <div class="avatar"></div>
+        </div>
+    </header>
+
+    <div class="simulation-header">
+        <div class="header-content">
+            <h1>Predictive Strategy Sandbox</h1>
+            <p>
+                Simulate market volatility, supply chain disruptions, and seasonal trends.
+                Adjust parameters below to see how your current inventory levels and warehouse allocations
+                withstand various real-world scenarios. Below are simulation scenarios designed to test your inventory's resilience and optimize your strategy for any situation.
+            </p>
+        </div>
+    </div>
+
+    <div class="scenarios-container">
+        <div class="scenario-card" onclick="openSimulationModal('timeTravel')">
+            <div class="card-icon">🕒</div>
+            <div class="card-body">
+                <h3>Temporal Batch Predictor</h3>
+                <p>Fast-forward your inventory state to a specific future date.</p>
+            </div>
+            <div class="card-action-hint">Run →</div>
+        </div>
+
+        <div class="scenario-card" onclick="openSimulationModal('demandSpike')">
+            <div class="card-icon">⚡</div>
+            <div class="card-body">
+                <h3>Sudden Demand Spike</h3>
+                <p>Simulate an unexpected surge in orders for specific SKUs.</p>
+            </div>
+            <div class="card-action-hint">Run →</div>
+        </div>
+
+        <div class="scenario-card" onclick="openSimulationModal('supplyDelay')">
+            <div class="card-icon">⏳</div>
+            <div class="card-body">
+                <h3>Supplier Delay Model</h3>
+                <p>Evaluate the ripple effect of increased lead times.</p>
+            </div>
+            <div class="card-action-hint">Run →</div>
+        </div>
+
+        <div class="scenario-card" onclick="openSimulationModal('seasonalSurge')">
+            <div class="card-icon">📊</div>
+            <div class="card-body">
+                <h3>Seasonal Surge Estimator</h3>
+                <p>Calculate weekly multipliers and avoid stockouts.</p>
+            </div>
+            <div class="card-action-hint">Run →</div>
+        </div>
+
+        <div class="scenario-card" onclick="openSimulationModal('newLaunch')">
+            <div class="card-icon">🚀</div>
+            <div class="card-body">
+                <h3>Product Launch Simulator</h3>
+                <p>Allocate warehouse zones and simulate inbound logistics.</p>
+            </div>
+            <div class="card-action-hint">Run →</div>
+        </div>
+    </div>
+    <h1 style="margin-left: 45%;">Warehouse Layout</h1>
+    <main class="content" style="display:flex;flex-direction:row;align-items:stretch;gap:0;width:100%;">
+        <section class="left-column" style="width:20%;min-width:0;display:flex;flex-direction:column;gap:12px;">
+
+            <article class="panel" style="height:100%;padding:0;">
+                    <div class="bot-card">
+                        <div class="bot-head">
+                            <span>Optiware Arrangement Suggestions</span>
+                        </div>
+                        
+                        <div id="alerts-container">
+                            <div class="strategy-group" id="group-spike">
+                                <div class="strategy-header" style="padding: 10px;margin-bottom: 10px;">
+                                    <span class="strategy-title">⚡ Demand Spike Model</span>
+                                    <div class="strategy-controls">
+                                        <button class="strat-btn apply" onclick="handleStrategy('spike', 'apply')">Apply</button>
+                                        <button class="strat-btn discard" onclick="handleStrategy('spike', 'discard')">Discard</button>
+                                    </div>
+                                </div>
+                                <div class="strategy-body">
+                                    <div class="alert info">
+                                        <span class="alert-text">Move Wireless Headphones to Rack 1A (+15% speed)</span>
+                                    </div>
+                                    <div class="alert info">
+                                        <span class="alert-text">Relocate Charging Cables to Shelf 2B</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="strategy-group" id="group-seasonal">
+                                 <div class="strategy-header" style="padding: 10px;margin-bottom: 10px;">
+                                    <span class="strategy-title">📊 Seasonal Surge Model</span>
+                                    <div class="strategy-controls">
+                                        <button class="strat-btn apply" onclick="handleStrategy('seasonal', 'apply')">Apply</button>
+                                        <button class="strat-btn discard" onclick="handleStrategy('seasonal', 'discard')">Discard</button>
+                                    </div>
+                                </div>
+                                <div class="strategy-body">
+                                    <div class="alert info">
+                                        <span class="alert-text">Clear Zone 4 for incoming Seasonal Stock</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </article>
+        </section>
+
+        <!-- map-panel: 70% width, same row as left-column -->
+        <section class="map-panel" style="width:80%;min-width:0;">
+            <div class="map-header">
+                <button class="arrow" id="btn-prev" onclick="switchSection(-1)">&#8249;</button>
+                <div>
+                    <div class="map-title" id="section-title">Loading…</div>
+                    <div class="section-badge" id="section-badge"></div>
+                </div>
+                <button class="arrow" id="btn-next" onclick="switchSection(1)">&#8250;</button>
+            </div>
+            <div class="stats-bar" id="stats-bar"></div>
+            <div class="shelves" id="shelves"></div>
+        </section>
+    </main>
+
+    <!-- FIX 3: Modal uncommented — was referenced by JS but missing from DOM,
+         causing modal = null and TypeError on every openSimulationModal() call -->
+    <div id="simModal" class="modal-overlay" onclick="handleOutsideClick(event)">
+        <div class="box-modal">
+            <div class="box-modal-head">
+                <h3 id="modalTitle" class="box-modal-title">Simulation Scenario</h3>
+                <button class="box-modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div id="modalContent" class="box-modal-content"></div>
+            <div class="modal-actions">
+                <button class="pill" onclick="closeModal()">Cancel</button>
+                <button class="pill active" onclick="executeSimulation()">Run Simulation</button>
+            </div>
+        </div>
+    </div>
+
+</div><!-- /.app -->
+
+<script>
+const API = 'http://localhost:8080';
+let productList = [];
+let categoryList = [];
+let currentSection = 0; 
+const sections = [
+    { title: 'Finished Goods Section',  badge: 'Products → Racks → Shelves → Boxes', type: 'product' },
+    { title: 'Raw Materials Section',   badge: 'Raw Materials → Racks → Shelves → Boxes', type: 'raw_material' }
+];
+
+let allRacks = [], allShelves = [], allBoxes = [];
+let allProducts = [], allRawMaterials = [];
+
+async function get(path) {
+    try {
+        const r = await fetch(API + path);
+        if (!r.ok) return [];
+        const data = await r.json();
+        return Array.isArray(data) ? data : (data.data || []);
+    } catch (e) {
+        console.error("Fetch Error:", e);
+        return [];
+    }
+}
+
+async function initApp() {
+    console.log("OptiWare: Fetching Inventory...");
+    // FIX 4: was '/get_all_products' — correct endpoint is '/get-products'
+    const products = await get('/get_all_products');
+
+    if (products && products.length > 0) {
+        productList = products;
+        categoryList = [...new Set(products.map(item => item.category))].filter(Boolean);
+        console.log("Unique Categories:", categoryList);
+    } else {
+        productList = [
+            { product_code: "P001", product_name: "Ceiling Fan", stock_qty: 120, category: "Electrical" },
+            { product_code: "P002", product_name: "Wireless Headphones", stock_qty: 45, category: "Electronics" }
+        ];
+        categoryList = ["Electrical", "Electronics"];
+    }
+     try {
+        const container = document.getElementById('shelves');
+        container.innerHTML = '<div class="loading-state">Syncing Warehouse Data...</div>';
+
+        let results = await Promise.all([
+            get('/get-racks'),
+            get('/get-shelves'),
+            get('/get-boxes'),
+            get('/get-products'),
+            get('/get-raw-materials'),
+        ]);
+
+        allRacks = results[0] || [];
+        allShelves = results[1] || [];
+        allBoxes = results[2] || [];
+        allProducts = results[3] || [];
+        allRawMaterials = results[4] || [];
+
+        // Natural Sort Racks (R1, R2, R10)
+        allRacks.sort((a, b) => a.rack_code.localeCompare(b.rack_code, undefined, { numeric: true }));
+
+        // buildAlerts();
+        renderSection();
+    } catch (e) {
+        document.getElementById('shelves').innerHTML = `<div class="loading-state">⚠️ Error loading data</div>`;
+    }
+}
+function switchSection(dir) {
+    currentSection = (currentSection + dir + sections.length) % sections.length;
+    renderSection();
+}
+
+function renderSection() {
+    const sec = sections[currentSection];
+    document.getElementById('section-title').textContent = sec.title;
+    document.getElementById('section-badge').textContent = sec.badge;
+
+    // 1. Filter racks strictly by type
+    const sectionRacks = allRacks.filter(r => r.type === sec.type);
+
+    if (!sectionRacks.length) {
+        document.getElementById('shelves').innerHTML = `<div class="loading-state">No ${sec.type} racks found.</div>`;
+        document.getElementById('stats-bar').innerHTML = '';
+        return;
+    }
+
+    // 2. Build map using ONLY items belonging to this section type
+
+    const boxItems = buildBoxItemMap(sec.type);
+
+    renderStats(sectionRacks, boxItems, sec.type);
+    renderShelves(sectionRacks, boxItems);
+}
+
+function buildBoxItemMap(type) {
+    const map = {};
+    // FIX: Choose the correct array based on section type
+    const items = (type === 'product') ? allProducts : allRawMaterials;
+    
+
+    items.forEach(item => {
+        
+        if (!item.box_id) return;
+        if (!map[item.box_id]) map[item.box_id] = [];
+        map[item.box_id].push(item);
+    });
+    return map;
+}
+
+function renderStats(sectionRacks, boxItems, type) {
+    const rackIds = new Set(sectionRacks.map(r => r.id));
+    const sectionShelves = allShelves.filter(s => rackIds.has(s.rack_id));
+    const shelfIds = new Set(sectionShelves.map(s => s.id));
+    const sectionBoxes = allBoxes.filter(b => shelfIds.has(b.shelf_id));
+
+    let totalItems = 0, lowItems = 0;
+    sectionBoxes.forEach(b => {
+        const items = boxItems[b.id] || [];
+        items.forEach(item => {
+            totalItems++;
+            if (item.stock_qty <= (item.reorder_level || 0)) lowItems++;
+        });
+    });
+
+    const occupiedBoxes = sectionBoxes.filter(b => (boxItems[b.id] || []).length > 0).length;
+
+    document.getElementById('stats-bar').innerHTML = `
+        <div class="stat-chip blue"><strong>${sectionRacks.length}</strong>Racks</div>
+        <div class="stat-chip blue"><strong>${sectionBoxes.length}</strong>Boxes</div>
+        <div class="stat-chip"><strong>${occupiedBoxes}</strong>Occupied</div>
+        <div class="stat-chip green"><strong>${totalItems}</strong>Items</div>
+        ${lowItems > 0 ? `<div class="stat-chip red"><strong>${lowItems}</strong>Low Stock</div>` : ''}
+    `;
+}
+
+function renderShelves(sectionRacks, boxItems) {
+    const container = document.getElementById('shelves');
+
+    // 🔥 HARD RESET (important)
+    container.innerHTML = '';
+    container.replaceChildren(); // extra safety
+
+    // Build shelf map fresh
+    const shelvesByRack = {};
+    allShelves.forEach(s => {
+        if (!shelvesByRack[s.rack_id]) shelvesByRack[s.rack_id] = [];
+        shelvesByRack[s.rack_id].push(s);
+    });
+
+    container.style.setProperty('--shelf-cols', Math.min(sectionRacks.length, 4));
+
+    sectionRacks.forEach((rack, rackIdx) => {
+        const shelves = (shelvesByRack[rack.id] || [])
+            .sort((a, b) => a.level - b.level);
+
+        const card = document.createElement('div');
+        card.className = 'shelf-card';
+
+        // Header
+        const header = document.createElement('div');
+        header.innerHTML = `
+            <p class="shelf-id">#${rack.rack_code}</p>
+            <p class="shelf-title">${rackIdx === 0 ? 'Terminal Front' : ''}</p>
+        `;
+        card.appendChild(header);
+
+        const rackEl = document.createElement('div');
+        rackEl.className = 'rack';
+
+        shelves.forEach(shelf => {
+            const shelfBoxes = allBoxes
+                .filter(b => b.shelf_id === shelf.id)
+                .sort((a, b) => a.box_code.localeCompare(b.box_code, undefined, { numeric: true }));
+
+            const shelfRow = document.createElement('div');
+            shelfRow.style.cssText = 'display:grid; gap:4px; margin-bottom:8px;';
+
+            // Shelf label
+            const label = document.createElement('div');
+            label.style.cssText = 'font-size:9px; color:#555;';
+            label.textContent = shelf.shelf_code;
+            shelfRow.appendChild(label);
+
+            const boxRow = document.createElement('div');
+            boxRow.style.cssText = `display:grid; grid-template-columns:repeat(${shelfBoxes.length || 1}, 1fr); gap:6px;`;
+
+            shelfBoxes.forEach(box => {
+
+                // 🔥 ALWAYS GET FRESH ITEMS
+                const items = (boxItems[box.id] || []);
+
+                const hasLow = items.some(i => i.stock_qty <= (i.reorder_level || 0));
+
+                const boxEl = document.createElement('div');
+                boxEl.className =
+                    'box' +
+                    (items.length === 0 ? ' empty' : '') +
+                    (hasLow ? ' low-stock' : '');
+
+                // Build content safely
+                let contentHTML = '';
+                console.log(items)
+
+                if (items.length === 0) {
+                    contentHTML = `<div class="box-line" style="color:#888;">Empty</div>`;
+                } else {
+                    contentHTML = items.slice(0, 2).map(item => {
+                        const code =item.material_code   || item.product_code || '??';
+                        const name = item.material_name || item.product_name || 'Item';
+
+                        return `
+                            <div class="box-line">
+                                <strong>${code}</strong><br>
+                                <span style="font-size:8px;">${name}</span>
+                            </div>
+                        `;
+                    }).join('');
+                }
+
+                boxEl.innerHTML = `
+                    <div class="box-id">${box.box_code}</div>
+                    <div class="box-info">${contentHTML}</div>
+                `;
+
+                // 🔥 CRITICAL FIX: NO STALE DATA
+                boxEl.onclick = () => {
+                    const freshItems = (boxItems[box.id] || []);
+                    openModal(box, freshItems);
+                };
+
+                boxRow.appendChild(boxEl);
+            });
+
+            shelfRow.appendChild(boxRow);
+            rackEl.appendChild(shelfRow);
+        });
+
+        card.appendChild(rackEl);
+        container.appendChild(card);
+    });
+}
+const simConfigs = {
+    timeTravel: {
+        title: "Temporal Forecast Simulation",
+        fields: [{ id: "target_date", label: "Target Date", type: "date" }]
+    },
+    demandSpike: {
+        title: "Demand Spike Simulation",
+        fields: [
+            { id: "product_name_select", label: "Product", type: "select", listType: "products" },
+            { id: "spike_percent", label: "Spike Percentage (%)", type: "number", default: 50 },
+            { id: "spike_duration_weeks", label: "Spike Duration (Weeks)", type: "number", default: 2 }
+        ]
+    },
+    supplyDelay: {
+        title: "Supply Delay Simulation",
+        fields: [
+            { id: "product_name_select", label: "Product", type: "select", listType: "products" },
+            { id: "current_stock", label: "Current Stock", type: "number" },
+            { id: "restock_qty", label: "Restock Quantity", type: "number" },
+            { id: "delay_weeks", label: "Delay Duration (Weeks)", type: "number", default: 1 }
+        ]
+    },
+    seasonalSurge: {
+        title: "Seasonal Demand Surge",
+        fields: [
+            { id: "product_name_select", label: "Product", type: "select", listType: "products" },
+            { id: "current_stock", label: "Current Stock", type: "number" },
+            { id: "season_name", label: "Season Name", type: "text" },
+            { id: "peak_week", label: "Peak Week", type: "number", default: 3 },
+            { id: "peak_boost_percent", label: "Peak Boost (%)", type: "number", default: 100 },
+            { id: "season_duration_weeks", label: "Duration (Weeks)", type: "number", default: 8 }
+        ]
+    },
+    newLaunch: {
+        title: "New Product Launch Simulation",
+        fields: [
+            { id: "product_name", label: "New Product Name", type: "text" },
+            { id: "category", label: "Category", type: "select", listType: "categories" },
+            { id: "launch_week_month", label: "Launch Month (1-12)", type: "number" },
+            { id: "initial_stock", label: "Initial Stock", type: "number", default: 1000 },
+            { id: "growth_rate_percent", label: "Growth Rate (%)", type: "number", default: 10 },
+            { id: "num_weeks", label: "Simulation Duration (Weeks)", type: "number", default: 12 }
+        ]
+    }
+};
+
+// FIX 3 (cont): 'modal' is now looked up inside functions instead of at the
+// top level — avoids null reference when the DOM element was missing/commented out.
+let currentActiveScenario = null;
+
+function openSimulationModal(scenarioKey) {
+    currentActiveScenario = scenarioKey;
+    const config = simConfigs[scenarioKey];
+    document.getElementById('modalTitle').textContent = config.title;
+    const content = document.getElementById('modalContent');
+
+    content.innerHTML = config.fields.map(field => {
+        let inputHTML = "";
+        if (field.type === "select") {
+            if (field.listType === "products") {
+                inputHTML = `
+                    <select id="${field.id}" onchange="handleProductChange(this)">
+                        <option value="">-- Select Product --</option>
+                        ${productList.map(p => `<option value="${p.product_code}">${p.product_name} (${p.product_code})</option>`).join("")}
+                    </select>`;
+            } else {
+                inputHTML = `
+                    <select id="${field.id}">
+                        <option value="">-- Select Category --</option>
+                        ${categoryList.map(cat => `<option value="${cat}">${cat}</option>`).join("")}
+                    </select>`;
+            }
+        } else {
+            inputHTML = `
+                <input type="${field.type}" id="${field.id}"
+                value="${field.default || ''}"
+                placeholder="${field.placeholder || 'Enter ' + field.label.toLowerCase() + '...'}">`;
+        }
+        return `<div class="form-group"><label>${field.label}</label>${inputHTML}</div>`;
+    }).join('');
+
+    document.getElementById('simModal').classList.add('open');
+}
+
+function handleProductChange(selectElement) {
+    const selectedCode = selectElement.value;
+    if (!selectedCode) return;
+
+    const product = productList.find(p => p.product_code == selectedCode);
+    if (!product) {
+        console.warn("Product not found in local list for code:", selectedCode);
+        return;
+    }
+
+    console.log("Found Product:", product);
+
+    const fieldMapping = {
+        'current_stock': parseInt(product.stock_qty),
+        'initial_stock':  parseInt(product.stock_qty),
+        'category': product.category
+    };
+
+    Object.keys(fieldMapping).forEach(id => {
+        const input = document.getElementById(id);
+        if (input) {
+            input.value = fieldMapping[id];
+            input.style.transition = "all 0.3s";
+            input.style.backgroundColor = "rgba(82, 194, 143, 0.2)";
+            setTimeout(() => { input.style.backgroundColor = "transparent"; }, 600);
+        }
+    });
+}
+
+function closeModal() {
+    document.getElementById('simModal').classList.remove('open');
+    currentActiveScenario = null;
+}
+
+function handleOutsideClick(event) {
+    if (event.target === document.getElementById('simModal')) closeModal();
+}
+
+function executeSimulation() {
+    if (!currentActiveScenario) return;
+    const config = simConfigs[currentActiveScenario];
+    const data = {};
+    config.fields.forEach(f => data[f.id] = document.getElementById(f.id).value);
+
+    console.log("🚀 Simulation Parameters:", data);
+
+    const btn = document.querySelector('.modal-actions .active');
+    btn.textContent = "Processing...";
+    setTimeout(() => {
+        btn.textContent = "Run Simulation";
+        document.getElementById('simModal').classList.remove('open');
+        alert("Simulation logic triggered");
+    }, 1000);
+}
+
+initApp();
+</script>
+</body>
+</html>
