@@ -2,44 +2,25 @@ import os
 import joblib
 import numpy  as np
 import pandas as pd
-import torch
-import torch.nn as nn
+import xgboost as xgb
 
-from dotenv       import load_dotenv
-from fastapi      import FastAPI, HTTPException
+from dotenv           import load_dotenv
+from fastapi          import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic     import BaseModel
-from typing       import Optional, List, Literal
-from sqlalchemy   import create_engine, text
+from sqlalchemy       import create_engine, text
 from sqlalchemy.engine import URL
-# pip install numpy pandas torch joblib python-dotenv fastapi uvicorn sqlalchemy pymysql scikit-learn
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-DEVICE = torch.device("cpu")
 
 load_dotenv()
 
-# =============================================================
-#  ✏️  SET YOUR MODEL PATHS HERE
-# =============================================================
-MODEL_PT_PATH  = "models/demand_model.pth"
-SCALER_X_PATH  = "models/scaler_X.pkl"
-SCALER_Y_PATH  = "models/scaler_y.pkl"
-# =============================================================
+MODEL_PATH  = "./models/xgbmodel.pkl"
 
-app = FastAPI(
-    title="Warehouse ML API",
-    version="1.0",
-    docs_url="/docs",      
-    redoc_url="/redoc"     
-)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"]
-)
+FEATURES = [
+    'day_of_week','month','quarter','is_weekend',
+    'is_month_start','is_month_end','lag_7','lag_14',
+    'lag_30','lag_365','rolling_mean_7','rolling_mean_30',
+    'rolling_mean_90','rolling_std_7','trend_direction','yoy_growth'
+]
 
-# ── DB ────────────────────────────────────────────────────────
 DB_URL = URL.create(
     drivername="mysql+pymysql",
     username=os.getenv("DATABASE_USER"),
@@ -50,286 +31,208 @@ DB_URL = URL.create(
 )
 engine = create_engine(DB_URL, pool_pre_ping=True)
 
-# ── Must match training order exactly ────────────────────────
-FEATURE_COLS = [
-    "day_of_week", "month", "quarter",
-    "is_weekend", "is_month_start", "is_month_end",
-    "lag_7", "lag_14", "lag_30", "lag_365",
-    "rolling_mean_7", "rolling_mean_30", "rolling_mean_90", "rolling_std_7",
-    "trend_direction", "yoy_growth"
-]
-
-
-_model    = None
-_scaler_X = None
-_scaler_y = None
+_model  = None
+_scaler = None
 
 def load_model():
-    global _model, _scaler_X, _scaler_y
-
-    missing = [p for p in [MODEL_PT_PATH, SCALER_X_PATH, SCALER_Y_PATH] if not os.path.exists(p)]
-    if missing:
-        print(f"⚠️  Model files not found: {missing}")
+    global _model
+    if not os.path.exists(MODEL_PATH):
+        print(f"Model file not found: {MODEL_PATH}")
         return
-
-    _model = SalesANN(input_dim=len(FEATURE_COLS)).to(DEVICE)   
-    _model.load_state_dict(torch.load(MODEL_PT_PATH, map_location=DEVICE))
-    _model.eval()
-
-    _scaler_X = joblib.load(SCALER_X_PATH)
-    _scaler_y = joblib.load(SCALER_Y_PATH)
-
-    print(f"✅ Model loaded on CPU from {MODEL_PT_PATH}")
-
+    _model = joblib.load(MODEL_PATH)
+    print(f"XGBoost model loaded from {MODEL_PATH}")
 load_model()
-# from typing import List, Literal
-# from pydantic import BaseModel
 
-# ============================================================
-# Request Schema
-# ============================================================
+app = FastAPI(title="Warehouse ML API", version="1.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-class ItemRequest(BaseModel):
-    item_id: str
-
-class BatchRequest(BaseModel):
-    items: List[ItemRequest]
-    horizon: str = "week"  
-
-
-# ============================================================
-# Endpoint
-# ============================================================
-@app.post("/predict-batch")
-def predict_batch_api(req: BatchRequest):
-
-    if _model is None:
-        raise HTTPException(status_code=503, detail="Model not loaded")
-
-    FEATURES = [
-        'day_of_week','month','quarter','is_weekend',
-        'is_month_start','is_month_end','lag_7','lag_14',
-        'lag_30','lag_365','rolling_mean_7','rolling_mean_30',
-        'rolling_mean_90','rolling_std_7',
-        'trend_direction','yoy_growth'
-    ]
-
-    # ─────────────────────────────────────────────
-    # STEP 1: Fetch latest features using ONLY item_id
-    input_data = []
-
+# m = joblib.load("./models/xgbmodel.pkl")
+# print(type(m)) 
+def load_data():
+    Products, Boxes, Shelves, Racks, RawMaterials, Salesdata = [], [], [], [], [], []
     with engine.connect() as conn:
-        for item in req.items:
-            row = conn.execute(text(f"""
-                SELECT {', '.join(FEATURES)}, sale_date
-                FROM sales_data
-                WHERE item_id = :item_id
-                  AND lag_7 IS NOT NULL
-                ORDER BY sale_date DESC
-                LIMIT 1
-            """), {
-                "item_id": item.item_id
-            }).mappings().fetchone()
+        Products     = [dict(r) for r in conn.execute(text("SELECT * FROM products")).mappings().all()]
+        Boxes        = [dict(r) for r in conn.execute(text("SELECT * FROM boxes")).mappings().all()]
+        Shelves      = [dict(r) for r in conn.execute(text("SELECT * FROM shelves")).mappings().all()]
+        Racks        = [dict(r) for r in conn.execute(text("SELECT * FROM racks")).mappings().all()]
+        RawMaterials = [dict(r) for r in conn.execute(text("SELECT * FROM raw_materials")).mappings().all()]
+        Salesdata    = [dict(r) for r in conn.execute(text("SELECT * FROM sales_data")).mappings().all()]
+    return Products, Boxes, Shelves, Racks, RawMaterials, Salesdata
 
-            if not row:
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"No data for item {item.item_id}"
+@app.post("/optimizelayout")
+def optimize_layout():
+    try:
+        print("Milestone 1: Starting layout optimization process...")
+
+        if _model is None:
+            raise HTTPException(status_code=503, detail="Model not loaded")
+
+        try:
+            Products, Boxes, Shelves, Racks, RawMaterials, Salesdata = load_data()
+            print(f"Loaded: {len(Racks)} racks, {len(Shelves)} shelves, {len(Boxes)} boxes, {len(Salesdata)} sales rows.")
+        except Exception as e:
+            print(f"Error loading warehouse data: {e}")
+            raise HTTPException(status_code=500, detail="Failed to load warehouse data")
+
+        shelf_map = {str(s.get('id')): s for s in Shelves}
+        rack_map  = {str(r.get('id')): r for r in Racks}
+
+        enriched_boxes = []
+        for box in Boxes:
+            shelf_id  = str(box.get('shelf_id', ''))
+            shelf     = shelf_map.get(shelf_id, {})
+            rack_id   = str(shelf.get('rack_id', ''))
+            rack      = rack_map.get(rack_id, {})
+
+            enriched_boxes.append({
+                'box_id': str(box.get('id')),
+                'rack_code': str(rack.get('rack_code') or '').zfill(2),
+                'shelf_code': str(shelf.get('shelf_code') or '').zfill(2),
+                'box_code': str(box.get('box_code') or '').zfill(2),
+                'rack_order': int(rack.get('position') or rack.get('rack_number') or rack.get('id') or 0),
+                'shelf_order': int(shelf.get('position') or shelf.get('shelf_number') or shelf.get('id') or 0),
+                'box_order': int(box.get('position') or box.get('box_number') or box.get('id') or 0),
+            })
+
+        enriched_boxes.sort(key=lambda b: (b['rack_order'], b['shelf_order'], b['box_order']))
+
+        if not enriched_boxes:
+            raise HTTPException(status_code=500, detail="No boxes found in DB")
+
+        product_current_loc = {}
+        for product in Products:
+            pid    = str(product.get('id') or product.get('item_id'))
+            box_id = str(product.get('box_id', ''))
+            if box_id and box_id != 'None':
+                box = next((b for b in enriched_boxes if b['box_id'] == box_id), None)
+                if box:
+                    rack_code  = f"R{str(box['rack_code']).zfill(2)}"
+                    shelf_code = f"{rack_code}-SH{str(box['shelf_code']).zfill(2)}"
+                    box_code   = f"B{str(box['box_code']).zfill(2)}"
+                    product_current_loc[pid] = f"{rack_code} {shelf_code} {box_code}"
+                else:
+                    product_current_loc[pid] = 'Unassigned'
+            else:
+                product_current_loc[pid] = 'Unassigned'
+
+        sales_lookup = {}
+        try:
+            df = pd.DataFrame(Salesdata)
+            df['sale_date'] = pd.to_datetime(df['sale_date'])
+            df['item_id']   = df['item_id'].astype(str)
+            for col in FEATURES:
+                if col in df.columns:
+                    df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0)
+            df = df[df['lag_7'].notna()]
+            latest_df = df.sort_values('sale_date').groupby('item_id').last().reset_index()
+            for _, row in latest_df.iterrows():
+                sales_lookup[row['item_id']] = {
+                    col: float(row[col]) if col in row else 0.0
+                    for col in FEATURES
+                }
+            print(f"Sales lookup built ({len(sales_lookup)} items).")
+        except Exception as e:
+            print(f"Error building sales lookup: {e}")
+
+        results = []
+        for product in Products:
+            try:
+                item_id = str(product.get('id') or product.get('item_id'))
+                if item_id not in sales_lookup:
+                    continue
+
+                name  = product.get('name', f'Item {item_id}')
+                cat   = product.get('category', 'Electronics')
+                stock = float(product.get('current_stock', 0))
+                c_loc = product_current_loc.get(item_id, 'Unassigned')
+
+                feat_dict = sales_lookup[item_id]
+                X = np.array([[feat_dict[f] for f in FEATURES]], dtype=np.float32)
+                if _scaler:
+                    X = _scaler.transform(X)
+
+                weekly_demand = round(float(_model.predict(X)[0]))
+                daily_rate    = weekly_demand / 7
+                days_left     = round(stock / max(daily_rate, 0.1))
+                trend_val     = feat_dict['trend_direction']
+
+                if days_left <= 3:
+                    risk = 'CRITICAL'
+                elif days_left <= 7:
+                    risk = 'HIGH'
+                elif days_left <= 14:
+                    risk = 'MEDIUM'
+                else:
+                    risk = 'LOW'
+
+                demand_score   = min(100, (weekly_demand / 500) * 100)
+                stockout_score = (100 if days_left <= 3 else 80 if days_left <= 7 else 50 if days_left <= 14 else 25 if days_left <= 30 else 0)
+                trend_score    = min(100, max(0, 50 + (trend_val * 2)))
+
+                importance = round(
+                    demand_score * 0.50 + stockout_score * 0.25 + trend_score * 0.10, 2
                 )
 
-            feature_dict = {}
+                results.append({
+                    'item_id': item_id,
+                    'name': name,
+                    'category': cat,
+                    'importance': importance,
+                    'stockout_risk': risk,
+                    'weekly_demand': weekly_demand,
+                    'days_left': days_left,
+                    'current_loc': c_loc
+                })
+            except Exception:
+                continue
 
-            for col in FEATURES:
-                val = row[col]
+        results.sort(key=lambda x: x['importance'], reverse=True)
 
-                if val is None:
-                    # default fallback values
-                    if col in ['rolling_std_7']:
-                        val = 0.0
-                    elif col in ['yoy_growth', 'trend_direction']:
-                        val = 0.0
-                    else:
-                        val = 0.0   # safe fallback
+        suggestions = []
+        for i, p in enumerate(results):
+            try:
+                if i < len(enriched_boxes):
+                    box = enriched_boxes[i]
+                    rack_code  = f"R{str(box['rack_code']).zfill(2)}"
+                    shelf_code = f"{rack_code}-SH{str(box['shelf_code']).zfill(2)}"
+                    box_code   = f"B{str(box['box_code']).zfill(2)}"
+                    ideal_loc  = f"{rack_code} {shelf_code} {box_code}"
+                else:
+                    ideal_loc = "No box available"
 
-                feature_dict[col] = float(val)
-            input_data.append(feature_dict)
+                suggestions.append({
+                    'product': p['name'],
+                    'from': p['current_loc'],
+                    'to': ideal_loc,
+                    'risk': p['stockout_risk'],
+                    'weekly_demand': p['weekly_demand'],
+                    'days_of_stock': p['days_left'],
+                    'importance': p['importance'],
+                    'action': (
+                        'MOVE' if p['current_loc'] != ideal_loc and p['current_loc'] != 'Unassigned'
+                        else 'ASSIGN' if p['current_loc'] == 'Unassigned'
+                        else 'OK'
+                    )
+                })
+            except Exception:
+                continue
 
-    # ─────────────────────────────────────────────
-    def run_one_pass(feature_dicts):
-        all_features = np.array([
-            [f[feat] for feat in FEATURES]
-            for f in feature_dicts
-        ], dtype=np.float32)
+        print(f"Optimization complete. Returning {len(suggestions)} suggestions.")
+        ordered_items = [s['product'] for s in suggestions]
 
-        scaled = _scaler_X.transform(all_features)
-        tensor_in = torch.tensor(scaled, device=DEVICE)
+        print("Final arranged order:")
+        for i, name in enumerate(ordered_items, 1):
+            print(f"{i}. {name}")
+        return {"total": len(suggestions), "suggestions": suggestions}
 
-        with torch.no_grad():
-            raw = _model(tensor_in)
-
-        results = _scaler_y.inverse_transform(raw.cpu().numpy())
-        return [round(float(r[0]), 2) for r in results]
-
-    # ─────────────────────────────────────────────
-    def simulate_next_week(feature_dict, weekly_pred):
-        f = feature_dict.copy()
-        daily_pred = weekly_pred / 7
-
-        f['lag_14'] = f['lag_7']
-        f['lag_30'] = (f['lag_30'] * 3 + weekly_pred) / 4
-        f['lag_7']  = daily_pred
-
-        f['rolling_mean_7']  = (f['rolling_mean_7'] * 6 + daily_pred) / 7
-        f['rolling_mean_30'] = (f['rolling_mean_30'] * 29 + daily_pred) / 30
-
-        f['trend_direction'] = f['lag_7'] - f['lag_30']
-
-        f['day_of_week'] = (int(f['day_of_week']) + 7) % 7
-        f['is_weekend']  = 1 if f['day_of_week'] >= 5 else 0
-
-        return f
-
-    # ─────────────────────────────────────────────
-    # WEEK prediction
-    weekly_preds = run_one_pass(input_data)
-
-    if req.horizon == "week":
-        return [
-            {
-                "item_id": req.items[i].item_id,
-                "weekly": weekly_preds[i]
-            }
-            for i in range(len(input_data))
-        ]
-
-    # ─────────────────────────────────────────────
-    # MONTH prediction
-    monthly_totals   = [0] * len(input_data)
-    weekly_breakdown = [[] for _ in range(len(input_data))]
-    current_features = [f.copy() for f in input_data]
-
-    for _ in range(4):
-        week_preds = run_one_pass(current_features)
-
-        for i, pred in enumerate(week_preds):
-            monthly_totals[i] += pred
-            weekly_breakdown[i].append(pred)
-            current_features[i] = simulate_next_week(current_features[i], pred)
-
-    if req.horizon == "month":
-        return [
-            {
-                "item_id": req.items[i].item_id,
-                "monthly": monthly_totals[i],
-                "weekly_breakdown": weekly_breakdown[i]
-            }
-            for i in range(len(input_data))
-        ]
-
-    if req.horizon == "both":
-        return [
-            {
-                "item_id": req.items[i].item_id,
-                "weekly": weekly_preds[i],
-                "monthly": monthly_totals[i],
-                "weekly_breakdown": weekly_breakdown[i]
-            }
-            for i in range(len(input_data))
-        ]
-        
-# =============================================================
-#  HEALTH
-# =============================================================
-@app.get("/")
-def home():
-    return {
-        "status":       "ok",
-        "model_loaded": _model is not None,
-        "device":       str(DEVICE),
-        "model_path":   MODEL_PT_PATH,
-    }
-
-# =============================================================
-#  PREDICT
-# =============================================================
-class PredictRequest(BaseModel):
-    item_id:  str
-
-@app.post("/predict")
-def predict(req: PredictRequest):
-    if _model is None:
-        raise HTTPException(status_code=503, detail="Model not loaded")
-
-    with engine.connect() as conn:
-        row = conn.execute(text(f"""
-            SELECT {', '.join(FEATURE_COLS)}, sale_date
-            FROM   sales_data
-            WHERE  item_id  = :item_id
-              AND  lag_7 IS NOT NULL
-            ORDER  BY sale_date DESC
-            LIMIT  1
-        """), {"item_id": req.item_id}).mappings().fetchone()
-
-    if not row:
-        raise HTTPException(status_code=404, detail="No feature data found")
-
-    X = np.array([[row[c] for c in FEATURE_COLS]], dtype=np.float32)
-    X_scaled = _scaler_X.transform(X).astype(np.float32)
-
-    tensor_input = torch.tensor(X_scaled, device=DEVICE)
-
-    with torch.no_grad():
-        y_scaled = _model(tensor_input).cpu().numpy()
-
-    pred = float(_scaler_y.inverse_transform(y_scaled)[0][0])
-
-    return {
-        "store_id": req.store_id,
-        "item_id": req.item_id,
-        "predicted_sales_next_7": round(max(pred, 0), 2),
-        "based_on_date": str(row["sale_date"]),
-    }
-
-
-# =============================================================
-#  PREDICT ALL
-# =============================================================
-@app.get("/predict-all")
-def predict_all():
-    if _model is None:
-        raise HTTPException(status_code=503, detail="Model not loaded")
-
-    with engine.connect() as conn:
-        rows = conn.execute(text(f"""
-            SELECT store_id, item_id, sale_date, {', '.join(FEATURE_COLS)}
-            FROM sales_data s1
-            WHERE sale_date = (
-                SELECT MAX(sale_date)
-                FROM sales_data s2
-                WHERE s2.store_id = s1.store_id
-                  AND s2.item_id  = s1.item_id
-                  AND s2.lag_7 IS NOT NULL
-            )
-        """)).mappings().all()
-
-    results = []
-
-    for row in rows:
-        X = np.array([[row[c] for c in FEATURE_COLS]], dtype=np.float32)
-        X_scaled = _scaler_X.transform(X).astype(np.float32)
-
-        tensor_input = torch.tensor(X_scaled, device=DEVICE)
-
-        with torch.no_grad():
-            y_scaled = _model(tensor_input).cpu().numpy()
-
-        pred = float(_scaler_y.inverse_transform(y_scaled)[0][0])
-
-        results.append({
-            "store_id": row["store_id"],
-            "item_id": row["item_id"],
-            "predicted_sales_next_7": round(max(pred, 0), 2),
-            "based_on_date": str(row["sale_date"]),
-        })
-
-    return results
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Critical Failure: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")

@@ -217,6 +217,22 @@
             padding-bottom: 8px;
             border-bottom: 1px solid #e0e0e0;
         }
+        .flying-ghost {
+            position: fixed;
+            pointer-events: none;
+            z-index: 10000;
+            background: linear-gradient(145deg, #f0d4a8, #cfab77);
+            border: 2px solid #f5dfbb;
+            border-radius: 3px;
+            box-shadow: 0 8px 15px rgba(0,0,0,0.4);
+            transition: all 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+            color: #4b2c12;
+            padding: 6px;
+            font-size: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
 
         .arrow {
             font-size: 42px;
@@ -298,6 +314,11 @@
             min-height: 18px;
             font-size: 13px;
             color: #111827;
+        }
+        .box.moving {
+            outline: 3px solid #4a55d8;
+            transform: scale(1.05);
+            transition: all 0.4s ease;
         }
 
         .rack {
@@ -507,33 +528,39 @@
 </head>
 <body>
 <div class="app">
-        <header class="topbar">
-            <h2>OptiWare</h2>
-            <div class="topbar-right">
-                <button class="pill active">Efficiency: 80/100</button>
-                <button class="pill dashboard-active" onclick="window.location.href='/app'">Dashboard</button>
-                <button class="pill" onclick="window.location.href='/stimulations'">Simulations</button>
-                <button class="pill">Reports</button>
-                <button class="pill">Products</button>
-                <div class="avatar"></div>
-            </div>
-        </header>
+    <header class="topbar">
+        <h2>OptiWare</h2>
+        <div class="topbar-right">
+
+            <button class="pill active">Efficiency: 80/100</button>
+            <button class="pill dashboard-active" onclick="window.location.href='/app'">Dashboard</button>
+
+
+            <button class="pill" onclick="window.location.href='/stimulations'">Simulations</button>
+            <button class="pill">Reports</button>
+            <button class="pill">Products</button>
+            <div class="avatar"></div>
+        </div>
+    </header>
 
     <main class="content">
         <section class="left-column">
             <article class="panel action-panel">
 
-                <button class="action-btn">Optimize Current Layout </button>
+
+                <button id="optimize_button" class="action-btn">Optimize Current Layout </button>
             </article>
             <article class="panel" style="height:100%;padding:0;">
                 <div class="bot-card">
                     <div class="bot-head">
                         <span>Optiware AI</span> 
                         <span class="bot-icon">💡</span>
+
                         <span id="low-stock-badge" style="font-size:13px;background:#ea7b39;color:#fff;padding:3px 10px;border-radius:999px;display:none;"></span>
                     </div>
                     <div id="alerts-container" style="max-height:auto;">
 
+                        
                     <div class="alert warn">
                         <span class="alert-text">Rack 1A critical - Ceiling Fan demand at 87%. Restock within 48 hrs.</span>
                         <button class="alert-done-btn" type="button">Done</button>
@@ -544,6 +571,7 @@
                     </div>
                     <div class="alert">
                         <span class="alert-text">+3 weeks: Perishables spike 61%. Move Rack 4B closer to terminal now.</span>
+                        
                         <button class="alert-done-btn" type="button">Done</button>
                     </div>
                     <div class="alert warn">
@@ -552,16 +580,20 @@
                     </div>
                     <div class="alert info">
                         <span class="alert-text">Seasonal trend detected: Prepare for 40% increase in orders next month.</span>
+
                         <button class="alert-done-btn" type="button">Done</button>
                     </div>
                     <div class="alert">
                         <span class="alert-text">Shelf 2C underutilized. Consider relocating slow-moving items there.</span>
+
                         <button class="alert-done-btn" type="button">Done</button>
                     </div>
                     <div class="alert warn">
                         <span class="alert-text">Temperature anomaly in Zone B. Check cooling system immediately.</span>
                         <button class="alert-done-btn" type="button">Done</button>
                     </div>
+
+
                     <div class="alert info">
                         <span class="alert-text">New optimization routine available. Run tonight at 2 AM?</span>
                         <button class="alert-done-btn" type="button">Done</button>
@@ -574,15 +606,12 @@
         <section class="map-panel">
             <div class="map-header">
                 <button class="arrow" id="btn-prev" onclick="switchSection(-1)">&#8249;</button>
-                <div>
-                    <div class="map-title" id="section-title">Loading…</div>
-                    <div class="section-badge" id="section-badge"></div>
-                </div>
+                <div><div class="map-title" id="section-title">Loading…</div>
+                    <div class="section-badge" id="section-badge"></div></div>
                 <button class="arrow" id="btn-next" onclick="switchSection(1)">&#8250;</button>
             </div>
 
-            <div class="stats-bar" id="stats-bar"></div>
-            <div class="shelves" id="shelves"></div>
+            <div class="stats-bar" id="stats-bar"></div><div class="shelves" id="shelves"></div>
         </section>
     </main>
 </div>
@@ -590,142 +619,132 @@
 <div class="modal-overlay" id="box-modal-overlay">
     <div class="box-modal">
         <div class="box-modal-head">
-            <h3 class="box-modal-title" id="box-modal-title">Box Details</h3>
-            <button class="box-modal-close" onclick="closeModal()">✕ Close</button>
+            <h3 class="box-modal-title" id="box-modal-title">Box Details</h3><button class="box-modal-close" onclick="closeModal()">✕ Close</button>
         </div>
         <div id="box-modal-body"></div>
     </div>
 </div>
 
 <script>
-const API = 'http://localhost:8080';
+    const API = 'http://localhost:8080';
+    let currentSection = 0; 
+    const sections=[
+        { title: 'Finished Goods Section',  
+        badge: 'Products → Racks → Shelves → Boxes',
+        type: 'product' },
+        { title: 'Raw Materials Section',
+        badge: 'Raw Materials → Racks → Shelves → Boxes', 
+        type: 'raw_material' 
+        }
+    ];
 
-// ── State ──────────────────────────────────────────────────────
-let currentSection = 0; 
-const sections = [
-    { title: 'Finished Goods Section',  badge: 'Products → Racks → Shelves → Boxes', type: 'product' },
-    { title: 'Raw Materials Section',   badge: 'Raw Materials → Racks → Shelves → Boxes', type: 'raw_material' }
-];
+    let allRacks=[],allShelves=[], allBoxes=[];
+    let allProducts=[], allRawMaterials=[];
 
-let allRacks = [], allShelves = [], allBoxes = [];
-let allProducts = [], allRawMaterials = [];
-
-async function get(path) {
-    try {
-        const r = await fetch(API + path);
-        if (!r.ok) return [];
-        return await r.json();
-    } catch (e) {
-        console.error(e);
-        return [];
+    async function get(path) {
+        try {
+            const r=await fetch(API + path);
+            if (!r.ok) return [];
+            return await r.json();
+        } catch (e) {
+            console.error(e);
+            return [];
+        }
     }
-}
 
-async function init() {
-    try {
-        const container = document.getElementById('shelves');
-        container.innerHTML = '<div class="loading-state">Syncing Warehouse Data...</div>';
+    async function init() {
+        try {
+            const container=document.getElementById('shelves');
+            container.innerHTML='<div class="loading-state">Syncing Warehouse Data...</div>';
 
-        let results = await Promise.all([
-            get('/get-racks'),
-            get('/get-shelves'),
-            get('/get-boxes'),
-            get('/get-products'),
-            get('/get-raw-materials'),
-        ]);
+            let results=await Promise.all([
+                get('/get-racks'),get('/get-shelves'),
+                get('/get-boxes'),get('/get-products'),
+                get('/get-raw-materials'),
+            ]);
 
-        allRacks = results[0] || [];
-        allShelves = results[1] || [];
-        allBoxes = results[2] || [];
-        allProducts = results[3] || [];
-        allRawMaterials = results[4] || [];
+            allRacks=results[0] || []; allShelves=results[1] || [];
+            allBoxes=results[2] || [];allProducts=results[3] || [];
+            allRawMaterials=results[4] || []; allRacks.sort((a, b) => a.rack_code.localeCompare(b.rack_code, undefined, { numeric: true }));
+            renderSection();
+        } catch (e) {
+            document.getElementById('shelves').innerHTML = `<div class="loading-state">⚠️ Error loading data</div>`;
+        }
+    }
 
-        // Natural Sort Racks (R1, R2, R10)
-        allRacks.sort((a, b) => a.rack_code.localeCompare(b.rack_code, undefined, { numeric: true }));
+    function switchSection(dir) {
+        currentSection = (currentSection + dir + sections.length) % sections.length;
 
-        // buildAlerts();
         renderSection();
-    } catch (e) {
-        document.getElementById('shelves').innerHTML = `<div class="loading-state">⚠️ Error loading data</div>`;
-    }
-}
-
-function switchSection(dir) {
-    currentSection = (currentSection + dir + sections.length) % sections.length;
-    renderSection();
-}
-
-function renderSection() {
-    const sec = sections[currentSection];
-    document.getElementById('section-title').textContent = sec.title;
-    document.getElementById('section-badge').textContent = sec.badge;
-
-    // 1. Filter racks strictly by type
-    const sectionRacks = allRacks.filter(r => r.type === sec.type);
-
-    if (!sectionRacks.length) {
-        document.getElementById('shelves').innerHTML = `<div class="loading-state">No ${sec.type} racks found.</div>`;
-        document.getElementById('stats-bar').innerHTML = '';
-        return;
     }
 
-    // 2. Build map using ONLY items belonging to this section type
+    function renderSection() {
+        const sec=sections[currentSection];
+        document.getElementById('section-title').textContent=sec.title;
 
-    const boxItems = buildBoxItemMap(sec.type);
+        document.getElementById('section-badge').textContent=sec.badge;
+        const sectionRacks = allRacks.filter(r => r.type === sec.type);
 
-    renderStats(sectionRacks, boxItems, sec.type);
-    renderShelves(sectionRacks, boxItems);
-}
+        if (!sectionRacks.length) {
+            document.getElementById('shelves').innerHTML = `<div class="loading-state">No ${sec.type} racks found.</div>`;
+            document.getElementById('stats-bar').innerHTML='';
+            return;
+        }
 
-function buildBoxItemMap(type) {
-    const map = {};
-    // FIX: Choose the correct array based on section type
-    const items = (type === 'product') ? allProducts : allRawMaterials;
-    
 
-    items.forEach(item => {
+        const boxItems=buildBoxItemMap(sec.type);
+
+        renderStats(sectionRacks, boxItems, sec.type);
+        renderShelves(sectionRacks, boxItems);
+    }
+
+    function buildBoxItemMap(type) {
+        const map={};
+        const items=(type === 'product') ? allProducts : allRawMaterials;
         
-        if (!item.box_id) return;
-        if (!map[item.box_id]) map[item.box_id] = [];
-        map[item.box_id].push(item);
-    });
-    return map;
-}
 
-function renderStats(sectionRacks, boxItems, type) {
-    const rackIds = new Set(sectionRacks.map(r => r.id));
-    const sectionShelves = allShelves.filter(s => rackIds.has(s.rack_id));
-    const shelfIds = new Set(sectionShelves.map(s => s.id));
-    const sectionBoxes = allBoxes.filter(b => shelfIds.has(b.shelf_id));
-
-    let totalItems = 0, lowItems = 0;
-    sectionBoxes.forEach(b => {
-        const items = boxItems[b.id] || [];
         items.forEach(item => {
-            totalItems++;
-            if (item.stock_qty <= (item.reorder_level || 0)) lowItems++;
+            
+            if (!item.box_id) return;
+            if (!map[item.box_id]) map[item.box_id]=[];
+            map[item.box_id].push(item);
         });
-    });
+        return map;
+    }
 
-    const occupiedBoxes = sectionBoxes.filter(b => (boxItems[b.id] || []).length > 0).length;
+    function renderStats(sectionRacks, boxItems, type) {
+        const rackIds=new Set(sectionRacks.map(r => r.id));
+        const sectionShelves=allShelves.filter(s => rackIds.has(s.rack_id));
 
-    document.getElementById('stats-bar').innerHTML = `
-        <div class="stat-chip blue"><strong>${sectionRacks.length}</strong>Racks</div>
-        <div class="stat-chip blue"><strong>${sectionBoxes.length}</strong>Boxes</div>
-        <div class="stat-chip"><strong>${occupiedBoxes}</strong>Occupied</div>
-        <div class="stat-chip green"><strong>${totalItems}</strong>Items</div>
-        ${lowItems > 0 ? `<div class="stat-chip red"><strong>${lowItems}</strong>Low Stock</div>` : ''}
-    `;
-}
 
-function renderShelves(sectionRacks, boxItems) {
+        const shelfIds=new Set(sectionShelves.map(s => s.id));
+        const sectionBoxes=allBoxes.filter(b => shelfIds.has(b.shelf_id));
+
+        let totalItems=0, lowItems=0;
+
+
+        sectionBoxes.forEach(b => {
+            const items = boxItems[b.id] || [];
+            items.forEach(item => {
+                totalItems++;
+                if (item.stock_qty<=(item.reorder_level || 0)) lowItems++;
+            });
+        });
+
+        const occupiedBoxes = sectionBoxes.filter(b =>(boxItems[b.id] || []).length > 0).length;
+
+        document.getElementById('stats-bar').innerHTML = `
+            <div class="stat-chip blue"><strong>${sectionRacks.length}</strong>Racks</div>
+            <div class="stat-chip blue"><strong>${sectionBoxes.length}</strong>Boxes</div>
+            <div class="stat-chip"><strong>${occupiedBoxes}</strong>Occupied</div>
+            <div class="stat-chip green"><strong>${totalItems}</strong>Items</div>
+            ${lowItems > 0 ? `<div class="stat-chip red"><strong>${lowItems}</strong>Low Stock</div>` : ''}
+        `;
+    }
+
+    function renderShelves(sectionRacks, boxItems) {
     const container = document.getElementById('shelves');
-
-    // 🔥 HARD RESET (important)
     container.innerHTML = '';
-    container.replaceChildren(); // extra safety
-
-    // Build shelf map fresh
     const shelvesByRack = {};
     allShelves.forEach(s => {
         if (!shelvesByRack[s.rack_id]) shelvesByRack[s.rack_id] = [];
@@ -733,34 +752,27 @@ function renderShelves(sectionRacks, boxItems) {
     });
 
     container.style.setProperty('--shelf-cols', Math.min(sectionRacks.length, 4));
-
     sectionRacks.forEach((rack, rackIdx) => {
-        const shelves = (shelvesByRack[rack.id] || [])
-            .sort((a, b) => a.level - b.level);
-
+        const shelves = (shelvesByRack[rack.id] || []).sort((a, b) => a.level - b.level);
         const card = document.createElement('div');
         card.className = 'shelf-card';
 
-        // Header
         const header = document.createElement('div');
-        header.innerHTML = `
-            <p class="shelf-id">#${rack.rack_code}</p>
-            <p class="shelf-title">${rackIdx === 0 ? 'Terminal Front' : ''}</p>
-        `;
+        const rack_name = rack.name || `Rack ${rack.rack_code}`; // Define for data-loc
+        header.innerHTML = `<p class="shelf-id">#${rack.rack_code}</p><p class="shelf-title">${rackIdx === 0 ? 'Terminal Front' : ''}</p>`;
         card.appendChild(header);
 
         const rackEl = document.createElement('div');
         rackEl.className = 'rack';
 
         shelves.forEach(shelf => {
+            const shelf_name = shelf.name || `Shelf ${shelf.shelf_code}`; // Define for data-loc
             const shelfBoxes = allBoxes
                 .filter(b => b.shelf_id === shelf.id)
                 .sort((a, b) => a.box_code.localeCompare(b.box_code, undefined, { numeric: true }));
 
             const shelfRow = document.createElement('div');
             shelfRow.style.cssText = 'display:grid; gap:4px; margin-bottom:8px;';
-
-            // Shelf label
             const label = document.createElement('div');
             label.style.cssText = 'font-size:9px; color:#555;';
             label.textContent = shelf.shelf_code;
@@ -769,130 +781,302 @@ function renderShelves(sectionRacks, boxItems) {
             const boxRow = document.createElement('div');
             boxRow.style.cssText = `display:grid; grid-template-columns:repeat(${shelfBoxes.length || 1}, 1fr); gap:6px;`;
 
-            shelfBoxes.forEach(box => {
-
-                // 🔥 ALWAYS GET FRESH ITEMS
+            shelfBoxes.forEach((box, index) => {
+                const box_name = box.name || `Box ${box.box_code}`; // Define for data-loc
                 const items = (boxItems[box.id] || []);
-
                 const hasLow = items.some(i => i.stock_qty <= (i.reorder_level || 0));
 
                 const boxEl = document.createElement('div');
-                boxEl.className =
-                    'box' +
-                    (items.length === 0 ? ' empty' : '') +
-                    (hasLow ? ' low-stock' : '');
+                
+                const rackCode  = `R${String(rack.rack_code).padStart(2,'0')}`;
+                const shelfCode = `${rackCode}-SH${String(shelf.shelf_code).padStart(2,'0')}`;
+                const boxCode   = `B${String(box.box_code).padStart(2,'0')}`;
 
-                // Build content safely
-                let contentHTML = '';
-                console.log(items)
+                boxEl.setAttribute(
+                'data-loc',
+                `${rackCode} ${shelfCode} ${boxCode}`
+                );
+                
 
-                if (items.length === 0) {
-                    contentHTML = `<div class="box-line" style="color:#888;">Empty</div>`;
-                } else {
-                    contentHTML = items.slice(0, 2).map(item => {
-                        const code =item.material_code   || item.product_code || '??';
-                        const name = item.material_name || item.product_name || 'Item';
+                boxEl.className = 'box' + (items.length === 0 ? ' empty' : '') + (hasLow ? ' low-stock' : '');
 
-                        return `
-                            <div class="box-line">
-                                <strong>${code}</strong><br>
-                                <span style="font-size:8px;">${name}</span>
-                            </div>
-                        `;
-                    }).join('');
-                }
+                let contentHTML = items.length === 0 
+                    ? `<div class="box-line" style="color:#888;">Empty</div>`
+                    : items.slice(0, 2).map(item => `
+                        <div class="box-line">
+                            <strong>${item.material_code || item.product_code || '??'}</strong><br>
+                            <span style="font-size:8px;">${item.material_name || item.product_name || 'Item'}</span>
+                        </div>`).join('');
 
-                boxEl.innerHTML = `
-                    <div class="box-id">${box.box_code}</div>
-                    <div class="box-info">${contentHTML}</div>
-                `;
-
-                // 🔥 CRITICAL FIX: NO STALE DATA
-                boxEl.onclick = () => {
-                    const freshItems = (boxItems[box.id] || []);
-                    openModal(box, freshItems);
-                };
-
+                boxEl.innerHTML = `<div class="box-id">${box.box_code}</div><div class="box-info">${contentHTML}</div>`;
+                boxEl.onclick = () => openModal(box, (boxItems[box.id] || []));
                 boxRow.appendChild(boxEl);
             });
-
             shelfRow.appendChild(boxRow);
             rackEl.appendChild(shelfRow);
         });
-
         card.appendChild(rackEl);
         container.appendChild(card);
     });
+
+
 }
+
+
+
 function openModal(box, items) {
-    document.getElementById('box-modal-title').textContent = `Box: ${box.box_code}`;
-    const shelf = allShelves.find(s => s.id === box.shelf_id);
-    const rack = shelf ? allRacks.find(r => r.id === shelf.rack_id) : null;
+        document.getElementById('box-modal-title').textContent=`Box: ${box.box_code}`;
+        const shelf=allShelves.find(s => s.id === box.shelf_id);
+        const rack=shelf ? allRacks.find(r => r.id === shelf.rack_id) : null;
 
-    let html = `<div class="modal-meta">
-        <div class="modal-meta-item">Location<strong>${rack?.rack_code || '--'} › ${shelf?.shelf_code || '--'}</strong></div>
-        <div class="modal-meta-item">Box<strong>${box.box_code}</strong></div>
-    </div>`;
+        let html=`<div class="modal-meta">
+            <div class="modal-meta-item">Location<strong>${rack?.rack_code || '--'} › ${shelf?.shelf_code || '--'}</strong></div>
+            <div class="modal-meta-item">Box<strong>${box.box_code}</strong></div>
+        </div>`;
 
-    if (!items.length) {
-        html += `<div class="empty-modal">📦 This box is empty</div>`;
-    } else {
-        items.forEach(item => {
-            const code =  item.material_code || item.product_code ;
-            const name = item.material_name || item.product_name ;
-            const low = item.stock_qty <= (item.reorder_level || 0);
-            if(item.material_name){
-                html += `
-                <div class="modal-item-row ${low ? 'low-stock-row' : ''}">
-                    <div>
-                        <div class="modal-item-code">${code}</div>
-                        <div class="modal-item-name">${name} for ${item.product_name}</div>
-                    </div>
-                    <div style="text-align:right;">
-                        <strong>${item.stock_qty}</strong><br>
-                        <span class="stock-badge ${low ? 'stock-low' : 'stock-ok'}">${low ? 'LOW' : 'OK'}</span>
-                    </div>
-                </div>`;
-            }else{
-                html += `
-                <div class="modal-item-row ${low ? 'low-stock-row' : ''}">
-                    <div>
-                        <div class="modal-item-code">${code}</div>
-                        <div class="modal-item-name">${name} </div>
-                    </div>
-                    <div style="text-align:right;">
-                        <strong>${item.stock_qty}</strong><br>
-                        <span class="stock-badge ${low ? 'stock-low' : 'stock-ok'}">${low ? 'LOW' : 'OK'}</span>
-                    </div>
-                </div>`;
-            }
-           
-        });
+        if (!items.length) {
+            html += `<div class="empty-modal">📦 This Box is empty</div>`;
+        } else {
+            items.forEach(item => {
+                const code =  item.material_code || item.product_code ;
+                const name=item.material_name || item.product_name ;
+                const low=item.stock_qty <= (item.reorder_level || 0);
+                if(item.material_name){
+                    html += `<div class="modal-item-row ${low ? 'low-stock-row' : ''}">
+                        <div>
+                            <div class="modal-item-code">${code}</div>
+                            <div class="modal-item-name">${name} for ${item.product_name}</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <strong>${item.stock_qty}</strong><br>
+                            <span class="stock-badge ${low ? 'stock-low' : 'stock-ok'}">${low ? 'LOW' : 'OK'}</span>
+                        </div>
+                    </div>`;
+                }else{
+
+                    html += `<div class="modal-item-row ${low ? 'low-stock-row' : ''}">
+                        <div>
+                            <div class="modal-item-code">${code}</div>
+                            <div class="modal-item-name">${name} </div>
+                        </div>
+                        <div style="text-align:right;">
+                            <strong>${item.stock_qty}</strong><br>
+                            <span class="stock-badge ${low ? 'stock-low' : 'stock-ok'}">${low ? 'LOW' : 'OK'}</span>
+                        </div>
+                    </div>`;
+                }
+            
+            });
+        }
+        document.getElementById('box-modal-body').innerHTML=html;
+        document.getElementById('box-modal-overlay').classList.add('open');
     }
-    document.getElementById('box-modal-body').innerHTML = html;
-    document.getElementById('box-modal-overlay').classList.add('open');
+    // document.getElementById("optimize_button").onclick=async () =>{
+    //     let data=await get("/optimize_layout")
+    //     console.log(data)
+    // }
+
+
+
+
+    function closeModal(){
+        document.getElementById('box-modal-overlay').classList.remove('open'); 
+    }
+    document.getElementById('box-modal-overlay').addEventListener('click', e => {
+        if (e.target === e.currentTarget) closeModal(); 
+    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+    function buildAlerts() {
+        const alerts=[];
+        const lowP = allProducts.filter(p => p.stock_qty <= p.reorder_level);
+        const lowM = allRawMaterials.filter(m => m.stock_qty <= m.reorder_level);
+
+        lowP.slice(0, 3).forEach(p => alerts.push({ type: 'warn', text: `Low stock: ${p.product_name}` }));
+        lowM.slice(0, 3).forEach(m => alerts.push({ type: 'warn', text: `Low material: ${m.material_name}` }));
+
+        if (!alerts.length) alerts.push({ type: 'info', text: 'All stock levels healthy ✓' });
+
+        document.getElementById('alerts-container').innerHTML = alerts.map(a => `
+            <div class="alert ${a.type}"><span class="alert-text">${a.text}</span></div>
+        `).join('');
+    }
+    function buildLocationMap() {
+        const map = {};
+
+        allBoxes.forEach(box => {
+            const shelf = allShelves.find(s => s.id === box.shelf_id);
+            const rack = shelf ? allRacks.find(r => r.id === shelf.rack_id) : null;
+
+            if (!rack || !shelf) return;
+
+            const rackCode  = `R${String(rack.rack_code).padStart(2,'0')}`;
+            const shelfCode = `${rackCode}-SH${String(shelf.shelf_code).padStart(2,'0')}`;
+            const boxCode   = `B${String(box.box_code).padStart(2,'0')}`;
+
+            const key = `${rackCode} ${shelfCode} ${boxCode}`;
+            map[key] = box.id;
+        });
+
+        return map;
+    }
+    function normalizeShelfId(shelfId) {
+            if (typeof shelfId === "number") return shelfId;
+            const numeric = String(shelfId).replace(/\D/g, "");
+            return Number(numeric);
+        }
+ 
+    function getBoxEl(shelfId, rackNo, colNo) {
+            const shelf = normalizeShelfId(shelfId);
+            return document.querySelector(
+                `.box[data-shelf="${shelf}"][data-rack="${rackNo}"][data-col="${colNo}"]`
+            );
+        }
+async function moveBoxVisually(productName, fromLoc, toLoc) {
+    const fromEl = document.querySelector(`[data-loc="${fromLoc}"]`);
+    const toEl   = document.querySelector(`[data-loc="${toLoc}"]`);
+
+    if (!fromEl || !toEl) return;
+
+    const sourceRect = fromEl.getBoundingClientRect();
+    const targetRect = toEl.getBoundingClientRect();
+
+    const ghost = fromEl.cloneNode(true);
+    ghost.style.position = "fixed";
+    ghost.style.left = `${sourceRect.left}px`;
+    ghost.style.top = `${sourceRect.top}px`;
+    ghost.style.width = `${sourceRect.width}px`;
+    ghost.style.height = `${sourceRect.height}px`;
+    ghost.style.margin = "0";
+    ghost.style.zIndex = "9999";
+    ghost.style.pointerEvents = "none";
+    document.body.appendChild(ghost);
+
+    const dx = targetRect.left - sourceRect.left;
+    const dy = targetRect.top - sourceRect.top;
+
+    await ghost.animate(
+        [
+            { transform: "translate(0,0)", opacity: 1 },
+            { transform: `translate(${dx}px, ${dy}px)`, opacity: 1 }
+        ],
+        { duration: 700, easing: "ease-in-out", fill: "forwards" }
+    ).finished;
+
+    toEl.innerHTML = fromEl.innerHTML;
+
+    fromEl.innerHTML = `
+        <div class="box-id">Empty</div>
+        <div class="box-info"><div class="box-line">No items</div></div>
+    `;
+
+    ghost.remove();
+}
+document.getElementById("optimize_button").onclick = async () => {
+    const btn = document.getElementById("optimize_button");
+
+    btn.disabled = true;
+    btn.style.opacity = "0.5";
+    btn.textContent = "Running ML Optimizer...";
+
+    let data = await get("/optimize_layout");
+
+    if (!data || !data.suggestions) {
+        btn.disabled = false;
+        btn.style.opacity = "1";
+        btn.textContent = "Optimize Current Layout";
+        return;
+    }
+
+    console.log("Optimization suggestions:", data);
+
+    renderSection();
+    await new Promise(r => setTimeout(r, 300));
+
+    const moves = data.suggestions.filter(s => s.action === "MOVE" || s.action === "ASSIGN");
+
+    for (const s of moves) {
+        if (s.from !== "Unassigned" && s.from !== s.to) {
+            await animateBoxMove(s.from, s.to, 300);
+        }
+    }
+
+    btn.disabled = false;
+    btn.style.opacity = "1";
+    btn.textContent = "Optimize Current Layout";
+};
+
+
+function getCoordsFromLocation(loc) {
+    const parts = loc.split("→").map(s => s.trim());
+    if (parts.length !== 3) return null;
+
+    const [rackCode, shelfCode, boxCode] = parts;
+
+    const rack = allRacks.find(r => r.rack_code == rackCode);
+    if (!rack) return null;
+
+    const shelf = allShelves.find(s => 
+        s.rack_id == rack.id && s.shelf_code == shelfCode
+    );
+    if (!shelf) return null;
+
+    const boxes = allBoxes
+        .filter(b => b.shelf_id == shelf.id)
+        .sort((a, b) => a.box_code.localeCompare(b.box_code, undefined, { numeric: true }));
+
+    const index = boxes.findIndex(b => b.box_code == boxCode);
+    if (index === -1) return null;
+
+    return {
+        shelf: shelf.id,
+        rack: rack.id,
+        col: index + 1
+    };
+}
+    init();
+function findBoxByPath(path) {
+    return document.querySelector(`.box[data-loc="${path}"]`);
 }
 
-function closeModal() { document.getElementById('box-modal-overlay').classList.remove('open'); }
-document.getElementById('box-modal-overlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+async function animateBoxMove(fromPath, toPath, duration = 900) {
+    const sourceBox = findBoxByPath(fromPath);
+    const targetBox = findBoxByPath(toPath);
 
-function buildAlerts() {
-    const alerts = [];
-    const lowP = allProducts.filter(p => p.stock_qty <= p.reorder_level);
-    const lowM = allRawMaterials.filter(m => m.stock_qty <= m.reorder_level);
+    if (!sourceBox || !targetBox) {
+        console.warn("Invalid move:", fromPath, toPath);
+        return;
+    }
 
-    lowP.slice(0, 3).forEach(p => alerts.push({ type: 'warn', text: `Low stock: ${p.product_name}` }));
-    lowM.slice(0, 3).forEach(m => alerts.push({ type: 'warn', text: `Low material: ${m.material_name}` }));
+    const sourceRect = sourceBox.getBoundingClientRect();
+    const targetRect = targetBox.getBoundingClientRect();
 
-    if (!alerts.length) alerts.push({ type: 'info', text: 'All stock levels healthy ✓' });
+    const ghost = sourceBox.cloneNode(true);
+    ghost.style.position = "fixed";
+    ghost.style.left = `${sourceRect.left}px`;
+    ghost.style.top = `${sourceRect.top}px`;
+    ghost.style.width = `${sourceRect.width}px`;
+    ghost.style.height = `${sourceRect.height}px`;
+    ghost.style.zIndex = "9999";
+    ghost.style.pointerEvents = "none";
 
-    document.getElementById('alerts-container').innerHTML = alerts.map(a => `
-        <div class="alert ${a.type}"><span class="alert-text">${a.text}</span></div>
-    `).join('');
+    document.body.appendChild(ghost);
+
+    const dx = targetRect.left - sourceRect.left;
+    const dy = targetRect.top - sourceRect.top;
+
+    await ghost.animate(
+        [
+            { transform: "translate(0,0)" },
+            { transform: `translate(${dx}px, ${dy}px)` }
+        ],
+        { duration, easing: "ease-in-out", fill: "forwards" }
+    ).finished;
+
+    targetBox.innerHTML = sourceBox.innerHTML;
+
+    ghost.remove();
 }
-
-init();
 </script>
 </body>
 </html>

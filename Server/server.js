@@ -66,7 +66,6 @@ app.get('/setup',(req,res)=>{
 app.get('/stimulations',(req,res)=>{
   res.sendFile(path.join(__dirname, "../Client/stimulations_c.html"))
 })
-// POST /create-rack
 app.post("/create-rack", async (req, res) => {
   try {
     const { rack_code, type, created_by = 1 } = req.body;
@@ -83,23 +82,16 @@ app.post("/create-rack", async (req, res) => {
   }
 });
  
-// GET /get-racks
 app.get("/get-racks", async (req, res) => {
   const rows = await db(`SELECT id, rack_code, type, created_by FROM racks ORDER BY id ASC`);
   res.json(rows);
 });
  
-// ============================================================
-//  SHELVES
-// ============================================================
- 
-// POST /create-shelves  (creates N levels under a rack)
 app.post("/create-shelves", async (req, res) => {
   try {
     const { rack_id, levels, created_by = 1 } = req.body;
     if (!rack_id || !levels) return res.status(400).json({ error: "rack_id and levels required" });
  
-    // Fetch rack code to build shelf codes
     const [rack] = await db(`SELECT rack_code FROM racks WHERE id = ?`, [rack_id]);
     if (!rack) return res.status(404).json({ error: "Rack not found" });
  
@@ -118,7 +110,6 @@ app.post("/create-shelves", async (req, res) => {
   }
 });
  
-// GET /get-shelves
 app.get("/get-shelves", async (req, res) => {
   const rows = await db(
     `SELECT s.id, s.shelf_code, s.rack_id, s.level, r.rack_code
@@ -128,11 +119,6 @@ app.get("/get-shelves", async (req, res) => {
   res.json(rows);
 });
  
-// ============================================================
-//  BOXES
-// ============================================================
- 
-// POST /create-boxes  (creates N boxes on a shelf)
 app.post("/create-boxes", async (req, res) => {
   try {
     const { shelf_id, count, max_units, created_by = 1 } = req.body;
@@ -142,7 +128,6 @@ app.post("/create-boxes", async (req, res) => {
     const [shelf] = await db(`SELECT shelf_code FROM shelves WHERE id = ?`, [shelf_id]);
     if (!shelf) return res.status(404).json({ error: "Shelf not found" });
  
-    // Find existing box count for this shelf to continue numbering
     const [{ existing }] = await db(
       `SELECT COUNT(*) AS existing FROM boxes WHERE shelf_id = ?`,
       [shelf_id]
@@ -163,7 +148,6 @@ app.post("/create-boxes", async (req, res) => {
   }
 });
  
-// GET /get-boxes
 app.get("/get-boxes", async (req, res) => {
   const rows = await db(
     `SELECT b.id, b.box_code, b.shelf_id, b.max_units, s.shelf_code
@@ -173,11 +157,6 @@ app.get("/get-boxes", async (req, res) => {
   res.json(rows);
 });
  
-// ============================================================
-//  PRODUCTS
-// ============================================================
- 
-// POST /create-product
 app.post("/create-product", async (req, res) => {
   try {
     const {
@@ -212,7 +191,6 @@ app.post("/create-product", async (req, res) => {
   }
 });
  
-// POST /import-products  (bulk Excel import)
 app.post("/import-products", async (req, res) => {
   try {
     const { products } = req.body;
@@ -240,7 +218,6 @@ app.post("/import-products", async (req, res) => {
         );
         inserted++;
       } catch (e) {
-        // Skip duplicates silently
         if (e.code === "ER_DUP_ENTRY") skipped++;
         else throw e;
       }
@@ -257,7 +234,6 @@ app.get("/get_all_products", async (req, res) => {
   res.json(rows);
 })
 
-// GET /get-products
 app.get("/get-products", async (req, res) => {
   const { category, size_category, low_stock } = req.query;
  
@@ -277,7 +253,6 @@ app.get("/get-products", async (req, res) => {
   res.json(rows);
 });
  
-// GET /get-product/:id
 app.get("/get-product/:id", async (req, res) => {
   const [row] = await db(
     `SELECT p.*, b.box_code FROM products p LEFT JOIN boxes b ON b.id = p.box_id WHERE p.id = ?`,
@@ -287,7 +262,6 @@ app.get("/get-product/:id", async (req, res) => {
   res.json(row);
 });
  
-// PATCH /update-product/:id
 app.patch("/update-product/:id", async (req, res) => {
   const fields = ["category","unit_price","mfg_cost","stock_qty","reorder_level","size_category","demand","box_id"];
   const updates = [];
@@ -303,10 +277,6 @@ app.patch("/update-product/:id", async (req, res) => {
   await db(`UPDATE products SET ${updates.join(", ")}, updated_at = NOW() WHERE id = ?`, values);
   res.json({ updated: true });
 });
- 
-// ============================================================
-//  SALES DATA
-// ============================================================
  
 app.get("/get-sales", async (req, res) => {
   const { group_by = "item", from, to } = req.query;
@@ -329,35 +299,26 @@ app.post("/import-sales", async (req, res) => {
     if (!Array.isArray(records) || !records.length)
       return res.status(400).json({ error: "records array required" });
 
-    /**
-     * Helper: Standardizes dates to YYYY-MM-DD.
-     * Handles: '31-12-2023', '12/31/2023', JS Date objects, and ISO strings.
-     */
     const parseDate = (d) => {
       if (!d) return null;
       let dateObj;
 
       if (typeof d === "string") {
-        // Handle common DD-MM-YYYY or DD/MM/YYYY formats
         const parts = d.split(/[-/ ]/);
         if (parts.length === 3) {
-          // If year is the first part (YYYY-MM-DD)
           if (parts[0].length === 4) {
             dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
           } 
-          // If year is the last part (DD-MM-YYYY)
           else if (parts[2].length === 4) {
             dateObj = new Date(parts[2], parts[1] - 1, parts[0]);
           }
         }
       }
       
-      // Fallback to native constructor if parsing failed or format was different
       if (!dateObj || isNaN(dateObj)) dateObj = new Date(d);
 
       if (isNaN(dateObj.getTime())) return null;
 
-      // Extract YYYY-MM-DD without timezone shifts
       const y = dateObj.getFullYear();
       const m = String(dateObj.getMonth() + 1).padStart(2, "0");
       const day = String(dateObj.getDate()).padStart(2, "0");
@@ -385,14 +346,12 @@ app.post("/import-sales", async (req, res) => {
       groups[key].push(i);
     });
 
-    // ── 3. Compute features per group ─────────────────────────
     const feat = rows.map(r => {
-      // sale_date is now strictly YYYY-MM-DD string
       const [y, m, d] = r.sale_date.split("-").map(Number);
       const dateObj = new Date(y, m - 1, d);
       
-      const day = dateObj.getDay(); // 0=Sun ... 6=Sat
-      const dow = day === 0 ? 6 : day - 1; // Convert to 0=Mon ... 6=Sun
+      const day = dateObj.getDay();
+      const dow = day === 0 ? 6 : day - 1;
       
       return {
         day_of_week:    dow,
@@ -469,7 +428,6 @@ app.post("/import-sales", async (req, res) => {
       });
     }
 
-    // ── 4. Bulk INSERT IGNORE in chunks of 5000 ───────────────
     const CHUNK    = 5000;
     let inserted   = 0;
     let skipped    = 0;
@@ -522,10 +480,6 @@ app.post("/import-sales", async (req, res) => {
 });
 
 
-// ─────────────────────────────────────────────────────────────
-//  FIX 1: /sales-summary — was using non-existent column
-//  `sales_qty`; correct column name is `sales`
-// ─────────────────────────────────────────────────────────────
 app.get("/sales-summary", async (req, res) => {
   const [rows] = await pool.execute(`
     SELECT
@@ -540,10 +494,6 @@ app.get("/sales-summary", async (req, res) => {
   res.json(rows[0]);
 });
 
- // ============================================================
-//  RAW MATERIALS — add these routes to server.js
-// ============================================================
-// Helper: resolve rack+shelf+box strings → box_id
 async function resolveBoxId(rack_code, shelf_level, box_code) {
   if (!rack_code || !shelf_level || !box_code) return null;
   const [rack] = await db(`SELECT id FROM racks WHERE rack_code = ?`, [rack_code]);
@@ -560,11 +510,6 @@ async function resolveBoxId(rack_code, shelf_level, box_code) {
   return box?.id || null;
 }
  
-// ─────────────────────────────────────────────────────────────
-//  FIX 3: /import-products-with-location — VALUES clause had
-//  only 11 `?` for 12 columns. Added missing `?` for
-//  `created_by`.
-// ─────────────────────────────────────────────────────────────
 app.post("/import-products-with-location", async (req, res) => {
   try {
     const { products } = req.body;
@@ -574,16 +519,11 @@ app.post("/import-products-with-location", async (req, res) => {
     let inserted = 0, skipped = 0, unresolved = 0;
 
     for (const p of products) {
-      // Normalize incoming strings — XLSX sometimes adds whitespace
       const rack_code   = (p.rack_code   || '').toString().trim();
       const box_code    = (p.box_code    || '').toString().trim();
       const shelf_level = +p.shelf_level || 0;
 
-      console.log("🔍 Product location input:", { rack_code, shelf_level, box_code });
-
       const box_id = await ensureLocation(rack_code, shelf_level, box_code);
-
-      console.log("📦 Resolved box_id:", box_id, "for product:", p.product_code);
 
       if (rack_code && !box_id) unresolved++;
 
@@ -606,7 +546,7 @@ app.post("/import-products-with-location", async (req, res) => {
             p.size_category   || 'medium',
             +p.demand         || 0,
             box_id,
-            null,             // created_by
+            null,
           ]
         );
         inserted++;
@@ -618,19 +558,10 @@ app.post("/import-products-with-location", async (req, res) => {
 
     res.json({ inserted, skipped, unresolved });
   } catch (e) {
-    console.error("❌ import-products-with-location error:", e);
     res.status(500).json({ error: e.message });
   }
 });
 
-
-// ─────────────────────────────────────────────────────────────
-//  FIX 4: /import-raw-materials-with-location BOM block —
-//  was fetching rm.id (numeric) and p.id (numeric) but
-//  product_boms stores string codes, matching the JOIN in
-//  /get-bom which uses rm.material_code and p.product_code.
-//  Fixed to select rm.material_code and p.product_code.
-// ─────────────────────────────────────────────────────────────
 app.post("/import-raw-materials-with-location", async (req, res) => {
   try {
     const { materials } = req.body;
@@ -681,8 +612,6 @@ app.post("/import-raw-materials-with-location", async (req, res) => {
       }
     }
 
-    // Use string codes (material_code, product_code) — not numeric IDs —
-    // because product_boms joins on rm.material_code and p.product_code
     const materialsForBom = await db(`
       SELECT 
         rm.material_code AS material_id,
@@ -760,12 +689,6 @@ app.post("/create-raw-material", async (req, res) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────
-//  FIX 5: /auto-create-boms — was fetching p.id (numeric)
-//  as product_id. product_boms.product_id must be the
-//  product_code string to match the JOIN in /get-bom.
-//  Fixed to select p.product_code AS product_id.
-// ─────────────────────────────────────────────────────────────
 app.post("/auto-create-boms", async (req, res) => {
   try {
     const materials = await db(`
@@ -791,8 +714,8 @@ app.post("/auto-create-boms", async (req, res) => {
            VALUES (?, ?, ?)
            ON DUPLICATE KEY UPDATE qty_per_unit = VALUES(qty_per_unit)`,
           [
-            m.product_id,        // product_code string
-            m.material_code,     // material_code string
+            m.product_id,
+            m.material_code,
             +m.qty_per_unit || 1
           ]
         );
@@ -1003,10 +926,6 @@ app.get("/get-raw-materials-summary", async (_, res) => {
   res.json(row);
 });
 
-// ─────────────────────────────────────────────────────────────
-//  FIX 2: /sales-by-item — was selecting non-existent column
-//  `sales_qty`; correct column name is `sales`
-// ─────────────────────────────────────────────────────────────
 app.get("/sales-by-item", async (req, res) => {
   const { item_id } = req.query;
   if (!item_id) return res.status(400).json({ error: "item_id required" });
@@ -1033,6 +952,50 @@ app.get("/get-sales-summary", async (_, res) => {
   res.json(row);
 });
  
+// ML model apis
+
+async function getOptimizedLayout() {
+    try {
+        const response = await axios.post('http://localhost:8000/optimizelayout'); // change URL if deployed
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching optimized layout:', error.message);
+        throw error;
+    }
+}
+app.get('/optimize_layout', async (req, res) => {
+    try {
+      let fastapi_domain=process.env.fastapi_site_domain
+        const response = await axios.post(fastapi_domain+"/optimizelayout");
+        res.json(response.data);
+    } catch (error) {
+        console.error('FastAPI error:', error.message);
+        res.status(500).json({ error: 'Failed to fetch layout suggestions' });
+    }
+});
+
+app.listen(3000, () => {
+    console.log('Node server running on port 3000');
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 app.listen(port,()=>{
   console.log(`Server started on port ${port}`)
@@ -1040,7 +1003,6 @@ app.listen(port,()=>{
   
 })
 
-// Helper: get-or-create rack → shelf → box, returns box_id
 async function ensureLocation(rack_code, shelf_level, box_code) {
   try {
     if (!rack_code) return null;
@@ -1054,29 +1016,26 @@ async function ensureLocation(rack_code, shelf_level, box_code) {
       return null;
     }
 
-    // ── 1. RACK ──
     const type = rack_code.startsWith('RK-M') ? 'raw_material' : 'product';
     
     await db(`INSERT IGNORE INTO racks (rack_code, type) VALUES (?, ?)`, [rack_code, type]);
     const rack_rows = await db(`SELECT id FROM racks WHERE rack_code = ?`, [rack_code]);
     const rack_id = rack_rows[0]?.id;
 
-    // ── 2. SHELF ──
     const shelf_code = `${rack_code}-SH${String(shelf_level).padStart(2, '0')}`;
     await db(`INSERT IGNORE INTO shelves (shelf_code, rack_id, level, created_by) VALUES (?, ?, ?, NULL)`, [shelf_code, rack_id, shelf_level]);
     const shelf_rows = await db(`SELECT id FROM shelves WHERE rack_id = ? AND level = ?`, [rack_id, shelf_level]);
     const shelf_id = shelf_rows[0]?.id;
-    if (!shelf_id) { console.error('❌ shelf_id not resolved for', shelf_code); return null; }
+    if (!shelf_id) { console.error('shelf_id not resolved for', shelf_code); return null; }
 
-    // ── 3. BOX ──
     await db(`INSERT IGNORE INTO boxes (box_code, shelf_id, max_units, created_by) VALUES (?, ?, 50, NULL)`, [box_code, shelf_id]);
     const box_rows = await db(`SELECT id FROM boxes WHERE shelf_id = ? AND box_code = ?`, [shelf_id, box_code]);
     const box_id = box_rows[0]?.id;
-    if (!box_id) { console.error('❌ box_id not resolved for', box_code); return null; }
+    if (!box_id) { console.error('box_id not resolved for', box_code); return null; }
     return box_id;
 
   } catch (err) {
-    console.error('❌ ensureLocation error:', err);
+    console.error('ensureLocation error:', err);
     return null;
   }
 }

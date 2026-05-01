@@ -5,216 +5,212 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OptiWare - Simulation Mode</title>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+    }
 
-        body {
-            font-family: "Monospac821 BT", "Lucida Console", "Courier New", monospace;
-            background:
-                radial-gradient(1000px 400px at 50% -100px, #29324a 0%, #0d0f18 60%),
-                #0b0d13;
-            color: #e9edf4;
-            min-height: 100vh;
-        }
+    body {
+        font-family: "Monospac821 BT", "Lucida Console", "Courier New", monospace;
+        background:radial-gradient(1000px 400px at 50% -100px, #29324a 0%, #0d0f18 60%),
+            #0b0d13;
+        color: #e9edf4;
+        min-height: 100vh;
+    }
 
-        .app {
-            min-height: 100vh;
-            display: grid;
-            grid-template-rows: auto auto 1fr;
-            gap: 12px;
-            padding: 12px;
-        }
+    .app {
+        min-height: 100vh;
+        display: grid;
+        grid-template-rows: auto auto 1fr;
+        gap: 12px;
+        padding: 12px;
+    }
 
-        .topbar {
-            border-radius: 18px;
-            border: 1px solid #262b3b;
-            background: rgba(12, 15, 24, 0.9);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-            padding: 16px 24px;
-        }
+    .topbar {
+        border-radius: 18px;
+        border: 1px solid #262b3b;
+        background: rgba(12, 15, 24, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 16px 24px;
+    }
 
-        .topbar h2 {
-            font-size: 20px;
-            color: #eef2f9;
-        }
+    .topbar h2 {
+        font-size: 20px;
+        color: #eef2f9;
+    }
 
-        .topbar-right {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
+    .topbar-right {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
 
-        .pill {
-            border: none;
-            color: #eef2f9;
-            background: #2f3345;
-            border-radius: 999px;
-            padding: 8px 18px;
-            font-size: 16px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
+    .pill {
+        border: none;
+        color: #eef2f9;
+        background: #2f3345;
+        border-radius: 999px;
+        padding: 8px 18px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
 
-        .pill:hover {
-            background: #3a3e52;
-        }
+    .pill:hover {
+        background: #3a3e52;
+    }
 
-        .pill.active {
-            background: #52c28f;
-            color: #071811;
-            font-weight: 700;
-        }
+    .pill.active {
+        background: #52c28f;
+        color: #071811;
+        font-weight: 700;
+    }
 
-        .pill.dashboard-active {
-            background: #4a55d8;
-            color: #eff2fe;
-            font-weight: 700;
-            box-shadow: 0 0 0 2px rgba(74, 85, 216, 0.28);
-        }
+    .pill.dashboard-active {
+        background: #4a55d8;
+        color: #eff2fe;
+        font-weight: 700;
+        box-shadow: 0 0 0 2px rgba(74, 85, 216, 0.28);
+    }
 
-        .avatar {
-            width: 42px;
-            height: 42px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #eceef4, #cbd0d9);
-        }
+    .avatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #eceef4, #cbd0d9);
+    }
 
-        /* Simulation Banner */
-        .simulation-banner {
-            background: linear-gradient(135deg, #ff8c42, #ff6b35);
-            border-radius: 16px;
-            padding: 14px 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
-            animation: pulse-glow 2s ease-in-out infinite;
-            margin-bottom: 20px;
-        }
+    .simulation-banner {
+        background: linear-gradient(135deg, #ff8c42, #ff6b35);
+        border-radius: 16px;
+        padding: 14px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+        animation: pulse-glow 2s ease-in-out infinite;
+        margin-bottom: 20px;
+    }
 
-        @keyframes pulse-glow {
-            0%, 100% { box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3); }
-            50% { box-shadow: 0 4px 20px rgba(255, 107, 53, 0.5); }
-        }
+    @keyframes pulse-glow {
+        0%, 100% { box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3); }
+        50% { box-shadow: 0 4px 20px rgba(255, 107, 53, 0.5); }
+    }
 
-        .simulation-icon {
-            font-size: 24px;
-        }
+    .simulation-icon {
+        font-size: 24px;
+    }
 
-        .simulation-text {
-            color: #fff;
-            font-weight: 700;
-            font-size: 16px;
-            text-align: center;
-        }
+    .simulation-text {
+        color: #fff;
+        font-weight: 700;
+        font-size: 16px;
+        text-align: center;
+    }
 
-        .simulation-subtext {
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 13px;
-            font-weight: 500;
-        }
+    .simulation-subtext {
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 13px;
+        font-weight: 500;
+    }
 
-        /* Scenario Cards */
-        .scenarios-container {
-            display: flex;
-            flex-wrap: wrap;
-            width: 100%;
-            gap: 24px;
-            align-self: start;
-            justify-content: center;
-            padding: 20px;
-        }
+    .scenarios-container {
+        display: flex;
+        flex-wrap: wrap;
+        width: 100%;
+        gap: 24px;
+        align-self: start;
+        justify-content: center;
+        padding: 20px;
+    }
 
-        .scenario-card {
-            width: 350px;
-            height: 280px;
-            background: #2a2e34;
-            border: 1px solid #4a55d8;
-            border-radius: 16px;
-            padding: 24px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            overflow: hidden;
-            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 4px 12px rgba(0,0,0,0.2);
-        }
+    .scenario-card {
+        width: 350px;
+        height: 280px;
+        background: #2a2e34;
+        border: 1px solid #4a55d8;
+        border-radius: 16px;
+        padding: 24px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        overflow: hidden;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 4px 12px rgba(0,0,0,0.2);
+    }
 
-        .scenario-card:hover {
-            transform: translateY(-5px);
-            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1), 0 12px 24px rgba(74, 85, 216, 0.25);
-            background: #31363e;
-        }
+    .scenario-card:hover {
+        transform: translateY(-5px);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1), 0 12px 24px rgba(74, 85, 216, 0.25);
+        background: #31363e;
+    }
 
-        .scenario-card h3 {
-            color: #52c28f;
-            font-size: 18px;
-            margin-bottom: 12px;
-            margin-top: 15px;
-            letter-spacing: 0.5px;
-        }
+    .scenario-card h3 {
+        color: #52c28f;
+        font-size: 18px;
+        margin-bottom: 12px;
+        margin-top: 15px;
+        letter-spacing: 0.5px;
+    }
 
-        .scenario-card p {
-            color: #cbd0d9;
-            font-size: 13px;
-            line-height: 1.6;
-            margin-top: 15px;
-            flex-grow: 1;
-        }
+    .scenario-card p {
+        color: #cbd0d9;
+        font-size: 13px;
+        line-height: 1.6;
+        margin-top: 15px;
+        flex-grow: 1;
+    }
 
-        .scenario-card .function-tag {
-            background: rgba(74, 85, 216, 0.2);
-            color: #a3abff;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 10px;
-            align-self: flex-start;
-            margin-top: 12px;
-            border: 1px solid rgba(74, 85, 216, 0.4);
-        }
+    .scenario-card .function-tag {
+        background: rgba(74, 85, 216, 0.2);
+        color: #a3abff;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 10px;
+        align-self: flex-start;
+        margin-top: 12px;
+        border: 1px solid rgba(74, 85, 216, 0.4);
+    }
 
-        /* Modal Overrides for Dark Theme */
-        .modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(10, 14, 24, 0.85);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 20000;
-            padding: 18px;
-            backdrop-filter: blur(6px);
-        }
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(10, 14, 24, 0.85);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 20000;
+        padding: 18px;
+        backdrop-filter: blur(6px);
+    }
 
-        .modal-overlay.open {
-            display: flex;
-            animation: fadeIn 0.2s ease-out;
-        }
+    .modal-overlay.open {
+        display: flex;
+        animation: fadeIn 0.2s ease-out;
+    }
 
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
 
-        .box-modal {
-            width: min(500px, 96vw);
-            background: #1e2128;
-            border: 1px solid #4a55d8;
-            border-radius: 16px;
-            color: #e9edf4;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
-            padding: 24px;
-            transform: translateY(0);
-        }
-        .simulation-header {
+    .box-modal {
+        width: min(500px, 96vw);
+        background: #1e2128;
+        border: 1px solid #4a55d8;
+        border-radius: 16px;
+        color: #e9edf4;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+        padding: 24px;
+        transform: translateY(0);
+    }
+    .simulation-header {
     padding: 40px 20px;
     margin-bottom: 20px;
     display: flex;
@@ -232,12 +228,11 @@
     font-size: 2.2rem;
     color: #ffffff;
     margin-bottom: 12px;
-    border-left: 5px solid #52c28f; /* OptiWare Green */
     padding-left: 15px;
 }
 
 .header-content p {
-    color: #a0a8b3; /* Lighter grey for description */
+    color: #969fac; 
     font-size: 1.1rem;
     line-height: 1.6;
 }
@@ -270,7 +265,6 @@
     font-weight: 600;
 }
 
-/* Responsiveness */
 @media (max-width: 1000px) {
     .simulation-header {
         flex-direction: column;
@@ -311,7 +305,6 @@
             gap: 16px;
         }
 
-        /* Form Inputs */
         .form-group {
             display: flex;
             flex-direction: column;
@@ -323,7 +316,6 @@
             color: #a3abff;
             font-weight: 600;
         }
-        /* Container Layout */
         .scenarios-container {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -331,28 +323,25 @@
             padding: 20px;
         }
 
-        /* Card Styling */
         .scenario-card {
-            background: #2a2e34; /* Your theme color */
+            background: #2a2e34;
             border: 1px solid #3d444d;
             border-radius: 12px;
             padding: 24px;
             cursor: pointer;
             position: relative;
-            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+           
             display: flex;
             flex-direction: column;
             overflow: hidden;
         }
 
-        /* Icons */
         .card-icon {
             font-size: 2rem;
             margin-bottom: 15px;
-            color: #52c28f; /* Your OptiWare Green */
+            color: #52c28f;
         }
 
-        /* Hover State */
         .scenario-card:hover {
             transform: translateY(-5px);
             border-color: #52c28f;
@@ -360,7 +349,6 @@
             background: #323841;
         }
 
-        /* Action Hint (The "Run" button indicator) */
         .card-action-hint {
             margin-top: 15px;
             font-size: 0.85rem;
@@ -370,15 +358,6 @@
             letter-spacing: 1px;
             opacity: 0.6;
             transition: opacity 0.3s;
-        }
-
-        .scenario-card:hover .card-action-hint {
-            opacity: 1;
-        }
-
-        /* Optional: Pulse effect on hover for the icon */
-        .scenario-card:hover .card-icon {
-            animation: pulse 1s infinite;
         }
 
         @keyframes pulse {
@@ -475,7 +454,6 @@
             font-family: inherit;
         }
 
-        /* ── MAP PANEL ── */
         .map-panel {
             background: #f6f6f6;
             color: #111827;
@@ -585,7 +563,6 @@
             letter-spacing: 1px;
         }
 
-        /* ── STATS BAR ── */
         .stats-bar {
             display: flex;
             gap: 12px;
@@ -611,7 +588,6 @@
         .stat-chip.red   strong { color: #dc2626; }
         .stat-chip.blue  strong { color: #2563eb; }
 
-        /* ── SHELVES GRID ── */
         .shelves {
             display: grid;
             grid-template-columns: repeat(var(--shelf-cols, 3), minmax(200px, 1fr));
@@ -703,7 +679,6 @@
         .box-line + .box-line { margin-top: 1px; }
         .box-line.low { color: #c05621; font-weight: 700; }
 
-        /* ── LOADING / EMPTY ── */
         .loading-state {
             display: flex;
             align-items: center;
@@ -724,19 +699,7 @@
 
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* ── MODAL ── */
-        /* .modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(10, 14, 24, 0.68);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 20000;
-            padding: 18px;
-        }
 
-        .modal-overlay.open { display: flex; } */
 
         .box-modal {
             width: min(620px, 96vw);
@@ -787,121 +750,117 @@
             padding: 8px 10px;
             font-size: 12px;
         }
-        /* Strategy Section Styling */
-.strategy-group {
-    background: rgba(42, 46, 52, 0.5);
-    border: 1px solid #3d444d;
-    border-radius: 8px;
-    padding: 10px;
-    margin: 10px;
-    overflow: hidden;
-    transition: all 0.3s ease;
-}
+        .strategy-group {
+        background: rgba(42, 46, 52, 0.5);
+        border: 1px solid #3d444d;
+        border-radius: 8px;
+        padding: 10px;
+        margin: 10px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
 
-.strategy-header {
-    background: #323841;
-    padding: 10px 15px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #3d444d;
-}
+    .strategy-header {
+        background: #323841;
+        padding: 10px 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #3d444d;
+    }
 
-.strategy-title {
-    font-weight: bold;
-    font-size: 13px;
-    color: #52c28f; /* OptiWare Green */
-    text-transform: uppercase;
-}
+    .strategy-title {
+        font-weight: bold;
+        font-size: 13px;
+        color: #52c28f;
+        text-transform: uppercase;
+    }
 
-.strategy-controls {
-    display: flex;
-    gap: 8px;
-}
+    .strategy-controls {
+        display: flex;
+        gap: 8px;
+    }
 
-.strat-btn {
-    padding: 4px 12px;
-    border-radius: 4px;
-    font-size: 11px;
-    cursor: pointer;
-    border: none;
-    font-weight: bold;
-    transition: 0.2s;
-}
+    .strat-btn {
+        padding: 4px 12px;
+        border-radius: 4px;
+        font-size: 11px;
+        cursor: pointer;
+        border: none;
+        font-weight: bold;
+        transition: 0.2s;
+    }
 
-.strat-btn.apply { background: #52c28f; color: #1a1d21; }
-.strat-btn.discard { background: #3d444d; color: #fff; }
+    .strat-btn.apply { background: #52c28f; color: #1a1d21; }
+    .strat-btn.discard { background: #3d444d; color: #fff; }
 
-.strat-btn:hover { opacity: 0.8; transform: scale(1.05); }
+    .strat-btn:hover { opacity: 0.8; transform: scale(1.05); }
 
-/* Inactive state for when another strategy is applied */
-.strategy-group.disabled {
-    opacity: 0.4;
-    pointer-events: none;
-    filter: grayscale(1);
-}
+    .strategy-group.disabled {
+        opacity: 0.4;
+        pointer-events: none;
+        filter: grayscale(1);
+    }
 
-/* Active Highlight */
-.strategy-group.active-mode {
-    border-color: #52c28f;
-    box-shadow: 0 0 15px rgba(82, 194, 143, 0.2);
-}
+    .strategy-group.active-mode {
+        border-color: #52c28f;
+        box-shadow: 0 0 15px rgba(82, 194, 143, 0.2);
+    }
 
-        .modal-meta-item strong { display: block; font-size: 15px; margin-top: 2px; }
+    .modal-meta-item strong { display: block; font-size: 15px; margin-top: 2px; }
 
-        .modal-items-title {
-            font-size: 13px;
-            font-weight: 700;
-            margin-bottom: 8px;
-            color: #7a4a20;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
+    .modal-items-title {
+        font-size: 13px;
+        font-weight: 700;
+        margin-bottom: 8px;
+        color: #7a4a20;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
 
-        .modal-item-row {
-            display: grid;
-            grid-template-columns: 1fr auto auto;
-            gap: 10px;
-            align-items: center;
-            background: rgba(255,255,255,0.5);
-            border: 1px dashed rgba(120,74,36,0.3);
-            border-radius: 6px;
-            padding: 8px 10px;
-            margin-bottom: 6px;
-            font-size: 12px;
-        }
+    .modal-item-row {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        gap: 10px;
+        align-items: center;
+        background: rgba(255,255,255,0.5);
+        border: 1px dashed rgba(120,74,36,0.3);
+        border-radius: 6px;
+        padding: 8px 10px;
+        margin-bottom: 6px;
+        font-size: 12px;
+    }
 
-        .modal-item-row.low-stock-row { border-color: #f59e0b; background: rgba(245,158,11,0.08); }
-        .modal-item-code { font-weight: 700; font-size: 11px; color: #7a4a20; }
-        .modal-item-name { font-size: 13px; }
-        .stock-badge {
-            padding: 2px 8px;
-            border-radius: 999px;
-            font-size: 11px;
-            font-weight: 700;
-        }
-        .stock-ok  { background: #d1fae5; color: #065f46; }
-        .stock-low { background: #fef3c7; color: #92400e; }
+    .modal-item-row.low-stock-row { border-color: #f59e0b; background: rgba(245,158,11,0.08); }
+    .modal-item-code { font-weight: 700; font-size: 11px; color: #7a4a20; }
+    .modal-item-name { font-size: 13px; }
+    .stock-badge {
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+    }
+    .stock-ok  { background: #d1fae5; color: #065f46; }
+    .stock-low { background: #fef3c7; color: #92400e; }
 
-        .empty-modal { text-align: center; padding: 30px; color: #9a7a5a; font-size: 13px; }
+    .empty-modal { text-align: center; padding: 30px; color: #9a7a5a; font-size: 13px; }
 
-        @media (max-width: 1100px) {
-            .content { grid-template-columns: 1fr; }
-            .topbar { justify-content: flex-start; overflow-x: auto; }
-            .avatar { display: none; }
-            .shelves { grid-template-columns: repeat(2, 1fr); }
-        }
+    @media (max-width: 1100px) {
+        .content { grid-template-columns: 1fr; }
+        .topbar { justify-content: flex-start; overflow-x: auto; }
+        .avatar { display: none; }
+        .shelves { grid-template-columns: repeat(2, 1fr); }
+    }
 
-        @media (max-width: 720px) {
-            .shelves { grid-template-columns: 1fr; }
-            .map-panel { padding: 14px; }
-            .pill { white-space: nowrap; }
-        }
+    @media (max-width: 720px) {
+        .shelves { grid-template-columns: 1fr; }
+        .map-panel { padding: 14px; }
+        .pill { white-space: nowrap; }
+    }
 
     </style>
 </head>
 <body>
-<!-- FIX 1: div.app now wraps ALL content including main and map-panel -->
 <div class="app">
     <header class="topbar">
         <h2>OptiWare</h2>
@@ -972,7 +931,7 @@
             <div class="card-action-hint">Run →</div>
         </div>
     </div>
-    <h1 style="margin-left: 45%;">Warehouse Layout</h1>
+    <h1 style="margin-left: 47%;margin-top: 10px;margin-bottom: 10px;">Warehouse Layout</h1>
     <main class="content" style="display:flex;flex-direction:row;align-items:stretch;gap:0;width:100%;">
         <section class="left-column" style="width:20%;min-width:0;display:flex;flex-direction:column;gap:12px;">
 
@@ -1036,8 +995,6 @@
         </section>
     </main>
 
-    <!-- FIX 3: Modal uncommented — was referenced by JS but missing from DOM,
-         causing modal = null and TypeError on every openSimulationModal() call -->
     <div id="simModal" class="modal-overlay" onclick="handleOutsideClick(event)">
         <div class="box-modal">
             <div class="box-modal-head">
@@ -1052,7 +1009,7 @@
         </div>
     </div>
 
-</div><!-- /.app -->
+</div>
 
 <script>
 const API = 'http://localhost:8080';
@@ -1081,7 +1038,6 @@ async function get(path) {
 
 async function initApp() {
     console.log("OptiWare: Fetching Inventory...");
-    // FIX 4: was '/get_all_products' — correct endpoint is '/get-products'
     const products = await get('/get_all_products');
 
     if (products && products.length > 0) {
@@ -1113,10 +1069,8 @@ async function initApp() {
         allProducts = results[3] || [];
         allRawMaterials = results[4] || [];
 
-        // Natural Sort Racks (R1, R2, R10)
         allRacks.sort((a, b) => a.rack_code.localeCompare(b.rack_code, undefined, { numeric: true }));
 
-        // buildAlerts();
         renderSection();
     } catch (e) {
         document.getElementById('shelves').innerHTML = `<div class="loading-state">⚠️ Error loading data</div>`;
@@ -1132,7 +1086,6 @@ function renderSection() {
     document.getElementById('section-title').textContent = sec.title;
     document.getElementById('section-badge').textContent = sec.badge;
 
-    // 1. Filter racks strictly by type
     const sectionRacks = allRacks.filter(r => r.type === sec.type);
 
     if (!sectionRacks.length) {
@@ -1140,8 +1093,6 @@ function renderSection() {
         document.getElementById('stats-bar').innerHTML = '';
         return;
     }
-
-    // 2. Build map using ONLY items belonging to this section type
 
     const boxItems = buildBoxItemMap(sec.type);
 
@@ -1151,7 +1102,6 @@ function renderSection() {
 
 function buildBoxItemMap(type) {
     const map = {};
-    // FIX: Choose the correct array based on section type
     const items = (type === 'product') ? allProducts : allRawMaterials;
     
 
@@ -1193,11 +1143,9 @@ function renderStats(sectionRacks, boxItems, type) {
 function renderShelves(sectionRacks, boxItems) {
     const container = document.getElementById('shelves');
 
-    // 🔥 HARD RESET (important)
     container.innerHTML = '';
-    container.replaceChildren(); // extra safety
+    container.replaceChildren();
 
-    // Build shelf map fresh
     const shelvesByRack = {};
     allShelves.forEach(s => {
         if (!shelvesByRack[s.rack_id]) shelvesByRack[s.rack_id] = [];
@@ -1213,7 +1161,6 @@ function renderShelves(sectionRacks, boxItems) {
         const card = document.createElement('div');
         card.className = 'shelf-card';
 
-        // Header
         const header = document.createElement('div');
         header.innerHTML = `
             <p class="shelf-id">#${rack.rack_code}</p>
@@ -1232,7 +1179,6 @@ function renderShelves(sectionRacks, boxItems) {
             const shelfRow = document.createElement('div');
             shelfRow.style.cssText = 'display:grid; gap:4px; margin-bottom:8px;';
 
-            // Shelf label
             const label = document.createElement('div');
             label.style.cssText = 'font-size:9px; color:#555;';
             label.textContent = shelf.shelf_code;
@@ -1242,8 +1188,6 @@ function renderShelves(sectionRacks, boxItems) {
             boxRow.style.cssText = `display:grid; grid-template-columns:repeat(${shelfBoxes.length || 1}, 1fr); gap:6px;`;
 
             shelfBoxes.forEach(box => {
-
-                // 🔥 ALWAYS GET FRESH ITEMS
                 const items = (boxItems[box.id] || []);
 
                 const hasLow = items.some(i => i.stock_qty <= (i.reorder_level || 0));
@@ -1254,7 +1198,6 @@ function renderShelves(sectionRacks, boxItems) {
                     (items.length === 0 ? ' empty' : '') +
                     (hasLow ? ' low-stock' : '');
 
-                // Build content safely
                 let contentHTML = '';
                 console.log(items)
 
@@ -1279,7 +1222,6 @@ function renderShelves(sectionRacks, boxItems) {
                     <div class="box-info">${contentHTML}</div>
                 `;
 
-                // 🔥 CRITICAL FIX: NO STALE DATA
                 boxEl.onclick = () => {
                     const freshItems = (boxItems[box.id] || []);
                     openModal(box, freshItems);
@@ -1342,8 +1284,6 @@ const simConfigs = {
     }
 };
 
-// FIX 3 (cont): 'modal' is now looked up inside functions instead of at the
-// top level — avoids null reference when the DOM element was missing/commented out.
 let currentActiveScenario = null;
 
 function openSimulationModal(scenarioKey) {
