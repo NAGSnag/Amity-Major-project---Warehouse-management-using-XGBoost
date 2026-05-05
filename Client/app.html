@@ -802,6 +802,7 @@
 
 
 function openModal(box, items) {
+    console.log(box)
         document.getElementById('box-modal-title').textContent=`Box: ${box.box_code}`;
         const shelf=allShelves.find(s => s.id === box.shelf_id);
         const rack=shelf ? allRacks.find(r => r.id === shelf.rack_id) : null;
@@ -1094,9 +1095,9 @@ document.getElementById("optimize_button").onclick = async () => {
 
         // 🔥 STORE FOR APPLY API
         layoutUpdates.push({
-            product: s.product,
-            to_box_id: targetBoxId
-        });
+        material_id: s.material_id,
+        box_id: locationMap[toLoc]
+    });
 
         // 🔥 VISUAL MOVE
         if (fromLoc !== "Unassigned" && fromLoc !== toLoc) {
@@ -1371,7 +1372,7 @@ document.getElementById("optimize_rm_button").onclick = async () => {
     const locationMap = buildLocationMap(); 
 
     for (const s of data.suggestions) {
-        console.log(s)
+        // console.log(s)
 
         // 🚫 skip invalid target
         if (!s.to || s.to === "No box available") {
@@ -1386,6 +1387,7 @@ document.getElementById("optimize_rm_button").onclick = async () => {
         if (!fromLoc || !toLoc || fromLoc === toLoc) continue;
 
         await animateBoxMove_rawmaterials(fromLoc, toLoc, 200);
+        swapBoxData(fromLoc, toLoc, locationMap);
 
         movementLogs.push(`Moved ${s.material} from ${fromLoc} → ${toLoc}`);
 
@@ -1417,6 +1419,19 @@ document.getElementById("optimize_rm_button").onclick = async () => {
     btn.style.opacity = "1";
     btn.textContent = "Optimize Raw Materials";
 };
+const locationMap = buildLocationMap();
+function swapBoxData(fromLoc, toLoc, locationMap) {
+    const fromBoxId = locationMap[fromLoc];
+    const toBoxId   = locationMap[toLoc];
+
+    if (!fromBoxId || !toBoxId) return;
+
+    const fromItems = allRawMaterials.filter(i => i.box_id == fromBoxId);
+    const toItems   = allRawMaterials.filter(i => i.box_id == toBoxId);
+
+    fromItems.forEach(i => i.box_id = toBoxId);
+    toItems.forEach(i => i.box_id = fromBoxId);
+}
 </script>
 </body>
 </html>
