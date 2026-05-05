@@ -332,6 +332,7 @@ def optimize_raw_materials():
         df = pd.DataFrame(Salesdata)
         df['sale_date'] = pd.to_datetime(df['sale_date'])
         df['item_id'] = df['item_id'].astype(str).str.strip()
+
         for col in FEATURES:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0)
@@ -347,7 +348,7 @@ def optimize_raw_materials():
             demand = float(_model.predict(X)[0])
             product_demand[row['item_id']] = demand
 
-        # ---------- RAW MATERIAL USAGE (FIXED) ----------
+        # ---------- RAW MATERIAL USAGE ----------
         raw_usage = {}
 
         for rm in RawMaterials:
@@ -355,7 +356,6 @@ def optimize_raw_materials():
 
             linked_products = []
 
-            # ✅ SUPPORT BOTH COLUMN TYPES
             if rm.get("product_ids"):
                 linked_products = str(rm.get("product_ids")).split(",")
             elif rm.get("product_id"):
@@ -378,37 +378,50 @@ def optimize_raw_materials():
 
         suggestions = []
 
-        with engine.begin() as conn:
-            for i, rm in enumerate(sorted_rm):
-                rm_id = str(rm.get('id'))
-                name  = rm.get('material_name', f'RM {rm_id}')
+        # ---------- GET CURRENTLY USED BOXES ----------
+        used_boxes = [
+            b for b in Boxes
+            if any(str(rm.get("box_id")) == str(b.get("id")) for rm in RawMaterials)
+        ]
 
-                # CURRENT LOCATION
-                current_box = next(
-                    (b for b in Boxes if str(b.get("id")) == str(rm.get("box_id"))),
-                    None
-                )
-                from_loc = build_loc(current_box)
+        # ---------- SORT USED BOXES BY POSITION ----------
+        used_boxes_sorted = sorted(
+            used_boxes,
+            key=lambda b: (
+                int(rack_map.get(str(shelf_map.get(str(b.get('shelf_id')), {}).get('rack_id')), {}).get('position') or 0),
+                int(shelf_map.get(str(b.get('shelf_id')), {}).get('position') or 0),
+                int(b.get('position') or b.get('id') or 0)
+            )
+        )
 
-                # TARGET LOCATION
-                if i < len(enriched_boxes):
-                    target_box = enriched_boxes[i]["box"]
-                    to_loc = build_loc(target_box)
+        # ---------- SWAP ASSIGNMENT ----------
+        for i in range(min(len(sorted_rm), len(used_boxes_sorted))):
 
-                    # UPDATE DB
-                    conn.execute(
-                        text("UPDATE raw_materials SET box_id = :box_id WHERE id = :id"),
-                        {"box_id": target_box.get("id"), "id": rm_id}
-                    )
-                else:
-                    to_loc = "No box available"
+            rm = sorted_rm[i]
+            target_box = used_boxes_sorted[i]
 
-                suggestions.append({
-                    "material": name,
-                    "from": from_loc,
-                    "to": to_loc,
-                    "usage_score": raw_usage.get(rm_id, 0)
-                })
+            rm_id = str(rm.get('id'))
+            name  = rm.get('material_name', f'RM {rm_id}')
+
+            # CURRENT LOCATION
+            current_box = next(
+                (b for b in Boxes if str(b.get("id")) == str(rm.get("box_id"))),
+                None
+            )
+            from_loc = build_loc(current_box)
+
+            # TARGET LOCATION (SWAP ONLY)
+            to_loc = build_loc(target_box)
+            target_box_id = target_box.get("id")
+
+            suggestions.append({
+                "material": name,
+                "material_id": rm_id,
+                "from": from_loc,
+                "to": to_loc,
+                "to_box_id": target_box_id,
+                "usage_score": raw_usage.get(rm_id, 0)
+            })
 
         return {
             "total": len(suggestions),

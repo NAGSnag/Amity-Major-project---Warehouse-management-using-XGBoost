@@ -1161,10 +1161,83 @@ function getCoordsFromLocation(loc) {
     init();
 function findBoxByPath(path) {
     const normalized = normalizeLocation(path);
-    console.log(normalized)
+    // console.log(normalized)
 
     return document.querySelector(`.box[data-loc="${normalized}"]`);
 }
+function findBoxByPath_rawmaterials(loc) {
+    if (!loc || loc === "Unassigned") return null;
+
+    // extract numbers safely
+    const rackMatch = loc.match(/M(\d+)|RR(\d+)/i);
+    const shelfMatch = [...loc.matchAll(/SH(\d+)/gi)];
+    const boxMatch = loc.match(/BX(\d+)|BB(\d+)/i);
+
+    if (!rackMatch || shelfMatch.length === 0 || !boxMatch) {
+        console.warn("Bad loc format:", loc);
+        return null;
+    }
+
+    const rack  = String(parseInt(rackMatch[1] || rackMatch[2])).padStart(2, '0');
+    const shelf = String(parseInt(shelfMatch[shelfMatch.length - 1][1])).padStart(2, '0');
+    const box   = String(parseInt(boxMatch[1] || boxMatch[2])).padStart(2, '0');
+
+    // 🔥 FIND ELEMENT WITHOUT REBUILDING STRING
+    return [...document.querySelectorAll('.box')].find(el => {
+        const d = el.getAttribute('data-loc');
+
+        return d.includes(`M${rack}`) &&
+               d.includes(`SH${shelf}`) &&
+               d.includes(`BX${box}`);
+    });
+}
+
+async function animateBoxMove_rawmaterials(fromPath, toPath, duration = 500) {
+    const sourceBox = findBoxByPath_rawmaterials(fromPath);
+    const targetBox = findBoxByPath_rawmaterials(toPath);
+
+    if (!sourceBox || !targetBox) {
+        console.warn("Invalid move:", fromPath, toPath);
+        return;
+    }
+
+    const sourceRect = sourceBox.getBoundingClientRect();
+    const targetRect = targetBox.getBoundingClientRect();
+
+    // 🔥 SAVE BOTH CONTENTS
+    const sourceContent = sourceBox.innerHTML;
+    const targetContent = targetBox.innerHTML;
+
+    const ghost = sourceBox.cloneNode(true);
+    ghost.style.position = "fixed";
+    ghost.style.left = `${sourceRect.left}px`;
+    ghost.style.top = `${sourceRect.top}px`;
+    ghost.style.width = `${sourceRect.width}px`;
+    ghost.style.height = `${sourceRect.height}px`;
+    ghost.style.zIndex = "9999";
+    ghost.style.pointerEvents = "none";
+
+    document.body.appendChild(ghost);
+
+    const dx = targetRect.left - sourceRect.left;
+    const dy = targetRect.top - sourceRect.top;
+
+    await ghost.animate(
+        [
+            { transform: "translate(0,0)" },
+            { transform: `translate(${dx}px, ${dy}px)` }
+        ],
+        { duration, easing: "ease-in-out", fill: "forwards" }
+    ).finished;
+
+    // 🔥 SWAP (not overwrite)
+    targetBox.innerHTML = sourceContent;
+    sourceBox.innerHTML = targetContent;
+
+    ghost.remove();
+}
+
+
 async function animateBoxMove(fromPath, toPath, duration = 900) {
     const sourceBox = findBoxByPath(fromPath);
     const targetBox = findBoxByPath(toPath);
@@ -1209,6 +1282,69 @@ async function animateBoxMove(fromPath, toPath, duration = 900) {
 
     ghost.remove();
 }
+function normalizeLocation_rawmaterials(loc) {
+    if (!loc || loc === "Unassigned") return loc;
+
+    let rack, shelf, box;
+
+    // =========================
+    // ✅ FORMAT 1: RRK-M08 ...
+    // =========================
+    if (loc.includes("RRK-M")) {
+
+        const rackMatch = loc.match(/M(\d+)/i);
+        const shelfMatches = [...loc.matchAll(/SH(\d+)/gi)];
+        const boxMatch = loc.match(/BX(\d+)/i);
+
+        if (!rackMatch || shelfMatches.length === 0 || !boxMatch) {
+            console.warn("Bad loc format:", loc);
+            return loc;
+        }
+
+        rack = rackMatch[1];
+        shelf = shelfMatches[shelfMatches.length - 1][1]; // last SH
+        box = boxMatch[1];
+    }
+
+    // =========================
+    // ✅ FORMAT 2: RR01 ...
+    // =========================
+    else if (loc.includes("RR")) {
+
+        const rackMatch = loc.match(/RR(\d+)/i);
+        const shelfMatches = [...loc.matchAll(/SH(\d+)/gi)];
+        const boxMatch = loc.match(/BB(\d+)/i);
+
+        if (!rackMatch || shelfMatches.length === 0 || !boxMatch) {
+            console.warn("Bad loc format:", loc);
+            return loc;
+        }
+
+        rack = rackMatch[1];
+        shelf = shelfMatches[shelfMatches.length - 1][1];
+        box = boxMatch[1];
+    }
+
+    // =========================
+    // ❌ UNKNOWN FORMAT
+    // =========================
+    else {
+        console.warn("Unknown format:", loc);
+        return loc;
+    }
+
+    // normalize to 2 digits
+    rack  = String(parseInt(rack)).padStart(2, '0');
+    shelf = String(parseInt(shelf)).padStart(2, '0');
+    box   = String(parseInt(box)).padStart(2, '0');
+
+    // ✅ RETURN IN DOM FORMAT (pick ONE format your UI uses)
+    const rackCode  = `RRK-M${rack}`;
+    const shelfCode = `${rackCode}-SHRK-M${rack}-SH${shelf}`;
+    const boxCode   = `BRK-M${rack}-SH${shelf}-BX${box}`;
+
+    return `${rackCode} ${shelfCode} ${boxCode}`;
+}
 
 document.getElementById("optimize_rm_button").onclick = async () => {
     const btn = document.getElementById("optimize_rm_button");
@@ -1218,7 +1354,6 @@ document.getElementById("optimize_rm_button").onclick = async () => {
     btn.textContent = "Optimizing Raw Materials...";
 
     let data = await get("/optimize_raw_materials");
-    console.log(data)
 
     if (!data || !data.suggestions) {
         btn.disabled = false;
@@ -1227,25 +1362,56 @@ document.getElementById("optimize_rm_button").onclick = async () => {
         return;
     }
 
-    console.log("RM Optimization:", data);
-
-    let optimizationAlerts = [];
+    let movementLogs = [];
+    layoutUpdates = []; // ✅ IMPORTANT
 
     renderSection();
     await new Promise(r => setTimeout(r, 300));
 
-    for (const s of data.suggestions) {
-        if (s.from && s.to && s.from !== s.to) {
-            await animateBoxMove(s.from, s.to, 300);
+    const locationMap = buildLocationMap(); 
 
-            optimizationAlerts.push({
-                type: 'info',
-                text: `Moved ${s.material} from ${s.from} → ${s.to}`
-            });
+    for (const s of data.suggestions) {
+        console.log(s)
+
+        // 🚫 skip invalid target
+        if (!s.to || s.to === "No box available") {
+            movementLogs.push(`⚠️ No space for ${s.material}`);
+            continue;
         }
+
+        const fromLoc = normalizeLocation_rawmaterials(s.from);
+        const toLoc   = normalizeLocation_rawmaterials(s.to);
+
+        // 🚫 skip if still invalid
+        if (!fromLoc || !toLoc || fromLoc === toLoc) continue;
+
+        await animateBoxMove_rawmaterials(fromLoc, toLoc, 200);
+
+        movementLogs.push(`Moved ${s.material} from ${fromLoc} → ${toLoc}`);
+
+        layoutUpdates.push({
+            material_name: s.material,
+            box_id: locationMap[toLoc]
+        });
     }
 
-    buildAlerts(optimizationAlerts);
+    if (movementLogs.length > 0) {
+
+        const formattedText = `
+            <ul style="margin:0; padding-left:18px;">
+                ${movementLogs.map(m => `<li>${m}</li>`).join("")}
+            </ul>
+            <br>
+            <b>Click on "Apply" button to save changes.</b>
+        `;
+
+        buildAlerts([
+            {
+                type: 'info',
+                text: formattedText
+            }
+        ]);
+    }
 
     btn.disabled = false;
     btn.style.opacity = "1";
