@@ -507,6 +507,18 @@
             font-size: 11px;
             font-weight: 700;
         }
+        .apply-btn {
+            padding: 8px 14px;
+            background: #2e7d32;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .apply-btn:hover {
+            background: #1b5e20;
+        }
         .stock-ok  { background: #d1fae5; color: #065f46; }
         .stock-low { background: #fef3c7; color: #92400e; }
 
@@ -548,7 +560,8 @@
             <article class="panel action-panel">
 
 
-                <button id="optimize_button" class="action-btn">Optimize Current Layout </button>
+                <button id="optimize_button" class="action-btn">Optimize Finish Goods Layout </button>
+                <button id="optimize_rm_button" class="action-btn">Optimize Raw Materials Layout </button>
             </article>
             <article class="panel" style="height:100%;padding:0;">
                 <div class="bot-card">
@@ -560,44 +573,8 @@
                     </div>
                     <div id="alerts-container" style="max-height:auto;">
 
-                        
-                    <div class="alert warn">
-                        <span class="alert-text">Rack 1A critical - Ceiling Fan demand at 87%. Restock within 48 hrs.</span>
-                        <button class="alert-done-btn" type="button">Done</button>
-                    </div>
-                    <div class="alert info">
-                        <span class="alert-text">Optimization done. Pick distance: 34m to 11m. Score +22 pts.</span>
-                        <button class="alert-done-btn" type="button">Done</button>
-                    </div>
-                    <div class="alert">
-                        <span class="alert-text">+3 weeks: Perishables spike 61%. Move Rack 4B closer to terminal now.</span>
-                        
-                        <button class="alert-done-btn" type="button">Done</button>
-                    </div>
-                    <div class="alert warn">
-                        <span class="alert-text">Low stock alert: Batteries falling below safety threshold in 5 days.</span>
-                        <button class="alert-done-btn" type="button">Done</button>
-                    </div>
-                    <div class="alert info">
-                        <span class="alert-text">Seasonal trend detected: Prepare for 40% increase in orders next month.</span>
+              
 
-                        <button class="alert-done-btn" type="button">Done</button>
-                    </div>
-                    <div class="alert">
-                        <span class="alert-text">Shelf 2C underutilized. Consider relocating slow-moving items there.</span>
-
-                        <button class="alert-done-btn" type="button">Done</button>
-                    </div>
-                    <div class="alert warn">
-                        <span class="alert-text">Temperature anomaly in Zone B. Check cooling system immediately.</span>
-                        <button class="alert-done-btn" type="button">Done</button>
-                    </div>
-
-
-                    <div class="alert info">
-                        <span class="alert-text">New optimization routine available. Run tonight at 2 AM?</span>
-                        <button class="alert-done-btn" type="button">Done</button>
-                    </div>
                     </div>
                 </div>
             </article>
@@ -796,7 +773,7 @@
                 'data-loc',
                 `${rackCode} ${shelfCode} ${boxCode}`
                 );
-                
+                console.log(`${rackCode} ${shelfCode} ${boxCode}`)
 
                 boxEl.className = 'box' + (items.length === 0 ? ' empty' : '') + (hasLow ? ' low-stock' : '');
 
@@ -887,20 +864,90 @@ function openModal(box, items) {
     });
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
-    function buildAlerts() {
-        const alerts=[];
-        const lowP = allProducts.filter(p => p.stock_qty <= p.reorder_level);
-        const lowM = allRawMaterials.filter(m => m.stock_qty <= m.reorder_level);
+function buildAlerts(optimizationAlerts) {
+    const alerts = [];
 
-        lowP.slice(0, 3).forEach(p => alerts.push({ type: 'warn', text: `Low stock: ${p.product_name}` }));
-        lowM.slice(0, 3).forEach(m => alerts.push({ type: 'warn', text: `Low material: ${m.material_name}` }));
+    const lowP = allProducts.filter(p => p.stock_qty <= p.reorder_level);
+    const lowM = allRawMaterials.filter(m => m.stock_qty <= m.reorder_level);
 
-        if (!alerts.length) alerts.push({ type: 'info', text: 'All stock levels healthy ✓' });
+    lowP.slice(0, 3).forEach(p => alerts.push({ type: 'warn', text: `Low stock: ${p.product_name}` }));
+    lowM.slice(0, 3).forEach(m => alerts.push({ type: 'warn', text: `Low material: ${m.material_name}` }));
 
-        document.getElementById('alerts-container').innerHTML = alerts.map(a => `
-            <div class="alert ${a.type}"><span class="alert-text">${a.text}</span></div>
-        `).join('');
+    alerts.push(...optimizationAlerts);
+
+    if (!alerts.length) {
+        alerts.push({ type: 'info', text: 'All stock levels healthy ✓' });
     }
+
+    // ✅ check if optimization exists
+    const hasOptimization = optimizationAlerts && optimizationAlerts.length > 0;
+
+    document.getElementById('alerts-container').innerHTML = `
+        ${alerts.map(a => `
+            <div class="alert ${a.type}">
+                <span class="alert-text">${a.text}</span>
+            </div>
+        `).join('')}
+
+        ${hasOptimization ? `
+            <div style="margin-top:10px;">
+                <button id="apply_button" class="apply-btn">
+                    Apply Changes
+                </button>
+            </div>
+        ` : ''}
+    `;
+
+    // ✅ attach click AFTER rendering
+    if (hasOptimization) {
+        document.getElementById("apply_button").onclick = applyLayoutChanges;
+    }
+}
+let layoutUpdates = []; // make sure this is global
+
+async function applyLayoutChanges() {
+
+    if (!layoutUpdates || layoutUpdates.length === 0) {
+        alert("No changes to apply");
+        return;
+    }
+
+    const btn = document.getElementById("apply_button");
+    btn.disabled = true;
+    btn.innerText = "Applying...";
+
+    try {
+        const res = await fetch("http://localhost:8000" + "/apply_layout_button", {  
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(layoutUpdates)
+        });
+
+        const result = await res.json();
+
+        if (result.status === "applied") {
+            buildAlerts([
+                {
+                    type: "success",
+                    text: `✅ Layout applied successfully (${result.count} items updated)`
+                }
+            ]);
+
+            layoutUpdates = []; // 🔥 CLEAR AFTER APPLY
+        } else {
+            alert("Apply failed");
+        }
+
+    } catch (e) {
+        console.error(e);
+        alert("Error applying layout");
+    }
+
+    btn.disabled = false;
+    btn.innerText = "Apply Changes";
+}
     function buildLocationMap() {
         const map = {};
 
@@ -972,6 +1019,40 @@ async function moveBoxVisually(productName, fromLoc, toLoc) {
 
     ghost.remove();
 }
+function normalizeLocation(loc) {
+    if (!loc || loc === "Unassigned") return loc;
+
+    // Extract rack
+    const rackMatch = loc.match(/R+(\d+)/i);
+
+    // Extract ALL shelf matches (important)
+    const shelfMatches = [...loc.matchAll(/SH(\d+)/gi)];
+
+    // Extract box
+    const boxMatch = loc.match(/B+(\d+)/i);
+
+    if (!rackMatch || shelfMatches.length === 0 || !boxMatch) {
+        console.warn("Bad loc format:", loc);
+        return loc;
+    }
+
+    // ✅ rack
+    const rack = String(parseInt(rackMatch[1])).padStart(2, '0');
+
+    // ✅ shelf → take FIRST match and trim to 2 digits
+    let shelfRaw = shelfMatches[0][1];
+    let shelf = String(parseInt(shelfRaw.slice(0, 2))).padStart(2, '0');
+
+    // ✅ box
+    const box = String(parseInt(boxMatch[1])).padStart(2, '0');
+
+    // ✅ Build YOUR required format
+    const rackCode  = `RR${rack}`;
+    const shelfCode = `${rackCode}-SHR${rack}-SH00`;
+    const boxCode   = `BB${box}`;
+
+    return `${rackCode} ${shelfCode} ${boxCode}`;
+}
 document.getElementById("optimize_button").onclick = async () => {
     const btn = document.getElementById("optimize_button");
 
@@ -988,17 +1069,60 @@ document.getElementById("optimize_button").onclick = async () => {
         return;
     }
 
-    console.log("Optimization suggestions:", data);
-
     renderSection();
     await new Promise(r => setTimeout(r, 300));
 
+    const locationMap = buildLocationMap(); // 🔥 IMPORTANT
+    layoutUpdates = []; // 🔥 RESET
+
     const moves = data.suggestions.filter(s => s.action === "MOVE" || s.action === "ASSIGN");
 
+    let movementLogs = [];
+
     for (const s of moves) {
-        if (s.from !== "Unassigned" && s.from !== s.to) {
-            await animateBoxMove(s.from, s.to, 300);
+
+        const fromLoc = normalizeLocation(s.from);
+        const toLoc   = normalizeLocation(s.to);
+
+        // 🔥 GET BOX ID
+        const targetBoxId = locationMap[toLoc];
+
+        if (!targetBoxId) {
+            console.warn("Box not found for:", toLoc);
+            continue;
         }
+
+        // 🔥 STORE FOR APPLY API
+        layoutUpdates.push({
+            product: s.product,
+            to_box_id: targetBoxId
+        });
+
+        // 🔥 VISUAL MOVE
+        if (fromLoc !== "Unassigned" && fromLoc !== toLoc) {
+            await animateBoxMove(fromLoc, toLoc, 300);
+            movementLogs.push(`Moved ${s.product} from ${fromLoc} → ${toLoc}`);
+        } else if (s.action === "ASSIGN") {
+            movementLogs.push(`Assigned ${s.product} to ${toLoc}`);
+        }
+    }
+
+    // 🔥 SINGLE ALERT
+    if (movementLogs.length > 0) {
+        const formattedText = `
+            <ul style="margin:0; padding-left:18px;">
+                ${movementLogs.map(m => `<li>${m}</li>`).join("")}
+            </ul>
+            <br>
+            <b>Click on "Apply" button to save changes to database.</b>
+        `;
+
+        buildAlerts([
+            {
+                type: 'info',
+                text: formattedText
+            }
+        ]);
     }
 
     btn.disabled = false;
@@ -1036,9 +1160,11 @@ function getCoordsFromLocation(loc) {
 }
     init();
 function findBoxByPath(path) {
-    return document.querySelector(`.box[data-loc="${path}"]`);
-}
+    const normalized = normalizeLocation(path);
+    console.log(normalized)
 
+    return document.querySelector(`.box[data-loc="${normalized}"]`);
+}
 async function animateBoxMove(fromPath, toPath, duration = 900) {
     const sourceBox = findBoxByPath(fromPath);
     const targetBox = findBoxByPath(toPath);
@@ -1050,6 +1176,10 @@ async function animateBoxMove(fromPath, toPath, duration = 900) {
 
     const sourceRect = sourceBox.getBoundingClientRect();
     const targetRect = targetBox.getBoundingClientRect();
+
+    // 🔥 SAVE BOTH CONTENTS
+    const sourceContent = sourceBox.innerHTML;
+    const targetContent = targetBox.innerHTML;
 
     const ghost = sourceBox.cloneNode(true);
     ghost.style.position = "fixed";
@@ -1073,10 +1203,54 @@ async function animateBoxMove(fromPath, toPath, duration = 900) {
         { duration, easing: "ease-in-out", fill: "forwards" }
     ).finished;
 
-    targetBox.innerHTML = sourceBox.innerHTML;
+    // 🔥 SWAP (not overwrite)
+    targetBox.innerHTML = sourceContent;
+    sourceBox.innerHTML = targetContent;
 
     ghost.remove();
 }
+
+document.getElementById("optimize_rm_button").onclick = async () => {
+    const btn = document.getElementById("optimize_rm_button");
+
+    btn.disabled = true;
+    btn.style.opacity = "0.5";
+    btn.textContent = "Optimizing Raw Materials...";
+
+    let data = await get("/optimize_raw_materials");
+    console.log(data)
+
+    if (!data || !data.suggestions) {
+        btn.disabled = false;
+        btn.style.opacity = "1";
+        btn.textContent = "Optimize Raw Materials";
+        return;
+    }
+
+    console.log("RM Optimization:", data);
+
+    let optimizationAlerts = [];
+
+    renderSection();
+    await new Promise(r => setTimeout(r, 300));
+
+    for (const s of data.suggestions) {
+        if (s.from && s.to && s.from !== s.to) {
+            await animateBoxMove(s.from, s.to, 300);
+
+            optimizationAlerts.push({
+                type: 'info',
+                text: `Moved ${s.material} from ${s.from} → ${s.to}`
+            });
+        }
+    }
+
+    buildAlerts(optimizationAlerts);
+
+    btn.disabled = false;
+    btn.style.opacity = "1";
+    btn.textContent = "Optimize Raw Materials";
+};
 </script>
 </body>
 </html>

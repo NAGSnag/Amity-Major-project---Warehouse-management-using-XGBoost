@@ -956,7 +956,7 @@ app.get("/get-sales-summary", async (_, res) => {
 
 async function getOptimizedLayout() {
     try {
-        const response = await axios.post('http://localhost:8000/optimizelayout'); // change URL if deployed
+        const response = await axios.post('http://localhost:8000/optimizelayout'); 
         return response.data;
     } catch (error) {
         console.error('Error fetching optimized layout:', error.message);
@@ -973,6 +973,18 @@ app.get('/optimize_layout', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch layout suggestions' });
     }
 });
+
+app.get('/optimize_raw_materials', async (req, res) => {
+    try {
+      let fastapi_domain=process.env.fastapi_site_domain
+        const response = await axios.post(fastapi_domain+"/optimize_raw_materials");
+        res.json(response.data);
+    } catch (error) {
+        console.error('FastAPI error:', error.message);
+        res.status(500).json({ error: 'Failed to fetch layout suggestions' });
+    }
+});
+
 
 app.listen(3000, () => {
     console.log('Node server running on port 3000');
