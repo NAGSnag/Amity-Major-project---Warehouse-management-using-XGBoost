@@ -604,7 +604,8 @@
 
 <script>
     const API = 'http://localhost:8080';
-    let currentSection = 0; 
+    let currentSection = 0;
+    let layoutUpdates = []; 
     const sections=[
         { title: 'Finished Goods Section',  
         badge: 'Products → Racks → Shelves → Boxes',
@@ -773,7 +774,7 @@
                 'data-loc',
                 `${rackCode} ${shelfCode} ${boxCode}`
                 );
-                console.log(`${rackCode} ${shelfCode} ${boxCode}`)
+                // console.log(`${rackCode} ${shelfCode} ${boxCode}`)
 
                 boxEl.className = 'box' + (items.length === 0 ? ' empty' : '') + (hasLow ? ' low-stock' : '');
 
@@ -904,9 +905,10 @@ function buildAlerts(optimizationAlerts) {
         document.getElementById("apply_button").onclick = applyLayoutChanges;
     }
 }
-let layoutUpdates = []; // make sure this is global
+
 
 async function applyLayoutChanges() {
+    console.log(layoutUpdates)
 
     if (!layoutUpdates || layoutUpdates.length === 0) {
         alert("No changes to apply");
@@ -936,7 +938,7 @@ async function applyLayoutChanges() {
                 }
             ]);
 
-            layoutUpdates = []; // 🔥 CLEAR AFTER APPLY
+            layoutUpdates = [];
         } else {
             alert("Apply failed");
         }
@@ -1074,9 +1076,10 @@ document.getElementById("optimize_button").onclick = async () => {
     await new Promise(r => setTimeout(r, 300));
 
     const locationMap = buildLocationMap(); // 🔥 IMPORTANT
-    layoutUpdates = []; // 🔥 RESET
+    layoutUpdates = []; 
 
     const moves = data.suggestions.filter(s => s.action === "MOVE" || s.action === "ASSIGN");
+    console.log(moves)
 
     let movementLogs = [];
 
@@ -1093,20 +1096,21 @@ document.getElementById("optimize_button").onclick = async () => {
             continue;
         }
 
-        // 🔥 STORE FOR APPLY API
         layoutUpdates.push({
-        material_id: s.material_id,
-        box_id: locationMap[toLoc]
-    });
+            id: s.product_code || s.material_code,
+            type: "product", 
+            box_id: targetBoxId
+        });
 
         // 🔥 VISUAL MOVE
         if (fromLoc !== "Unassigned" && fromLoc !== toLoc) {
-            await animateBoxMove(fromLoc, toLoc, 300);
+            await animateBoxMove(fromLoc, toLoc, 200);
             movementLogs.push(`Moved ${s.product} from ${fromLoc} → ${toLoc}`);
         } else if (s.action === "ASSIGN") {
             movementLogs.push(`Assigned ${s.product} to ${toLoc}`);
         }
     }
+    console.log(layoutUpdates)
 
     // 🔥 SINGLE ALERT
     if (movementLogs.length > 0) {
@@ -1372,9 +1376,7 @@ document.getElementById("optimize_rm_button").onclick = async () => {
     const locationMap = buildLocationMap(); 
 
     for (const s of data.suggestions) {
-        // console.log(s)
 
-        // 🚫 skip invalid target
         if (!s.to || s.to === "No box available") {
             movementLogs.push(`⚠️ No space for ${s.material}`);
             continue;
@@ -1383,7 +1385,6 @@ document.getElementById("optimize_rm_button").onclick = async () => {
         const fromLoc = normalizeLocation_rawmaterials(s.from);
         const toLoc   = normalizeLocation_rawmaterials(s.to);
 
-        // 🚫 skip if still invalid
         if (!fromLoc || !toLoc || fromLoc === toLoc) continue;
 
         await animateBoxMove_rawmaterials(fromLoc, toLoc, 200);
@@ -1391,11 +1392,14 @@ document.getElementById("optimize_rm_button").onclick = async () => {
 
         movementLogs.push(`Moved ${s.material} from ${fromLoc} → ${toLoc}`);
 
+        // ✅ FIXED STRUCTURE (IMPORTANT)
         layoutUpdates.push({
-            material_name: s.material,
+            id: s.material_id,     // 🔥 use ID, not name
+            type: "raw_material",  // 🔥 required for backend
             box_id: locationMap[toLoc]
         });
     }
+    console.log(layoutUpdates)
 
     if (movementLogs.length > 0) {
 

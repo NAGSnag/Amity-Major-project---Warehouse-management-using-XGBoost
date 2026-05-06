@@ -256,24 +256,39 @@ def apply_layout_button(data: list = Body(...)):
 
         with engine.begin() as conn:
             for u in data:
-                product = u.get("product")
-                box_id  = u.get("to_box_id")
+                item_id = u.get("id")
+                item_type = u.get("type")
+                box_id = u.get("box_id")
 
-                if not product or not box_id:
+                if not item_id or not box_id or not item_type:
                     print("Skipping invalid row:", u)
                     continue
 
-                conn.execute(
-                    text("""
-                        UPDATE products 
-                        SET box_id = :box_id 
-                        WHERE product_name = :product
-                    """),
-                    {
-                        "box_id": box_id,
-                        "product": product
-                    }
-                )
+                # 📦 PRODUCTS
+                if item_type == "product":
+                    conn.execute(
+                        text("""
+                            UPDATE products 
+                            SET box_id = :box_id 
+                            WHERE product_code = :id
+                        """),
+                        {"box_id": box_id, "id": item_id}
+                    )
+
+                # 🧱 RAW MATERIALS
+                elif item_type == "raw_material":
+                    conn.execute(
+                        text("""
+                            UPDATE raw_materials 
+                            SET box_id = :box_id 
+                            WHERE id = :id
+                        """),
+                        {"box_id": box_id, "id": item_id}
+                    )
+
+                else:
+                    print("Unknown type:", item_type)
+                    continue
 
                 count += 1
 
@@ -431,3 +446,71 @@ def optimize_raw_materials():
     except Exception as e:
         print("RM Optimization Error:", e)
         raise HTTPException(status_code=500, detail="Internal server error")
+    
+    
+    
+    
+
+@app.get("/warehouse_efficiency")
+def warehouse_efficiency():
+    try:
+        # 🔥 LOAD DATA (for total count)
+        Products, Boxes, Shelves, Racks, RawMaterials, Salesdata = load_data()
+
+        total_products = len(Products)
+        total_rm       = len(RawMaterials)
+
+        total_items = total_products + total_rm
+
+        # 🔥 GET SUGGESTIONS
+        product_data = optimize_layout()
+        rm_data      = optimize_raw_materials()
+
+        product_suggestions = product_data.get("suggestions", [])
+        rm_suggestions      = rm_data.get("suggestions", [])
+
+        # 🔥 COUNT ONLY ACTIONABLE SUGGESTIONS
+        product_moves = [
+            s for s in product_suggestions
+            if s.get("action") in ["MOVE", "ASSIGN"]
+        ]
+        print(product_moves)
+
+        rm_moves = [
+            s for s in rm_suggestions
+            if s.get("from") != s.get("to")   # RM logic
+        ]
+
+        total_suggestions = len(product_moves) + len(rm_moves)
+        print(total_suggestions,total_items)
+        # 🔥 EFFICIENCY CALCULATION
+        if total_items == 0:
+            efficiency = 100
+        else:
+            efficiency = round(
+                ((total_items - total_suggestions) / total_items) * 100,
+                1
+            )
+
+        # 🔥 LABEL (optional but useful)
+        if efficiency >= 85:
+            label = "Excellent"
+        elif efficiency >= 70:
+            label = "Good"
+        elif efficiency >= 50:
+            label = "Average"
+        else:
+            label = "Poor"
+
+        return {
+            "efficiency": efficiency,
+            "label": label,
+            "total_items": total_items,
+            "total_products": total_products,
+            "total_raw_materials": total_rm,
+            "suggestions": total_suggestions
+        }
+
+    except Exception as e:
+        print("Efficiency Error:", e)
+        raise HTTPException(status_code=500, detail="Failed to calculate efficiency")
