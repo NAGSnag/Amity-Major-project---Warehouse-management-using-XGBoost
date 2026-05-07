@@ -849,8 +849,667 @@ async function executeSimulation() {
 
         if (currentActiveScenario === "timeTravel") {
 
+            const response = await fetch(
+                "http://localhost:8000/predict_until_date",
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        target_date: data.target_date
+                    })
+                }
+            );
+
+            const result = await response.json();
+
+            console.log(result);
+
+            if (!result.predictions) {
+                alert(result.detail || "Simulation failed");
+                return;
+            }
+
+            // =====================================
+            // SUMMARY
+            // =====================================
+
+            document.getElementById("resultsSummary").innerHTML = `
+
+                <b>Forecast Completed Successfully</b>
+
+                <br><br>
+
+                Forecast Until:
+                <b>${result.target_date}</b>
+
+                <br>
+
+                Weeks Simulated:
+                <b>${result.weeks}</b>
+
+                <br>
+
+                Products Analysed:
+                <b>${result.predictions.length}</b>
+
+                <br>
+
+                Total Predicted Demand:
+                <b>${result.total_inventory_demand}</b>
+            `;
+
+            // =====================================
+            // TABLE
+            // =====================================
+
+            const tableBody =
+                document.getElementById("resultsTableBody");
+
+            tableBody.innerHTML = result.predictions
+                .map(p => `
+                    <tr>
+                        <td>${p.product_name}</td>
+                        <td>${p.total_predicted_demand}</td>
+                    </tr>
+                `)
+                .join("");
+
+            // =====================================
+        // LINE GRAPH (LIKE PYTHON MATPLOTLIB)
+        // =====================================
+
+        const ctx = document
+            .getElementById("simulationChart")
+            .getContext("2d");
+
+        if (simulationChart) {
+            simulationChart.destroy();
+        }
+
+        // 🔥 top 5 products only
+        const topProducts = result.predictions
+
+        // X AXIS LABELS
+        const labels =
+            topProducts[0]?.weekly_forecast.map(
+                w => w.label
+            ) || [];
+
+        // DATASETS
+        const datasets = topProducts.map((p, index) => {
+
+            return {
+
+                label: p.product_name,
+
+                data: p.weekly_forecast.map(
+                    w => w.predicted_units
+                ),
+
+                tension: 0.35,
+                fill: false,
+                borderWidth: 3,
+                pointRadius: 4
+            };
+        });
+
+        simulationChart = new Chart(ctx, {
+
+            type: 'line',
+
+            data: {
+                labels: labels,
+                datasets: datasets
+            },
+
+            options: {
+
+                responsive: true,
+                maintainAspectRatio: false,
+
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+
+                plugins: {
+
+                    legend: {
+                        labels: {
+                            color: '#fff'
+                        }
+                    },
+
+                    tooltip: {
+                        enabled: true
+                    }
+                },
+
+                scales: {
+
+                    x: {
+                        ticks: {
+                            color: '#fff'
+                        },
+
+                        grid: {
+                            color: 'rgba(255,255,255,0.08)'
+                        }
+                    },
+
+                    y: {
+
+                        ticks: {
+                            color: '#fff'
+                        },
+
+                        grid: {
+                            color: 'rgba(255,255,255,0.08)'
+                        },
+
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+            closeModal();
+            openResultsModal();
+    }
+    if (currentActiveScenario === "demandSpike") {
+
+        const response = await fetch(
+            "http://localhost:8000/simulate_demand_spike",
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+
+                    product_code:
+                        data.product_name_select,
+
+                    spike_percent:
+                        Number(data.spike_percent),
+
+                    spike_duration_weeks:
+                        Number(data.spike_duration_weeks)
+                })
+            }
+        );
+
+        const result = await response.json();
+
+        console.log(result);
+
+        if (!result.spike_forecast) {
+
+            alert(
+                result.detail ||
+                "Simulation failed"
+            );
+
+            return;
+        }
+
+        // =====================================
+        // SUMMARY
+        // =====================================
+
+        document.getElementById(
+            "resultsSummary"
+        ).innerHTML = `
+
+            <b>Demand Spike Simulation Completed</b>
+
+            <br><br>
+
+            Product:
+            <b>${result.product_name}</b>
+
+            <br>
+
+            Spike Increase:
+            <b>${result.spike_percent}%</b>
+
+            <br>
+
+            Spike Duration:
+            <b>${result.spike_duration_weeks} weeks</b>
+
+            <br>
+
+            Baseline Demand:
+            <b>${result.baseline_total}</b>
+
+            <br>
+
+            Spike Demand:
+            <b>${result.spike_total}</b>
+
+            <br>
+
+            Extra Demand:
+            <b>${result.extra_demand}</b>
+        `;
+
+        // =====================================
+        // TABLE
+        // =====================================
+
+        const tableBody =
+            document.getElementById(
+                "resultsTableBody"
+            );
+
+        tableBody.innerHTML =
+            result.baseline_forecast.map(
+                (b, i) => {
+
+                    const s =
+                        result.spike_forecast[i];
+
+                    return `
+                        <tr>
+                            <td>
+                                Week ${b.week}
+                            </td>
+
+                            <td>
+                                ${b.predicted_units}
+                            </td>
+
+                            <td>
+                                ${s.predicted_units}
+                            </td>
+                        </tr>
+                    `;
+                }
+            ).join("");
+
+        // =====================================
+        // TABLE HEADER
+        // =====================================
+
+        document.querySelector(
+            ".results-table thead"
+        ).innerHTML = `
+            <tr>
+                <th>Week</th>
+                <th>Baseline</th>
+                <th>Spike</th>
+            </tr>
+        `;
+
+        // =====================================
+        // CHART
+        // =====================================
+
+        const ctx = document
+            .getElementById(
+                "simulationChart"
+            )
+            .getContext("2d");
+
+        if (simulationChart) {
+            simulationChart.destroy();
+        }
+
+        simulationChart = new Chart(ctx, {
+
+            type: "line",
+
+            data: {
+
+                labels:
+                    result.baseline_forecast.map(
+                        w => `Week ${w.week}`
+                    ),
+
+                datasets: [
+
+                    {
+                        label: "Baseline",
+
+                        data:
+                            result.baseline_forecast.map(
+                                w => w.predicted_units
+                            ),
+
+                        tension: 0.35,
+                        fill: false,
+                        borderWidth: 3,
+                        pointRadius: 4
+                    },
+
+                    {
+                        label: "Demand Spike",
+
+                        data:
+                            result.spike_forecast.map(
+                                w => w.predicted_units
+                            ),
+
+                        tension: 0.35,
+                        fill: false,
+                        borderWidth: 3,
+                        pointRadius: 4
+                    }
+                ]
+            },
+
+            options: {
+
+                responsive: true,
+                maintainAspectRatio: false,
+
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+
+                plugins: {
+
+                    legend: {
+                        labels: {
+                            color: '#fff'
+                        }
+                    }
+                },
+
+                scales: {
+
+                    x: {
+
+                        ticks: {
+                            color: '#fff'
+                        },
+
+                        grid: {
+                            color:
+                            'rgba(255,255,255,0.08)'
+                        }
+                    },
+
+                    y: {
+
+                        beginAtZero: true,
+
+                        ticks: {
+                            color: '#fff'
+                        },
+
+                        grid: {
+                            color:
+                            'rgba(255,255,255,0.08)'
+                        }
+                    }
+                }
+            }
+        });
+
+        closeModal();
+        openResultsModal();
+    }
+    if (currentActiveScenario === "supplyDelay") {
+
+        const response = await fetch(
+            "http://localhost:8000/simulate_supply_delay",
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+
+                    product_code:
+                        data.product_name_select,
+
+                    current_stock:
+                        Number(data.current_stock),
+
+                    restock_qty:
+                        Number(data.restock_qty),
+
+                    delay_weeks:
+                        Number(data.delay_weeks)
+                })
+            }
+        );
+
+        const result = await response.json();
+
+        console.log(result);
+
+        if (!result.weekly_forecast) {
+
+            alert(
+                result.detail ||
+                "Simulation failed"
+            );
+
+            return;
+        }
+
+        // =====================================
+        // SUMMARY
+        // =====================================
+
+        document.getElementById(
+            "resultsSummary"
+        ).innerHTML = `
+
+            <b>Supply Delay Simulation</b>
+
+            <br><br>
+
+            Product:
+            <b>${result.product_name}</b>
+
+            <br>
+
+            Current Stock:
+            <b>${result.current_stock}</b>
+
+            <br>
+
+            Restock Qty:
+            <b>${result.restock_qty}</b>
+
+            <br>
+
+            Delay:
+            <b>${result.delay_weeks} weeks</b>
+
+            <br>
+
+            Actual Arrival Week:
+            <b>${result.arrival_week}</b>
+        `;
+
+        // =====================================
+        // TABLE
+        // =====================================
+
+        document.querySelector(
+            ".results-table thead"
+        ).innerHTML = `
+            <tr>
+                <th>Week</th>
+                <th>Demand</th>
+                <th>Inventory Before</th>
+                <th>Inventory After</th>
+                <th>Restock</th>
+            </tr>
+        `;
+
+        const tableBody =
+            document.getElementById(
+                "resultsTableBody"
+            );
+
+        tableBody.innerHTML =
+            result.weekly_forecast.map(w => `
+
+                <tr>
+
+                    <td>
+                        Week ${w.week}
+                    </td>
+
+                    <td>
+                        ${w.predicted_demand}
+                    </td>
+
+                    <td>
+                        ${w.inventory_before}
+                    </td>
+
+                    <td>
+                        ${w.inventory_after}
+                    </td>
+
+                    <td>
+                        ${
+                            w.restock_arrived
+                            ? '✔'
+                            : '-'
+                        }
+                    </td>
+
+                </tr>
+
+            `).join("");
+
+        // =====================================
+        // CHART
+        // =====================================
+
+        const ctx = document
+            .getElementById(
+                "simulationChart"
+            )
+            .getContext("2d");
+
+        if (simulationChart) {
+            simulationChart.destroy();
+        }
+
+        simulationChart = new Chart(ctx, {
+
+            data: {
+
+                labels:
+                    result.weekly_forecast.map(
+                        w => `Week ${w.week}`
+                    ),
+
+                datasets: [
+
+                    {
+                        type: 'bar',
+
+                        label: 'Demand',
+
+                        data:
+                            result.weekly_forecast.map(
+                                w => w.predicted_demand
+                            ),
+
+                        borderWidth: 1
+                    },
+
+                    {
+                        type: 'line',
+
+                        label: 'Inventory',
+
+                        data:
+                            result.weekly_forecast.map(
+                                w => w.inventory_after
+                            ),
+
+                        tension: 0.35,
+
+                        borderWidth: 3,
+
+                        pointRadius: 4
+                    }
+                ]
+            },
+
+            options: {
+
+                responsive: true,
+
+                maintainAspectRatio: false,
+
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+
+                plugins: {
+
+                    legend: {
+
+                        labels: {
+                            color: '#fff'
+                        }
+                    }
+                },
+
+                scales: {
+
+                    x: {
+
+                        ticks: {
+                            color: '#fff'
+                        },
+
+                        grid: {
+                            color:
+                            'rgba(255,255,255,0.08)'
+                        }
+                    },
+
+                    y: {
+
+                        beginAtZero: true,
+
+                        ticks: {
+                            color: '#fff'
+                        },
+
+                        grid: {
+                            color:
+                            'rgba(255,255,255,0.08)'
+                        }
+                    }
+                }
+            }
+        });
+
+        closeModal();
+        openResultsModal();
+    }
+    // =========================================
+// SEASONAL SURGE SIMULATION
+// =========================================
+
+if (currentActiveScenario === "seasonalSurge") {
+
     const response = await fetch(
-        "http://localhost:8000/predict_until_date",
+        "http://localhost:8000/simulate_seasonal_surge",
         {
             method: "POST",
 
@@ -859,7 +1518,24 @@ async function executeSimulation() {
             },
 
             body: JSON.stringify({
-                target_date: data.target_date
+
+                product_code:
+                    data.product_name_select,
+
+                current_stock:
+                    Number(data.current_stock),
+
+                season_name:
+                    data.season_name,
+
+                peak_week:
+                    Number(data.peak_week),
+
+                peak_boost_percent:
+                    Number(data.peak_boost_percent),
+
+                season_duration_weeks:
+                    Number(data.season_duration_weeks)
             })
         }
     );
@@ -868,8 +1544,13 @@ async function executeSimulation() {
 
     console.log(result);
 
-    if (!result.predictions) {
-        alert(result.detail || "Simulation failed");
+    if (!result.weekly_forecast) {
+
+        alert(
+            result.detail ||
+            "Simulation failed"
+        );
+
         return;
     }
 
@@ -877,29 +1558,42 @@ async function executeSimulation() {
     // SUMMARY
     // =====================================
 
-    document.getElementById("resultsSummary").innerHTML = `
+    document.getElementById(
+        "resultsSummary"
+    ).innerHTML = `
 
-        <b>Forecast Completed Successfully</b>
+        <b>Seasonal Surge Simulation</b>
 
         <br><br>
 
-        Forecast Until:
-        <b>${result.target_date}</b>
+        Product:
+        <b>${result.product_name}</b>
 
         <br>
 
-        Weeks Simulated:
-        <b>${result.weeks}</b>
+        Season:
+        <b>${result.season_name}</b>
 
         <br>
 
-        Products Analysed:
-        <b>${result.predictions.length}</b>
+        Peak Boost:
+        <b>${result.peak_boost_percent}%</b>
 
         <br>
 
-        Total Predicted Demand:
-        <b>${result.total_inventory_demand}</b>
+        Duration:
+        <b>${result.season_duration_weeks} weeks</b>
+
+        <br>
+
+        Stockout Week:
+        <b>
+            ${
+                result.stockout_week
+                ? "Week " + result.stockout_week
+                : "No Stockout"
+            }
+        </b>
     `;
 
     // =====================================
@@ -907,115 +1601,382 @@ async function executeSimulation() {
     // =====================================
 
     const tableBody =
-        document.getElementById("resultsTableBody");
+        document.getElementById(
+            "resultsTableBody"
+        );
 
-    tableBody.innerHTML = result.predictions
-        .map(p => `
+    tableBody.innerHTML =
+        result.weekly_forecast.map(w => `
+
             <tr>
-                <td>${p.product_name}</td>
-                <td>${p.total_predicted_demand}</td>
+
+                <td>
+                    Week ${w.week}
+                </td>
+
+                <td>
+                    ${w.surge_prediction}
+                </td>
+
             </tr>
-        `)
-        .join("");
+
+        `).join("");
 
     // =====================================
-// LINE GRAPH (LIKE PYTHON MATPLOTLIB)
-// =====================================
+    // CHART
+    // =====================================
 
-const ctx = document
-    .getElementById("simulationChart")
-    .getContext("2d");
+    const ctx = document
+        .getElementById("simulationChart")
+        .getContext("2d");
 
-if (simulationChart) {
-    simulationChart.destroy();
-}
+    if (simulationChart) {
+        simulationChart.destroy();
+    }
 
-// 🔥 top 5 products only
-const topProducts = result.predictions
+    const labels =
+        result.weekly_forecast.map(
+            w => `Week ${w.week}`
+        );
 
-// X AXIS LABELS
-const labels =
-    topProducts[0]?.weekly_forecast.map(
-        w => w.label
-    ) || [];
+    simulationChart = new Chart(ctx, {
 
-// DATASETS
-const datasets = topProducts.map((p, index) => {
+        type: 'line',
 
-    return {
+        data: {
 
-        label: p.product_name,
+            labels: labels,
 
-        data: p.weekly_forecast.map(
-            w => w.predicted_units
-        ),
+            datasets: [
 
-        tension: 0.35,
-        fill: false,
-        borderWidth: 3,
-        pointRadius: 4
-    };
-});
+                {
+                    label: 'Normal Demand',
 
-simulationChart = new Chart(ctx, {
+                    data:
+                        result.weekly_forecast.map(
+                            w => w.normal_prediction
+                        ),
 
-    type: 'line',
+                    borderWidth: 3,
+                    tension: 0.35
+                },
 
-    data: {
-        labels: labels,
-        datasets: datasets
-    },
+                {
+                    label: 'Seasonal Surge Demand',
 
-    options: {
+                    data:
+                        result.weekly_forecast.map(
+                            w => w.surge_prediction
+                        ),
 
-        responsive: true,
-        maintainAspectRatio: false,
+                    borderWidth: 3,
+                    tension: 0.35
+                },
 
-        interaction: {
-            mode: 'index',
-            intersect: false
+                {
+                    label: 'Stock Remaining',
+
+                    data:
+                        result.weekly_forecast.map(
+                            w => w.surge_stock_after
+                        ),
+
+                    borderWidth: 3,
+                    tension: 0.35
+                }
+            ]
         },
 
-        plugins: {
+        options: {
 
-            legend: {
-                labels: {
-                    color: '#fff'
+            responsive: true,
+
+            maintainAspectRatio: false,
+
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
+
+            plugins: {
+
+                legend: {
+                    labels: {
+                        color: '#fff'
+                    }
                 }
             },
 
-            tooltip: {
-                enabled: true
-            }
-        },
+            scales: {
 
-        scales: {
+                x: {
 
-            x: {
-                ticks: {
-                    color: '#fff'
+                    ticks: {
+                        color: '#fff'
+                    },
+
+                    grid: {
+                        color:
+                            'rgba(255,255,255,0.08)'
+                    }
                 },
 
-                grid: {
-                    color: 'rgba(255,255,255,0.08)'
+                y: {
+
+                    beginAtZero: true,
+
+                    ticks: {
+                        color: '#fff'
+                    },
+
+                    grid: {
+                        color:
+                            'rgba(255,255,255,0.08)'
+                    }
                 }
-            },
-
-            y: {
-
-                ticks: {
-                    color: '#fff'
-                },
-
-                grid: {
-                    color: 'rgba(255,255,255,0.08)'
-                },
-
-                beginAtZero: true
             }
         }
+    });
+
+    closeModal();
+    openResultsModal();
+}// =========================================
+// NEW PRODUCT LAUNCH SIMULATION
+// =========================================
+
+if (currentActiveScenario === "newLaunch") {
+
+    const response = await fetch(
+        "http://localhost:8000/simulate_new_product_launch",
+        {
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({
+
+                product_name:
+                    data.product_name,
+
+                category:
+                    data.category,
+
+                launch_week_month:
+                    Number(
+                        data.launch_week_month
+                    ),
+
+                initial_stock:
+                    Number(
+                        data.initial_stock
+                    ),
+
+                growth_rate_percent:
+                    Number(
+                        data.growth_rate_percent
+                    ),
+
+                num_weeks:
+                    Number(
+                        data.num_weeks
+                    )
+            })
+        }
+    );
+
+    const result = await response.json();
+
+    console.log(result);
+
+    if (!result.weekly_forecast) {
+
+        alert(
+            result.detail ||
+            "Simulation failed"
+        );
+
+        return;
     }
-});
+
+    // =====================================
+    // SUMMARY
+    // =====================================
+
+    document.getElementById(
+        "resultsSummary"
+    ).innerHTML = `
+
+        <b>New Product Launch Simulation</b>
+
+        <br><br>
+
+        Product:
+        <b>${result.product_name}</b>
+
+        <br>
+
+        Category:
+        <b>${result.category}</b>
+
+        <br>
+
+        Recommended Rack:
+        <b>${result.recommended_rack}</b>
+
+        <br>
+
+        Rack Zone:
+        <b>${result.rack_zone}</b>
+
+        <br>
+
+        Reason:
+        <b>${result.rack_reason}</b>
+    `;
+
+    // =====================================
+    // TABLE
+    // =====================================
+
+    const tableBody =
+        document.getElementById(
+            "resultsTableBody"
+        );
+
+    tableBody.innerHTML =
+        result.weekly_forecast.map(w => `
+
+            <tr>
+
+                <td>
+                    Week ${w.week}
+                </td>
+
+                <td>
+                    ${w.predicted_demand}
+                </td>
+
+            </tr>
+
+        `).join("");
+
+    // =====================================
+    // CHART
+    // =====================================
+
+    const ctx = document
+        .getElementById("simulationChart")
+        .getContext("2d");
+
+    if (simulationChart) {
+        simulationChart.destroy();
+    }
+
+    const labels =
+        result.weekly_forecast.map(
+            w => `Week ${w.week}`
+        );
+
+    simulationChart = new Chart(ctx, {
+
+        type: 'line',
+
+        data: {
+
+            labels: labels,
+
+            datasets: [
+
+                {
+                    label: 'Predicted Demand',
+
+                    data:
+                        result.weekly_forecast.map(
+                            w => w.predicted_demand
+                        ),
+
+                    borderWidth: 3,
+                    tension: 0.35
+                },
+
+                {
+                    label: 'Stock Remaining',
+
+                    data:
+                        result.weekly_forecast.map(
+                            w => w.stock_after
+                        ),
+
+                    borderWidth: 3,
+                    tension: 0.35
+                },
+
+                {
+                    label: 'Confidence %',
+
+                    data:
+                        result.weekly_forecast.map(
+                            w => w.confidence
+                        ),
+
+                    borderWidth: 3,
+                    tension: 0.35
+                }
+            ]
+        },
+
+        options: {
+
+            responsive: true,
+
+            maintainAspectRatio: false,
+
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
+
+            plugins: {
+
+                legend: {
+                    labels: {
+                        color: '#fff'
+                    }
+                }
+            },
+
+            scales: {
+
+                x: {
+
+                    ticks: {
+                        color: '#fff'
+                    },
+
+                    grid: {
+                        color:
+                            'rgba(255,255,255,0.08)'
+                    }
+                },
+
+                y: {
+
+                    beginAtZero: true,
+
+                    ticks: {
+                        color: '#fff'
+                    },
+
+                    grid: {
+                        color:
+                            'rgba(255,255,255,0.08)'
+                    }
+                }
+            }
+        }
+    });
 
     closeModal();
     openResultsModal();

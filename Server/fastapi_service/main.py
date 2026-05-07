@@ -743,3 +743,1226 @@ def predict_until_date(data: dict = Body(...)):
         
         
         
+
+def update_features_for_next_week(f, weekly_sales):
+
+    new_f = f.copy()
+
+    daily_avg = weekly_sales / 7
+
+    # lag updates
+    new_f['lag_30'] = new_f.get('lag_14', 0)
+    new_f['lag_14'] = new_f.get('lag_7', 0)
+    new_f['lag_7'] = daily_avg
+
+    # rolling averages
+    new_f['rolling_mean_7'] = daily_avg
+
+    new_f['rolling_mean_30'] = (
+        (new_f.get('rolling_mean_30', 0) * 23)
+        + (daily_avg * 7)
+    ) / 30
+
+    new_f['rolling_mean_90'] = (
+        (new_f.get('rolling_mean_90', 0) * 83)
+        + (daily_avg * 7)
+    ) / 90
+
+    # trend
+    raw_trend = (
+        new_f['lag_7']
+        - new_f['lag_30']
+    )
+
+    new_f['trend_direction'] = max(
+        min(raw_trend, 5.0),
+        -5.0
+    )
+
+    # date features
+    new_f['day_of_week'] = (
+        new_f.get('day_of_week', 0) + 7
+    ) % 7
+
+    new_f['is_weekend'] = (
+        1 if new_f['day_of_week'] >= 5 else 0
+    )
+
+    # month + quarter
+    new_f['month'] = (
+        new_f.get('month', 1) + 0.25
+    )
+
+    if new_f['month'] > 12.75:
+        new_f['month'] = 1
+
+    new_f['quarter'] = (
+        (int(new_f['month']) - 1) // 3
+    ) + 1
+
+    return new_f
+
+@app.post("/simulate_demand_spike")
+def simulate_demand_spike(data: dict = Body(...)):
+
+    try:
+
+        if _model is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Model not loaded"
+            )
+
+        product_code = data.get("product_code")
+        spike_percent = float(data.get("spike_percent", 50))
+        spike_duration_weeks = int(
+            data.get("spike_duration_weeks", 2)
+        )
+
+        Products, Boxes, Shelves, Racks, RawMaterials, Salesdata = load_data()
+
+        df = pd.DataFrame(Salesdata)
+
+        if df.empty:
+            raise HTTPException(
+                status_code=500,
+                detail="No sales data found"
+            )
+
+        df['sale_date'] = pd.to_datetime(df['sale_date'])
+        df['item_id'] = df['item_id'].astype(str)
+
+        for col in FEATURES:
+            if col in df.columns:
+                df[col] = pd.to_numeric(
+                    df[col],
+                    errors='coerce'
+                ).fillna(0.0)
+
+        latest_df = (
+            df.sort_values("sale_date")
+              .groupby("item_id")
+              .last()
+              .reset_index()
+        )
+
+        item_id = str(product_code).replace("P", "").lstrip("0")
+
+        row = latest_df[
+            latest_df["item_id"] == item_id
+        ]
+
+        if row.empty:
+            raise HTTPException(
+                status_code=404,
+                detail="Product sales history not found"
+            )
+
+        row = row.iloc[0]
+
+        feature_dict = {
+            feat: float(row[feat])
+            for feat in FEATURES
+        }
+
+        product = next(
+            (
+                p for p in Products
+                if p.get("product_code") == product_code
+            ),
+            None
+        )
+
+        product_name = (
+            product.get("product_name")
+            if product else product_code
+        )
+
+        # =====================================
+        # FEATURE UPDATE
+        # =====================================
+
+        def update_features_for_next_week(
+            f,
+            weekly_sales
+        ):
+
+            new_f = f.copy()
+
+            daily_avg = weekly_sales / 7
+
+            new_f['lag_30'] = new_f['lag_14']
+            new_f['lag_14'] = new_f['lag_7']
+            new_f['lag_7'] = daily_avg
+
+            new_f['rolling_mean_7'] = daily_avg
+
+            new_f['rolling_mean_30'] = (
+                (
+                    new_f['rolling_mean_30'] * 23
+                ) + (
+                    daily_avg * 7
+                )
+            ) / 30
+
+            new_f['rolling_mean_90'] = (
+                (
+                    new_f['rolling_mean_90'] * 83
+                ) + (
+                    daily_avg * 7
+                )
+            ) / 90
+
+            raw_trend = (
+                new_f['lag_7']
+                - new_f['lag_30']
+            )
+
+            new_f['trend_direction'] = max(
+                min(raw_trend, 5.0),
+                -5.0
+            )
+
+            new_f['day_of_week'] = (
+                new_f['day_of_week'] + 7
+            ) % 7
+
+            new_f['is_weekend'] = (
+                1 if new_f['day_of_week'] >= 5 else 0
+            )
+
+            new_f['month'] += 0.25
+
+            if new_f['month'] > 12.75:
+                new_f['month'] = 1
+
+            new_f['quarter'] = (
+                (int(new_f['month']) - 1) // 3
+            ) + 1
+
+            return new_f
+
+        # =====================================
+        # PREDICTION
+        # =====================================
+
+        def get_prediction(features):
+
+            X = np.array([[
+                features[f]
+                for f in FEATURES
+            ]], dtype=np.float32)
+
+            if _scaler:
+                X = _scaler.transform(X)
+
+            pred = float(_model.predict(X)[0])
+
+            return max(0, round(pred))
+
+        # =====================================
+        # SIMULATION
+        # =====================================
+
+        num_weeks = 6
+
+        baseline = []
+        spike = []
+
+        f_normal = feature_dict.copy()
+        f_spike = feature_dict.copy()
+
+        multiplier = 1 + (
+            spike_percent / 100
+        )
+
+        for w in range(num_weeks):
+
+            # ---------------- BASELINE ----------------
+
+            normal_pred = get_prediction(
+                f_normal
+            )
+
+            baseline.append({
+                "week": w + 1,
+                "predicted_units": normal_pred
+            })
+
+            f_normal = update_features_for_next_week(
+                f_normal,
+                normal_pred
+            )
+
+            # ---------------- SPIKE ----------------
+
+            spike_base = get_prediction(
+                f_spike
+            )
+
+            if w < spike_duration_weeks:
+
+                spike_final = round(
+                    spike_base * multiplier
+                )
+
+            else:
+
+                spike_final = spike_base
+
+            spike.append({
+                "week": w + 1,
+                "predicted_units": spike_final
+            })
+
+            f_spike = update_features_for_next_week(
+                f_spike,
+                spike_final
+            )
+
+        # =====================================
+        # SUMMARY
+        # =====================================
+
+        baseline_total = sum(
+            x["predicted_units"]
+            for x in baseline
+        )
+
+        spike_total = sum(
+            x["predicted_units"]
+            for x in spike
+        )
+
+        return {
+
+            "product_code": product_code,
+
+            "product_name": product_name,
+
+            "spike_percent": spike_percent,
+
+            "spike_duration_weeks":
+                spike_duration_weeks,
+
+            "baseline_total":
+                baseline_total,
+
+            "spike_total":
+                spike_total,
+
+            "extra_demand":
+                spike_total - baseline_total,
+
+            "baseline_forecast":
+                baseline,
+
+            "spike_forecast":
+                spike
+        }
+
+    except Exception as e:
+
+        print("Demand Spike Error:", e)
+
+        raise HTTPException(
+            status_code=500,
+            detail="Demand spike simulation failed"
+        )
+        
+        
+@app.get("/get-products")
+def get_products():
+
+    try:
+
+        Products, Boxes, Shelves, Racks, RawMaterials, Salesdata = load_data()
+
+        if not Products:
+            return []
+
+        cleaned_products = []
+
+        for p in Products:
+
+            cleaned_products.append({
+
+                "product_code":
+                    p.get("product_code", ""),
+
+                "product_name":
+                    p.get("product_name", ""),
+
+                "category":
+                    p.get("category", ""),
+
+                "stock_qty":
+                    p.get("stock_qty", 0),
+
+                "price":
+                    p.get("price", 0)
+            })
+
+        return cleaned_products
+
+    except Exception as e:
+
+        print("Get Products Error:", e)
+
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to load products"
+        )
+        
+        
+@app.post("/simulate_supply_delay")
+def simulate_supply_delay(data: dict = Body(...)):
+
+    product_code = data.get("product_code")
+    current_stock = int(data.get("current_stock", 0))
+    restock_qty = int(data.get("restock_qty", 0))
+    delay_weeks = int(data.get("delay_weeks", 0))
+
+    try:
+
+        if _model is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Model not loaded"
+            )
+
+        Products, Boxes, Shelves, Racks, RawMaterials, Salesdata = load_data()
+
+        df = pd.DataFrame(Salesdata)
+
+        df['sale_date'] = pd.to_datetime(df['sale_date'])
+        df['item_id'] = df['item_id'].astype(str)
+
+        for col in FEATURES:
+            if col in df.columns:
+                df[col] = pd.to_numeric(
+                    df[col],
+                    errors='coerce'
+                ).fillna(0.0)
+
+        latest_df = (
+            df.sort_values('sale_date')
+              .groupby('item_id')
+              .last()
+              .reset_index()
+        )
+
+        item_id = product_code.replace("P", "").lstrip("0")
+
+        row = latest_df[
+            latest_df['item_id'] == item_id
+        ]
+
+        if row.empty:
+            raise HTTPException(
+                status_code=404,
+                detail="Product sales history not found"
+            )
+
+        row = row.iloc[0]
+
+        current_features = {
+            feat: float(row[feat])
+            for feat in FEATURES
+        }
+
+        product = next(
+            (
+                p for p in Products
+                if p.get("product_code") == product_code
+            ),
+            {}
+        )
+
+        product_name = product.get(
+            "product_name",
+            product_code
+        )
+
+        num_weeks = 8
+        arrival_week = 2 + delay_weeks
+
+        inventory = current_stock
+
+        weekly_forecast = []
+
+        total_shortage = 0
+        stockout_weeks = 0
+
+        for week in range(1, num_weeks + 1):
+
+            X = np.array([[
+                current_features[f]
+                for f in FEATURES
+            ]], dtype=np.float32)
+
+            if _scaler:
+                X = _scaler.transform(X)
+
+            predicted_demand = max(
+                0,
+                round(float(_model.predict(X)[0]))
+            )
+
+            restock_arrived = False
+
+            if week == arrival_week:
+                inventory += restock_qty
+                restock_arrived = True
+
+            inventory_before = inventory
+
+            actual_sales = min(
+                inventory,
+                predicted_demand
+            )
+
+            shortage = max(
+                0,
+                predicted_demand - inventory
+            )
+
+            inventory = max(
+                0,
+                inventory - predicted_demand
+            )
+
+            if inventory == 0:
+                stockout_weeks += 1
+
+            total_shortage += shortage
+
+            weekly_forecast.append({
+                "week": week,
+                "predicted_demand": predicted_demand,
+                "actual_sales": actual_sales,
+                "shortage": shortage,
+                "inventory_before": inventory_before,
+                "inventory_after": inventory,
+                "restock_arrived": restock_arrived
+            })
+
+            current_features = update_features_for_next_week(
+                current_features,
+                predicted_demand
+            )
+
+        return {
+
+            "product_code": product_code,
+
+            "product_name": product_name,
+
+            "current_stock": current_stock,
+
+            "restock_qty": restock_qty,
+
+            "delay_weeks": delay_weeks,
+
+            "arrival_week": arrival_week,
+
+            "total_shortage": total_shortage,
+
+            "stockout_weeks": stockout_weeks,
+
+            "weekly_forecast": weekly_forecast
+        }
+
+    except Exception as e:
+
+        print("Supply Delay Error:", e)
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+@app.post("/simulate_seasonal_surge")
+def simulate_seasonal_surge(data: dict = Body(...)):
+
+    product_code = data.get("product_code")
+
+    current_stock = int(
+        data.get("current_stock", 1500)
+    )
+
+    season_name = data.get(
+        "season_name",
+        "Festival"
+    )
+
+    peak_week = int(
+        data.get("peak_week", 3)
+    )
+
+    peak_boost_percent = float(
+        data.get("peak_boost_percent", 120)
+    )
+
+    season_duration_weeks = int(
+        data.get("season_duration_weeks", 6)
+    )
+
+    try:
+
+        if _model is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Model not loaded"
+            )
+
+        Products, Boxes, Shelves, Racks, RawMaterials, Salesdata = load_data()
+
+        df = pd.DataFrame(Salesdata)
+
+        if df.empty:
+            raise HTTPException(
+                status_code=500,
+                detail="No sales data found"
+            )
+
+        df['sale_date'] = pd.to_datetime(df['sale_date'])
+        df['item_id'] = df['item_id'].astype(str)
+
+        for col in FEATURES:
+
+            if col in df.columns:
+
+                df[col] = pd.to_numeric(
+                    df[col],
+                    errors='coerce'
+                ).fillna(0.0)
+
+        latest_df = (
+            df.sort_values('sale_date')
+              .groupby('item_id')
+              .last()
+              .reset_index()
+        )
+
+        item_id = (
+            product_code
+            .replace("P", "")
+            .lstrip("0")
+        )
+
+        row = latest_df[
+            latest_df['item_id'] == item_id
+        ]
+
+        if row.empty:
+
+            raise HTTPException(
+                status_code=404,
+                detail="Product sales history not found"
+            )
+
+        row = row.iloc[0]
+
+        current_features_normal = {
+            feat: float(row[feat])
+            for feat in FEATURES
+        }
+
+        current_features_surge = {
+            feat: float(row[feat])
+            for feat in FEATURES
+        }
+
+        product = next(
+            (
+                p for p in Products
+                if p.get("product_code") == product_code
+            ),
+            {}
+        )
+
+        product_name = product.get(
+            "product_name",
+            product_code
+        )
+
+        # =====================================
+        # MULTIPLIERS
+        # =====================================
+
+        multipliers = []
+
+        for w in range(season_duration_weeks):
+
+            week_num = w + 1
+
+            if week_num <= peak_week:
+
+                progress = (
+                    week_num / peak_week
+                )
+
+                boost = (
+                    peak_boost_percent / 100
+                ) * progress
+
+            else:
+
+                remaining = max(
+                    1,
+                    season_duration_weeks - peak_week
+                )
+
+                progress = (
+                    (week_num - peak_week)
+                    / remaining
+                )
+
+                boost = (
+                    peak_boost_percent / 100
+                ) * (1 - progress)
+
+            multipliers.append(
+                round(1 + boost, 2)
+            )
+
+        # =====================================
+        # FORECASTS
+        # =====================================
+
+        weekly_forecast = []
+
+        stock_normal = current_stock
+        stock_surge = current_stock
+
+        stockout_week = None
+
+        for w in range(season_duration_weeks):
+
+            # ---------------- NORMAL ----------------
+
+            X_normal = np.array([[
+                current_features_normal[f]
+                for f in FEATURES
+            ]], dtype=np.float32)
+
+            if _scaler:
+                X_normal = _scaler.transform(
+                    X_normal
+                )
+
+            normal_pred = max(
+                0,
+                round(
+                    float(
+                        _model.predict(
+                            X_normal
+                        )[0]
+                    )
+                )
+            )
+
+            # ---------------- SURGE ----------------
+
+            X_surge = np.array([[
+                current_features_surge[f]
+                for f in FEATURES
+            ]], dtype=np.float32)
+
+            if _scaler:
+                X_surge = _scaler.transform(
+                    X_surge
+                )
+
+            surge_base = max(
+                0,
+                round(
+                    float(
+                        _model.predict(
+                            X_surge
+                        )[0]
+                    )
+                )
+            )
+
+            surge_pred = round(
+                surge_base * multipliers[w]
+            )
+
+            # ---------------- STOCK ----------------
+
+            stock_before_normal = stock_normal
+            stock_before_surge = stock_surge
+
+            stock_normal = max(
+                0,
+                stock_normal - normal_pred
+            )
+
+            stock_surge = max(
+                0,
+                stock_surge - surge_pred
+            )
+
+            if (
+                stock_surge <= 0
+                and stockout_week is None
+            ):
+                stockout_week = w + 1
+
+            # ---------------- SAVE ----------------
+
+            weekly_forecast.append({
+
+                "week": w + 1,
+
+                "multiplier": multipliers[w],
+
+                "normal_prediction": normal_pred,
+
+                "surge_prediction": surge_pred,
+
+                "normal_stock_before": stock_before_normal,
+
+                "normal_stock_after": stock_normal,
+
+                "surge_stock_before": stock_before_surge,
+
+                "surge_stock_after": stock_surge
+            })
+
+            # ---------------- UPDATE FEATURES ----------------
+
+            current_features_normal = (
+                update_features_for_next_week(
+                    current_features_normal,
+                    normal_pred
+                )
+            )
+
+            current_features_surge = (
+                update_features_for_next_week(
+                    current_features_surge,
+                    surge_pred
+                )
+            )
+
+        # =====================================
+        # RESPONSE
+        # =====================================
+
+        return {
+
+            "product_code": product_code,
+
+            "product_name": product_name,
+
+            "season_name": season_name,
+
+            "current_stock": current_stock,
+
+            "peak_week": peak_week,
+
+            "peak_boost_percent": peak_boost_percent,
+
+            "season_duration_weeks": season_duration_weeks,
+
+            "stockout_week": stockout_week,
+
+            "weekly_forecast": weekly_forecast
+        }
+
+    except Exception as e:
+
+        print("Seasonal Surge Error:", e)
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+@app.post("/simulate_new_product_launch")
+def simulate_new_product_launch(data: dict = Body(...)):
+
+    product_name = data.get("product_name")
+
+    category = data.get(
+        "category",
+        "Electronics"
+    )
+
+    launch_week_month = int(
+        data.get("launch_week_month", 3)
+    )
+
+    initial_stock = int(
+        data.get("initial_stock", 500)
+    )
+
+    growth_rate_percent = float(
+        data.get("growth_rate_percent", 15)
+    )
+
+    num_weeks = int(
+        data.get("num_weeks", 8)
+    )
+
+    try:
+
+        category_baselines = {
+
+            'Electronics': {
+                'daily_avg': 35,
+                'volatility': 0.25
+            },
+
+            'Pumps': {
+                'daily_avg': 80,
+                'volatility': 0.15
+            },
+
+            'Mechanical': {
+                'daily_avg': 20,
+                'volatility': 0.10
+            },
+
+            'Machinery': {
+                'daily_avg': 12,
+                'volatility': 0.30
+            }
+        }
+
+        baseline = category_baselines.get(
+            category,
+            category_baselines['Electronics']
+        )
+
+        month_index = {
+
+            1: 0.70,
+            2: 0.65,
+            3: 0.75,
+            4: 0.80,
+            5: 0.85,
+            6: 0.90,
+            7: 0.92,
+            8: 1.00,
+            9: 1.05,
+            10: 1.20,
+            11: 1.40,
+            12: 1.60
+        }
+
+        ramp_preds = []
+
+        confidence = []
+
+        current_month = launch_week_month
+
+        base_daily = (
+            baseline['daily_avg'] * 0.30
+        )
+
+        # =====================================
+        # DEMAND RAMP
+        # =====================================
+
+        for w in range(num_weeks):
+
+            if w > 0:
+
+                base_daily = (
+                    base_daily *
+                    (
+                        1 + (
+                            growth_rate_percent / 100
+                        )
+                    )
+                )
+
+            base_daily = min(
+                base_daily,
+                baseline['daily_avg'] * 1.10
+            )
+
+            seasonal_mod = month_index.get(
+                current_month,
+                1.0
+            )
+
+            weekly_pred = round(
+                base_daily * 7 * seasonal_mod
+            )
+
+            ramp_preds.append(
+                weekly_pred
+            )
+
+            conf = min(
+                85,
+                35 + (w * 7)
+            )
+
+            confidence.append(conf)
+
+            if (w + 1) % 4 == 0:
+
+                current_month = (
+                    current_month + 1
+                    if current_month < 12
+                    else 1
+                )
+
+        # =====================================
+        # MODEL BLEND
+        # =====================================
+
+        week4_daily = (
+            ramp_preds[3] / 7
+            if len(ramp_preds) >= 4
+            else base_daily
+        )
+
+        model_features = {
+
+            'day_of_week': 0,
+            'month': launch_week_month,
+
+            'quarter':
+                (
+                    (launch_week_month - 1) // 3
+                ) + 1,
+
+            'is_weekend': 0,
+            'is_month_start': 0,
+            'is_month_end': 0,
+
+            'lag_7': week4_daily,
+            'lag_14': week4_daily * 0.85,
+            'lag_30': week4_daily * 0.65,
+            'lag_365': 0,
+
+            'rolling_mean_7':
+                week4_daily * 0.95,
+
+            'rolling_mean_30':
+                week4_daily * 0.70,
+
+            'rolling_mean_90':
+                week4_daily * 0.60,
+
+            'rolling_std_7':
+                (
+                    week4_daily *
+                    baseline['volatility']
+                ),
+
+            'trend_direction':
+                week4_daily * 0.35,
+
+            'yoy_growth': 0
+        }
+
+        for w in range(4, num_weeks):
+
+            X = np.array([[
+                model_features[f]
+                for f in FEATURES
+            ]], dtype=np.float32)
+
+            if _scaler:
+                X = _scaler.transform(X)
+
+            model_weekly = max(
+                0,
+                round(
+                    float(
+                        _model.predict(X)[0]
+                    )
+                )
+            )
+
+            blend_weight = min(
+                1.0,
+                (w - 3) * 0.25
+            )
+
+            blended = round(
+                (
+                    ramp_preds[w]
+                    * (1 - blend_weight)
+                ) +
+                (
+                    model_weekly
+                    * blend_weight
+                )
+            )
+
+            ramp_preds[w] = blended
+
+        # =====================================
+        # STOCK SIMULATION
+        # =====================================
+
+        stock_levels = [initial_stock]
+
+        restock_events = []
+
+        weekly_forecast = []
+
+        for w in range(num_weeks):
+
+            stock_before = stock_levels[-1]
+
+            remaining = (
+                stock_before -
+                ramp_preds[w]
+            )
+
+            restocked = False
+
+            restock_qty = 0
+
+            if remaining < (
+                initial_stock * 0.20
+            ):
+
+                restock_qty = initial_stock
+
+                remaining += restock_qty
+
+                restocked = True
+
+                restock_events.append({
+
+                    'week': w + 1,
+
+                    'qty': restock_qty
+                })
+
+            stock_after = max(
+                0,
+                remaining
+            )
+
+            stock_levels.append(
+                stock_after
+            )
+
+            weekly_forecast.append({
+
+                "week": w + 1,
+
+                "predicted_demand":
+                    ramp_preds[w],
+
+                "confidence":
+                    confidence[w],
+
+                "stock_before":
+                    stock_before,
+
+                "stock_after":
+                    stock_after,
+
+                "restocked":
+                    restocked,
+
+                "restock_qty":
+                    restock_qty
+            })
+
+        # =====================================
+        # RACK RECOMMENDATION
+        # =====================================
+
+        mature_weekly = ramp_preds[-1]
+
+        if mature_weekly > (
+            baseline['daily_avg']
+            * 7 * 0.8
+        ):
+
+            recommended_rack = (
+                "Rack 1A or 1B"
+            )
+
+            rack_zone = (
+                "CLOSE TO TERMINAL"
+            )
+
+            rack_reason = (
+                "High mature demand"
+            )
+
+        elif mature_weekly > (
+            baseline['daily_avg']
+            * 7 * 0.5
+        ):
+
+            recommended_rack = (
+                "Rack 2A or 2B"
+            )
+
+            rack_zone = "MID ZONE"
+
+            rack_reason = (
+                "Medium demand"
+            )
+
+        else:
+
+            recommended_rack = (
+                "Rack 3A or 3B"
+            )
+
+            rack_zone = "FAR ZONE"
+
+            rack_reason = (
+                "Low demand"
+            )
+
+        # =====================================
+        # RESPONSE
+        # =====================================
+
+        return {
+
+            "product_name":
+                product_name,
+
+            "category":
+                category,
+
+            "launch_week_month":
+                launch_week_month,
+
+            "growth_rate_percent":
+                growth_rate_percent,
+
+            "initial_stock":
+                initial_stock,
+
+            "recommended_rack":
+                recommended_rack,
+
+            "rack_zone":
+                rack_zone,
+
+            "rack_reason":
+                rack_reason,
+
+            "weekly_forecast":
+                weekly_forecast
+        }
+
+    except Exception as e:
+
+        print(
+            "New Launch Error:",
+            e
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
