@@ -1871,55 +1871,7 @@ def simulate_new_product_launch(data: dict = Body(...)):
                     restock_qty
             })
 
-        # =====================================
-        # RACK RECOMMENDATION
-        # =====================================
 
-        mature_weekly = ramp_preds[-1]
-
-        if mature_weekly > (
-            baseline['daily_avg']
-            * 7 * 0.8
-        ):
-
-            recommended_rack = (
-                "Rack 1A or 1B"
-            )
-
-            rack_zone = (
-                "CLOSE TO TERMINAL"
-            )
-
-            rack_reason = (
-                "High mature demand"
-            )
-
-        elif mature_weekly > (
-            baseline['daily_avg']
-            * 7 * 0.5
-        ):
-
-            recommended_rack = (
-                "Rack 2A or 2B"
-            )
-
-            rack_zone = "MID ZONE"
-
-            rack_reason = (
-                "Medium demand"
-            )
-
-        else:
-
-            recommended_rack = (
-                "Rack 3A or 3B"
-            )
-
-            rack_zone = "FAR ZONE"
-
-            rack_reason = (
-                "Low demand"
-            )
 
         # =====================================
         # RESPONSE
@@ -1941,15 +1893,6 @@ def simulate_new_product_launch(data: dict = Body(...)):
 
             "initial_stock":
                 initial_stock,
-
-            "recommended_rack":
-                recommended_rack,
-
-            "rack_zone":
-                rack_zone,
-
-            "rack_reason":
-                rack_reason,
 
             "weekly_forecast":
                 weekly_forecast
