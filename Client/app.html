@@ -544,7 +544,7 @@
         <h2>OptiWare</h2>
         <div class="topbar-right">
 
-            <button class="pill active">Efficiency: 80/100</button>
+            <button class="pill active" id="efficiency_score">Warehouse Efficiency: 0/100</button>
             <button class="pill dashboard-active" onclick="window.location.href='/app'">Dashboard</button>
 
 
@@ -567,7 +567,6 @@
                 <div class="bot-card">
                     <div class="bot-head">
                         <span>Optiware AI</span> 
-                        <span class="bot-icon">💡</span>
 
                         <span id="low-stock-badge" style="font-size:13px;background:#ea7b39;color:#fff;padding:3px 10px;border-radius:999px;display:none;"></span>
                     </div>
@@ -645,10 +644,133 @@
             allBoxes=results[2] || [];allProducts=results[3] || [];
             allRawMaterials=results[4] || []; allRacks.sort((a, b) => a.rack_code.localeCompare(b.rack_code, undefined, { numeric: true }));
             renderSection();
+
+            loadEfficiency()
         } catch (e) {
             document.getElementById('shelves').innerHTML = `<div class="loading-state">⚠️ Error loading data</div>`;
         }
     }
+   async function loadEfficiency() {
+
+    const el = document.getElementById("efficiency_score");
+
+    el.textContent = "Calculating...";
+    el.style.background = "#2f3345";
+    el.style.color = "#fff";
+    el.style.padding = "8px 16px";
+    el.style.borderRadius = "999px";
+    el.style.fontWeight = "700";
+
+    try {
+
+        const response = await fetch("http://localhost:8000/warehouse_efficiency");
+
+        const data = await response.json();
+
+        // 🔥 SCORE DISPLAY
+        el.textContent = `Warehouse Efficiency ${data.efficiency}/100`;
+
+        // 🔥 COLOR
+        if (data.efficiency >= 75) {
+
+            el.style.background = "#52c28f";
+            el.style.color = "#071811";
+
+        } else if (data.efficiency >= 40) {
+
+            el.style.background = "#f0c14b";
+            el.style.color = "#111";
+
+        } else {
+
+            el.style.background = "#e25555";
+            el.style.color = "#fff";
+        }
+
+        // 🔥 EXPLAINABLE ALERTS
+        let alerts = [];
+
+        if (data.efficiency >= 85) {
+
+            alerts.push({
+                type: "success",
+                text: `
+                     🔔 Warehouse layout is highly optimized.<br><br>
+                    <b>${data.total_items - data.suggestions}</b> out of 
+                    <b>${data.total_items}</b> items are positioned efficiently.
+                `
+            });
+
+        } else if (data.efficiency >= 60) {
+
+            alerts.push({
+                type: "info",
+                text: `
+                    🔔 Warehouse efficiency is moderate.<br><br>
+
+                    <b>${data.suggestions}</b> items require relocation 
+                    to improve picking speed and stock accessibility.<br><br>
+
+                    Optimized Items:
+                    <b>${data.total_items - data.suggestions}</b> / ${data.total_items}
+                `
+            });
+
+        } else {
+
+            alerts.push({
+                type: "warning",
+                text: `
+                    🔔 Warehouse layout efficiency is low.<br><br>
+
+                    <b>${data.suggestions}</b> items are not placed in optimal locations.<br><br>
+
+                    This may lead to:
+                    <ul style="margin-top:8px;padding-left:18px;">
+                        <li>Slower warehouse operations</li>
+                        <li>Longer picking routes</li>
+                        <li>Delayed replenishment</li>
+                        <li>Reduced accessibility for high-demand items</li>
+                    </ul>
+
+                    Recommended Action:
+                    Run the ML optimizer to rearrange inventory.
+                `
+            });
+
+        }
+
+        // 🔥 CATEGORY BREAKDOWN ALERT
+        alerts.push({
+            type: "success",
+            text: `
+                🔔 Warehouse Analysis Summary<br><br>
+
+                Total Products: <b>${data.total_products}</b><br>
+                Total Raw Materials: <b>${data.total_raw_materials}</b><br>
+                Total Inventory Units Tracked: <b>${data.total_items}</b><br>
+                Suggested Optimizations: <b>${data.suggestions}</b>
+            `
+        });
+
+        buildAlerts(alerts);
+
+    } catch (e) {
+
+        console.error("Efficiency load failed:", e);
+
+        el.textContent = "Efficiency Failed";
+        el.style.background = "#e25555";
+        el.style.color = "#fff";
+
+        buildAlerts([
+            {
+                type: "warning",
+                text: "🔔 Failed to calculate warehouse efficiency."
+            }
+        ]);
+    }
+}
 
     function switchSection(dir) {
         currentSection = (currentSection + dir + sections.length) % sections.length;
@@ -866,23 +988,35 @@ function openModal(box, items) {
     });
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
-function buildAlerts(optimizationAlerts) {
+function buildAlerts(alertsList = [], showApplyButton = false) {
+
     const alerts = [];
 
     const lowP = allProducts.filter(p => p.stock_qty <= p.reorder_level);
     const lowM = allRawMaterials.filter(m => m.stock_qty <= m.reorder_level);
 
-    lowP.slice(0, 3).forEach(p => alerts.push({ type: 'warn', text: `Low stock: ${p.product_name}` }));
-    lowM.slice(0, 3).forEach(m => alerts.push({ type: 'warn', text: `Low material: ${m.material_name}` }));
+    lowP.slice(0, 3).forEach(p =>
+        alerts.push({
+            type: 'warn',
+            text: `Low stock: ${p.product_name}`
+        })
+    );
 
-    alerts.push(...optimizationAlerts);
+    lowM.slice(0, 3).forEach(m =>
+        alerts.push({
+            type: 'warn',
+            text: `Low material: ${m.material_name}`
+        })
+    );
+
+    alerts.push(...alertsList);
 
     if (!alerts.length) {
-        alerts.push({ type: 'info', text: 'All stock levels healthy ✓' });
+        alerts.push({
+            type: 'info',
+            text: 'All stock levels healthy ✓'
+        });
     }
-
-    // ✅ check if optimization exists
-    const hasOptimization = optimizationAlerts && optimizationAlerts.length > 0;
 
     document.getElementById('alerts-container').innerHTML = `
         ${alerts.map(a => `
@@ -891,7 +1025,7 @@ function buildAlerts(optimizationAlerts) {
             </div>
         `).join('')}
 
-        ${hasOptimization ? `
+        ${showApplyButton ? `
             <div style="margin-top:10px;">
                 <button id="apply_button" class="apply-btn">
                     Apply Changes
@@ -900,12 +1034,10 @@ function buildAlerts(optimizationAlerts) {
         ` : ''}
     `;
 
-    // ✅ attach click AFTER rendering
-    if (hasOptimization) {
+    if (showApplyButton) {
         document.getElementById("apply_button").onclick = applyLayoutChanges;
     }
 }
-
 
 async function applyLayoutChanges() {
     console.log(layoutUpdates)
@@ -934,7 +1066,7 @@ async function applyLayoutChanges() {
             buildAlerts([
                 {
                     type: "success",
-                    text: `✅ Layout applied successfully (${result.count} items updated)`
+                    text: `🔔 Layout applied successfully (${result.count} items updated)`
                 }
             ]);
 
@@ -1114,7 +1246,7 @@ document.getElementById("optimize_button").onclick = async () => {
 
     // 🔥 SINGLE ALERT
     if (movementLogs.length > 0) {
-        const formattedText = `
+        const formattedText = `🔔
             <ul style="margin:0; padding-left:18px;">
                 ${movementLogs.map(m => `<li>${m}</li>`).join("")}
             </ul>
@@ -1127,7 +1259,7 @@ document.getElementById("optimize_button").onclick = async () => {
                 type: 'info',
                 text: formattedText
             }
-        ]);
+        ],true);
     }
 
     btn.disabled = false;
@@ -1403,7 +1535,7 @@ document.getElementById("optimize_rm_button").onclick = async () => {
 
     if (movementLogs.length > 0) {
 
-        const formattedText = `
+        const formattedText = `🔔
             <ul style="margin:0; padding-left:18px;">
                 ${movementLogs.map(m => `<li>${m}</li>`).join("")}
             </ul>
@@ -1416,7 +1548,7 @@ document.getElementById("optimize_rm_button").onclick = async () => {
                 type: 'info',
                 text: formattedText
             }
-        ]);
+        ],true);
     }
 
     btn.disabled = false;

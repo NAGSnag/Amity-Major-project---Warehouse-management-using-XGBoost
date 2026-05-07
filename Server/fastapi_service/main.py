@@ -3,7 +3,7 @@ import joblib
 import numpy  as np
 import pandas as pd
 import xgboost as xgb
-
+from datetime import datetime, timedelta
 from dotenv           import load_dotenv
 from fastapi          import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
@@ -514,3 +514,232 @@ def warehouse_efficiency():
     except Exception as e:
         print("Efficiency Error:", e)
         raise HTTPException(status_code=500, detail="Failed to calculate efficiency")
+    
+    
+    
+
+@app.post("/predict_until_date")
+def predict_until_date(data: dict = Body(...)):
+    target_date = data.get("target_date")
+
+    try:
+
+        if _model is None:
+            raise HTTPException(status_code=503, detail="Model not loaded")
+
+        # ---------------- LOAD DATA ----------------
+        Products, Boxes, Shelves, Racks, RawMaterials, Salesdata = load_data()
+
+        if not Products:
+            return {
+                "status": "empty",
+                "message": "No products found"
+            }
+
+        # ---------------- DATE ----------------
+        target_date = datetime.strptime(
+            target_date,
+            "%Y-%m-%d"
+        )
+
+        today = datetime.today()
+
+        days_ahead = (target_date - today).days
+
+        if days_ahead <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Target date must be in the future"
+            )
+
+        num_weeks = max(1, round(days_ahead / 7))
+
+        # ---------------- SALES DATAFRAME ----------------
+        df = pd.DataFrame(Salesdata)
+
+        if df.empty:
+            raise HTTPException(
+                status_code=500,
+                detail="No sales data found"
+            )
+
+        df['sale_date'] = pd.to_datetime(df['sale_date'])
+        df['item_id'] = df['item_id'].astype(str)
+
+        for col in FEATURES:
+            if col in df.columns:
+                df[col] = pd.to_numeric(
+                    df[col],
+                    errors='coerce'
+                ).fillna(0.0)
+
+        df = df[df['lag_7'].notna()]
+
+        latest_df = (
+            df.sort_values('sale_date')
+              .groupby('item_id')
+              .last()
+              .reset_index()
+        )
+
+        # ---------------- FEATURE UPDATE ----------------
+        def update_features(f, weekly_pred, week):
+
+            f = f.copy()
+
+            # VERY SMALL drift adjustments only
+            drift = min(week * 0.015, 0.12)
+
+            # keep lag features mostly stable
+            f['lag_7'] = (
+                f['lag_7'] * (1 - drift)
+            ) + (
+                (weekly_pred / 7) * drift
+            )
+
+            f['lag_14'] = (
+                f['lag_14'] * (1 - drift)
+            ) + (
+                f['lag_7'] * drift
+            )
+
+            # rolling means barely move
+            f['rolling_mean_7'] = (
+                f['rolling_mean_7'] * 0.95
+            ) + (
+                (weekly_pred / 7) * 0.05
+            )
+
+            f['rolling_mean_30'] = (
+                f['rolling_mean_30'] * 0.98
+            ) + (
+                (weekly_pred / 7) * 0.02
+            )
+
+            # stable trend
+            f['trend_direction'] = (
+                f['rolling_mean_7']
+                - f['rolling_mean_30']
+            )
+
+            return f
+
+        # ---------------- BUILD PRODUCTS ----------------
+        predictions = []
+
+        for product in Products:
+
+            try:
+
+                code = str(product.get("product_code", ""))
+                item_id = code.replace("P", "").lstrip("0")
+
+                row = latest_df[
+                    latest_df['item_id'] == item_id
+                ]
+
+                if row.empty:
+                    continue
+
+                row = row.iloc[0]
+
+                current_features = {
+                    feat: float(row[feat])
+                    for feat in FEATURES
+                }
+
+                weekly_forecast = []
+
+                # -------- MULTI WEEK PREDICTION --------
+                for week in range(num_weeks):
+
+                    X = np.array([[
+                        current_features[f]
+                        for f in FEATURES
+                    ]], dtype=np.float32)
+
+                    if _scaler:
+                        X = _scaler.transform(X)
+
+                    pred = max(
+                        0,
+                        round(float(_model.predict(X)[0]))
+                    )
+
+
+                    forecast_date = today + timedelta(weeks=week)
+
+                    week_in_month = ((forecast_date.day - 1) // 7) + 1
+
+                    label = (
+                        f"{forecast_date.strftime('%b %Y')} "
+                        f"- W{week_in_month}"
+                    )
+
+                    weekly_forecast.append({
+                        "week": week + 1,
+                        "label": label,
+                        "forecast_date": forecast_date.strftime("%Y-%m-%d"),
+                        "predicted_units": pred
+                    })
+
+                    current_features = update_features(
+                        current_features,
+                        pred,
+                        week
+                    )
+
+                total_demand = sum(
+                    w["predicted_units"]
+                    for w in weekly_forecast
+                )
+
+                predictions.append({
+                    "product_code": code,
+                    "product_name": product.get("product_name"),
+                    "category": product.get("category"),
+                    "current_stock": product.get("stock_qty", 0),
+                    "total_predicted_demand": total_demand,
+                    "weekly_forecast": weekly_forecast
+                })
+
+            except Exception as e:
+                print("Prediction Error:", e)
+                continue
+
+        # ---------------- SORT ----------------
+        predictions.sort(
+            key=lambda x: x["total_predicted_demand"],
+            reverse=True
+        )
+
+        # ---------------- SUMMARY ----------------
+        total_inventory_demand = sum(
+            p["total_predicted_demand"]
+            for p in predictions
+        )
+
+        high_demand = [
+            p for p in predictions
+            if p["total_predicted_demand"] >= 500
+        ]
+
+        return {
+            "target_date": target_date,
+            "weeks": num_weeks,
+            "total_products": len(predictions),
+            "total_inventory_demand": total_inventory_demand,
+            "high_demand_products": len(high_demand),
+            "predictions": predictions
+        }
+
+    except Exception as e:
+        print("Forecast Error:", e)
+        raise HTTPException(
+            status_code=500,
+            detail="Forecast generation failed"
+        )
+        
+        
+        
+        

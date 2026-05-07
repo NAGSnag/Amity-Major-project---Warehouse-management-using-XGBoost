@@ -216,6 +216,61 @@ body {
     color: #fff;
 }
 
+.results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+}
+
+.close-btn {
+    border: none;
+    background: rgba(255,255,255,0.08);
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 18px;
+}
+
+.chart-container {
+    background: rgba(255,255,255,0.04);
+    border-radius: 18px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.results-summary {
+    padding: 14px;
+    border-radius: 14px;
+    background: rgba(82,194,143,0.1);
+    border: 1px solid rgba(82,194,143,0.2);
+    margin-bottom: 20px;
+    line-height: 1.7;
+}
+
+.results-table-wrapper {
+    margin-top: 25px;
+    max-height: 350px;
+    overflow-y: auto;
+}
+
+.results-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.results-table th,
+.results-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.results-table th {
+    background: rgba(255,255,255,0.04);
+}
 /* ================= RESPONSIVE ================= */
 
 @media (max-width: 768px) {
@@ -308,174 +363,691 @@ body {
         </div>
     </div>
 </div>
+<!-- 🔥 RESULTS MODAL -->
+<div 
+    id="resultsModal" 
+    class="modal-overlay" 
+    onclick="closeResultsModal(event)" 
+    style="
+        width: 100%;
+        height: 100vh;
+        overflow-y: auto;
+        padding: 20px 0;
+        box-sizing: border-box;
+    "
+>
+    <div 
+        class="sim-modal" 
+        style="
+            width: 96%;
+            max-height: 95vh;
+            overflow-y: auto;
+            margin: auto;
+            border-radius: 16px;
+        "
+    >
+
+        <div 
+            class="results-header"
+            style="
+                position: sticky;
+                top: 0;
+                z-index: 10;
+                background: #111827;
+                padding: 16px;
+            "
+        >
+            <h2 id="resultsTitle">Simulation Results</h2>
+
+            <button 
+                class="close-btn" 
+                onclick="closeResultsModal()"
+            >
+                ✕
+            </button>
+        </div>
+
+        <div id="resultsContent">
+
+            <div 
+                class="results-summary" 
+                id="resultsSummary"
+            ></div>
+
+            <div 
+                class="chart-container"
+                style="
+                    width: 100%;
+                    height: 700px;
+                    overflow-x: auto;
+                "
+            >
+                <canvas 
+                    id="simulationChart"
+                    style="
+                        width: 100% !important;
+                        height: 100% !important;
+                        display: block;
+                    "
+                ></canvas>
+            </div>
+
+            <div 
+                class="results-table-wrapper"
+                style="
+                    overflow-x: auto;
+                    width: 100%;
+                "
+            >
+                <table 
+                    class="results-table"
+                    style="
+                        width: 100%;
+                    "
+                >
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Total Demand</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="resultsTableBody"></tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
+
 let productList = [];
 let categoryList = [];
-const API = 'http://localhost:8080';
+let currentActiveScenario = null;
+let simulationChart = null;
 
+const API = 'http://localhost:8000';
+
+
+// ======================================================
+// API GET
+// ======================================================
 
 async function get(path) {
+
     try {
+
         const r = await fetch(API + path);
+
         if (!r.ok) return [];
-        const data = await r.json();
-        return data;
+
+        return await r.json();
+
     } catch (e) {
+
         console.error("Fetch Error:", e);
         return [];
     }
 }
+
+
+// ======================================================
+// SIMULATION CONFIG
+// ======================================================
+
 const simConfigs = {
+
     timeTravel: {
         title: "Temporal Forecast Simulation",
-        fields: [{ id: "target_date", label: "Target Date", type: "date" }]
+        fields: [
+            {
+                id: "target_date",
+                label: "Target Date",
+                type: "date"
+            }
+        ]
     },
+
     demandSpike: {
         title: "Demand Spike Simulation",
         fields: [
-            { id: "product_name_select", label: "Product", type: "select", listType: "products" },
-            { id: "spike_percent", label: "Spike Percentage (%)", type: "number", default: 50 },
-            { id: "spike_duration_weeks", label: "Spike Duration (Weeks)", type: "number", default: 2 }
+            {
+                id: "product_name_select",
+                label: "Product",
+                type: "select",
+                listType: "products"
+            },
+            {
+                id: "spike_percent",
+                label: "Spike Percentage (%)",
+                type: "number",
+                default: 50
+            },
+            {
+                id: "spike_duration_weeks",
+                label: "Spike Duration (Weeks)",
+                type: "number",
+                default: 2
+            }
         ]
     },
+
     supplyDelay: {
         title: "Supply Delay Simulation",
         fields: [
-            { id: "product_name_select", label: "Product", type: "select", listType: "products" },
-            { id: "current_stock", label: "Current Stock", type: "number" },
-            { id: "restock_qty", label: "Restock Quantity", type: "number" },
-            { id: "delay_weeks", label: "Delay Duration (Weeks)", type: "number", default: 1 }
+            {
+                id: "product_name_select",
+                label: "Product",
+                type: "select",
+                listType: "products"
+            },
+            {
+                id: "current_stock",
+                label: "Current Stock",
+                type: "number"
+            },
+            {
+                id: "restock_qty",
+                label: "Restock Quantity",
+                type: "number"
+            },
+            {
+                id: "delay_weeks",
+                label: "Delay Duration (Weeks)",
+                type: "number",
+                default: 1
+            }
         ]
     },
+
     seasonalSurge: {
         title: "Seasonal Demand Surge",
         fields: [
-            { id: "product_name_select", label: "Product", type: "select", listType: "products" },
-            { id: "current_stock", label: "Current Stock", type: "number" },
-            { id: "season_name", label: "Season Name", type: "text" },
-            { id: "peak_week", label: "Peak Week", type: "number", default: 3 },
-            { id: "peak_boost_percent", label: "Peak Boost (%)", type: "number", default: 100 },
-            { id: "season_duration_weeks", label: "Duration (Weeks)", type: "number", default: 8 }
+            {
+                id: "product_name_select",
+                label: "Product",
+                type: "select",
+                listType: "products"
+            },
+            {
+                id: "current_stock",
+                label: "Current Stock",
+                type: "number"
+            },
+            {
+                id: "season_name",
+                label: "Season Name",
+                type: "text"
+            },
+            {
+                id: "peak_week",
+                label: "Peak Week",
+                type: "number",
+                default: 3
+            },
+            {
+                id: "peak_boost_percent",
+                label: "Peak Boost (%)",
+                type: "number",
+                default: 100
+            },
+            {
+                id: "season_duration_weeks",
+                label: "Duration (Weeks)",
+                type: "number",
+                default: 8
+            }
         ]
     },
+
     newLaunch: {
         title: "New Product Launch Simulation",
         fields: [
-            { id: "product_name", label: "New Product Name", type: "text" },
-            { id: "category", label: "Category", type: "select", listType: "categories" },
-            { id: "launch_week_month", label: "Launch Month (1-12)", type: "number" },
-            { id: "initial_stock", label: "Initial Stock", type: "number", default: 1000 },
-            { id: "growth_rate_percent", label: "Growth Rate (%)", type: "number", default: 10 },
-            { id: "num_weeks", label: "Simulation Duration (Weeks)", type: "number", default: 12 }
+            {
+                id: "product_name",
+                label: "New Product Name",
+                type: "text"
+            },
+            {
+                id: "category",
+                label: "Category",
+                type: "select",
+                listType: "categories"
+            },
+            {
+                id: "launch_week_month",
+                label: "Launch Month (1-12)",
+                type: "number"
+            },
+            {
+                id: "initial_stock",
+                label: "Initial Stock",
+                type: "number",
+                default: 1000
+            },
+            {
+                id: "growth_rate_percent",
+                label: "Growth Rate (%)",
+                type: "number",
+                default: 10
+            },
+            {
+                id: "num_weeks",
+                label: "Simulation Duration (Weeks)",
+                type: "number",
+                default: 12
+            }
         ]
     }
 };
 
-let currentActiveScenario = null;
-function handleProductChange(select) {
-    console.log("Selected product:", select.value);
-}
+
+// ======================================================
+// OPEN MODAL
+// ======================================================
+
 function openSimulationModal(scenarioKey) {
+
     currentActiveScenario = scenarioKey;
+
     const config = simConfigs[scenarioKey];
+
     document.getElementById('modalTitle').textContent = config.title;
+
     const content = document.getElementById('modalContent');
 
     content.innerHTML = config.fields.map(field => {
+
         let inputHTML = "";
+
+        // SELECTS
         if (field.type === "select") {
+
             if (field.listType === "products") {
+
                 inputHTML = `
                     <select id="${field.id}" onchange="handleProductChange(this)">
                         <option value="">-- Select Product --</option>
+
                         ${(productList || []).map(p => `
                             <option value="${p.product_code}">
-                                ${p.product_name || 'Unknown'} (${p.product_code})
+                                ${p.product_name} (${p.product_code})
                             </option>
                         `).join("")}
-                    </select>`;
+
+                    </select>
+                `;
+
             } else {
+
                 inputHTML = `
                     <select id="${field.id}">
                         <option value="">-- Select Category --</option>
-                        ${categoryList.map(cat => `<option value="${cat}">${cat}</option>`).join("")}
-                    </select>`;
-            }
-        } else {
-            inputHTML = `
-                <input type="${field.type}" id="${field.id}"
-                value="${field.default || ''}"
-                placeholder="${field.placeholder || 'Enter ' + field.label.toLowerCase() + '...'}">`;
-        }
-        return `<div class="form-group"><label>${field.label}</label>${inputHTML}</div>`;
-    }).join('');
 
-    document.getElementById('simModal').classList.add('open');
+                        ${categoryList.map(cat => `
+                            <option value="${cat}">
+                                ${cat}
+                            </option>
+                        `).join("")}
+
+                    </select>
+                `;
+            }
+
+        } else {
+
+            inputHTML = `
+                <input
+                    type="${field.type}"
+                    id="${field.id}"
+                    value="${field.default || ''}"
+                    placeholder="${field.label}"
+
+                    ${field.type === "date" ? `
+                        min="${new Date().toISOString().split('T')[0]}"
+                    ` : ""}
+
+                    style="
+                        width: 100%;
+                        padding: 12px;
+                        border-radius: 10px;
+                        border: 1px solid rgba(255,255,255,0.1);
+                        background: rgba(255,255,255,0.05);
+                        color: white;
+                        font-size: 15px;
+                        box-sizing: border-box;
+                    "
+                >
+            `;
+        }
+
+        return `
+            <div class="form-group">
+                <label>${field.label}</label>
+                ${inputHTML}
+            </div>
+        `;
+
+    }).join("");
+
+    document.getElementById("simModal").classList.add("open");
 }
 
 
+// ======================================================
+// CLOSE MODAL
+// ======================================================
 
 function closeModal() {
-    document.getElementById('simModal').classList.remove('open');
+
+    document.getElementById("simModal").classList.remove("open");
     currentActiveScenario = null;
 }
 
+
 function handleOutsideClick(event) {
-    if (event.target === document.getElementById('simModal')) closeModal();
+
+    if (event.target === document.getElementById("simModal")) {
+        closeModal();
+    }
 }
 
-function executeSimulation() {
-    if (!currentActiveScenario) return;
-    const config = simConfigs[currentActiveScenario];
-    const data = {};
-    config.fields.forEach(f => data[f.id] = document.getElementById(f.id).value);
 
-    console.log("🚀 Simulation Parameters:", data);
+// ======================================================
+// RESULTS MODAL
+// ======================================================
 
-    const btn = document.querySelector('.modal-actions .active');
-    btn.textContent = "Processing...";
-    setTimeout(() => {
-        btn.textContent = "Run Simulation";
-        document.getElementById('simModal').classList.remove('open');
-        alert("Simulation logic triggered");
-    }, 1000);
+function openResultsModal() {
+
+    document.getElementById("resultsModal").classList.add("open");
 }
+
+
+function closeResultsModal(event = null) {
+
+    if (
+        event &&
+        event.target !== document.getElementById("resultsModal")
+    ) return;
+
+    document.getElementById("resultsModal").classList.remove("open");
+}
+
+
+// ======================================================
+// PRODUCT CHANGE
+// ======================================================
+
 function handleProductChange(selectElement) {
+
     const selectedCode = selectElement.value;
+
     if (!selectedCode) return;
 
-    const product = productList.find(p => p.product_code == selectedCode);
+    const product = productList.find(
+        p => p.product_code == selectedCode
+    );
+
     if (!product) return;
 
-    // Safe parsing
     const stock = Number(product.stock_qty) || 0;
 
     const updates = {
+
         current_stock: stock,
         initial_stock: stock,
         category: product.category || ""
     };
 
     Object.entries(updates).forEach(([id, value]) => {
+
         const input = document.getElementById(id);
+
         if (!input) return;
 
         input.value = value;
 
-        // Highlight effect
         input.style.background = "rgba(82,194,143,0.25)";
-        setTimeout(() => input.style.background = "", 500);
+
+        setTimeout(() => {
+            input.style.background = "";
+        }, 500);
     });
 }
-async function initApp() {
+
+
+// ======================================================
+// EXECUTE SIMULATION
+// ======================================================
+
+async function executeSimulation() {
+
+    if (!currentActiveScenario) return;
+
+    const config = simConfigs[currentActiveScenario];
+
+    const data = {};
+
+    config.fields.forEach(f => {
+        data[f.id] = document.getElementById(f.id).value;
+    });
+
+    console.log("Simulation Params:", data);
+
+    const btn = document.querySelector('.modal-actions .active');
+
+    btn.disabled = true;
+    btn.textContent = "Processing...";
+
     try {
+
+        // =========================================
+        // TEMPORAL FORECAST
+        // =========================================
+
+        if (currentActiveScenario === "timeTravel") {
+
+    const response = await fetch(
+        "http://localhost:8000/predict_until_date",
+        {
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({
+                target_date: data.target_date
+            })
+        }
+    );
+
+    const result = await response.json();
+
+    console.log(result);
+
+    if (!result.predictions) {
+        alert(result.detail || "Simulation failed");
+        return;
+    }
+
+    // =====================================
+    // SUMMARY
+    // =====================================
+
+    document.getElementById("resultsSummary").innerHTML = `
+
+        <b>Forecast Completed Successfully</b>
+
+        <br><br>
+
+        Forecast Until:
+        <b>${result.target_date}</b>
+
+        <br>
+
+        Weeks Simulated:
+        <b>${result.weeks}</b>
+
+        <br>
+
+        Products Analysed:
+        <b>${result.predictions.length}</b>
+
+        <br>
+
+        Total Predicted Demand:
+        <b>${result.total_inventory_demand}</b>
+    `;
+
+    // =====================================
+    // TABLE
+    // =====================================
+
+    const tableBody =
+        document.getElementById("resultsTableBody");
+
+    tableBody.innerHTML = result.predictions
+        .map(p => `
+            <tr>
+                <td>${p.product_name}</td>
+                <td>${p.total_predicted_demand}</td>
+            </tr>
+        `)
+        .join("");
+
+    // =====================================
+// LINE GRAPH (LIKE PYTHON MATPLOTLIB)
+// =====================================
+
+const ctx = document
+    .getElementById("simulationChart")
+    .getContext("2d");
+
+if (simulationChart) {
+    simulationChart.destroy();
+}
+
+// 🔥 top 5 products only
+const topProducts = result.predictions
+
+// X AXIS LABELS
+const labels =
+    topProducts[0]?.weekly_forecast.map(
+        w => w.label
+    ) || [];
+
+// DATASETS
+const datasets = topProducts.map((p, index) => {
+
+    return {
+
+        label: p.product_name,
+
+        data: p.weekly_forecast.map(
+            w => w.predicted_units
+        ),
+
+        tension: 0.35,
+        fill: false,
+        borderWidth: 3,
+        pointRadius: 4
+    };
+});
+
+simulationChart = new Chart(ctx, {
+
+    type: 'line',
+
+    data: {
+        labels: labels,
+        datasets: datasets
+    },
+
+    options: {
+
+        responsive: true,
+        maintainAspectRatio: false,
+
+        interaction: {
+            mode: 'index',
+            intersect: false
+        },
+
+        plugins: {
+
+            legend: {
+                labels: {
+                    color: '#fff'
+                }
+            },
+
+            tooltip: {
+                enabled: true
+            }
+        },
+
+        scales: {
+
+            x: {
+                ticks: {
+                    color: '#fff'
+                },
+
+                grid: {
+                    color: 'rgba(255,255,255,0.08)'
+                }
+            },
+
+            y: {
+
+                ticks: {
+                    color: '#fff'
+                },
+
+                grid: {
+                    color: 'rgba(255,255,255,0.08)'
+                },
+
+                beginAtZero: true
+            }
+        }
+    }
+});
+
+    closeModal();
+    openResultsModal();
+}
+    } catch (e) {
+
+        console.error(e);
+        alert("Simulation failed");
+    }
+
+    btn.disabled = false;
+    btn.textContent = "Run Simulation";
+}
+
+
+// ======================================================
+// INIT
+// ======================================================
+
+async function initApp() {
+
+    try {
+
         productList = await get('/get-products');
 
-        // extract categories
         const categoriesSet = new Set();
+
         productList.forEach(p => {
-            if (p.category) categoriesSet.add(p.category);
+
+            if (p.category) {
+                categoriesSet.add(p.category);
+            }
         });
 
         categoryList = Array.from(categoriesSet);
@@ -484,10 +1056,13 @@ async function initApp() {
         console.log("Categories:", categoryList);
 
     } catch (e) {
+
         console.error("Init error:", e);
     }
 }
+
 initApp();
+
 </script>
 </body>
 </html>
