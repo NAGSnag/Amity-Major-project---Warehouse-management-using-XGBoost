@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<title>OptiWare - Products</title>
+
+<style>
+
+*{
+    box-sizing:border-box;
+    margin:0;
+    padding:0;
+}
+
+body{
+    font-family:"Monospac821 BT","Lucida Console","Courier New",monospace;
+    background:
+        radial-gradient(
+            1000px 400px at 50% -100px,
+            #29324a 0%,
+            #0d0f18 60%
+        ),
+        #0b0d13;
+
+    color:#e9edf4;
+    min-height:100vh;
+}
+
+.app{
+    min-height:100vh;
+    display:grid;
+    grid-template-rows:auto auto 1fr;
+    gap:12px;
+    padding:12px;
+}
+
+/* ================= TOPBAR ================= */
+
+.topbar{
+    border-radius:18px;
+    border:1px solid #262b3b;
+    background:rgba(12,15,24,0.9);
+
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+
+    padding:16px 24px;
+}
+
+.topbar h2{
+    font-size:20px;
+}
+
+.topbar-right{
+    display:flex;
+    gap:10px;
+    align-items:center;
+}
+
+.pill{
+    border:none;
+    color:#eef2f9;
+    background:#2f3345;
+    border-radius:999px;
+    padding:8px 18px;
+    cursor:pointer;
+    transition: all 0.3s ease;
+}
+
+.pill:hover{
+    background:#3a4050;
+}
+
+.pill.dashboard-active{
+    background:#4a55d8;
+    font-weight:700;
+}
+
+.avatar{
+    width:40px;
+    height:40px;
+    border-radius:50%;
+    background:
+        linear-gradient(
+            135deg,
+            #eceef4,
+            #cbd0d9
+        );
+}
+
+/* ================= HEADER ================= */
+
+.page-header{
+    padding:30px 20px;
+    border-bottom:1px solid #3d444d;
+}
+
+.page-header h1{
+    font-size:2rem;
+    margin-bottom:10px;
+}
+
+.page-header p{
+    color:#969fac;
+    line-height:1.6;
+}
+
+/* ================= ACTIONS ================= */
+
+.actions{
+    display:flex;
+    gap:12px;
+    padding:0 20px;
+    flex-wrap:wrap;
+}
+
+.action-btn{
+    background:#52c28f;
+    color:#071811;
+    border:none;
+    padding:12px 18px;
+    border-radius:12px;
+    font-weight:700;
+    cursor:pointer;
+    transition: all 0.3s ease;
+}
+
+.action-btn:hover{
+    background:#5ed499;
+}
+
+.action-btn.secondary{
+    background:#4a55d8;
+    color:white;
+}
+
+.action-btn.secondary:hover{
+    background:#5568e8;
+}
+
+/* ================= GRID ================= */
+
+.sections-grid{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:20px;
+    padding:20px;
+    overflow-y:auto;
+}
+
+/* ================= CARD ================= */
+
+.data-card{
+    background:#1f232c;
+    border:1px solid #323847;
+    border-radius:18px;
+    overflow:hidden;
+    box-shadow:0 10px 30px rgba(0,0,0,0.35);
+}
+
+.card-header{
+    padding:18px 20px;
+    border-bottom:1px solid rgba(255,255,255,0.06);
+
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+}
+
+.card-header h3{
+    color:#52c28f;
+}
+
+.card-header span{
+    font-size: 12px;
+    color: #a3abff;
+}
+
+.card-content{
+    padding:16px;
+}
+
+.loading{
+    text-align:center;
+    padding:20px;
+    color:#a3abff;
+}
+
+.loading-spinner{
+    display:inline-block;
+    width:20px;
+    height:20px;
+    border:3px solid rgba(74,85,216,0.3);
+    border-top-color:#4a55d8;
+    border-radius:50%;
+    animation:spin 0.8s linear infinite;
+    margin-right:10px;
+}
+
+@keyframes spin{
+    to{ transform:rotate(360deg); }
+}
+
+.error-msg{
+    color:#ff7b72;
+    padding:12px;
+    background:rgba(255,123,114,0.1);
+    border-radius:8px;
+    font-size:12px;
+}
+
+.empty-state{
+    text-align:center;
+    padding:30px 20px;
+    color:#a3abff;
+}
+
+/* ================= TABLE ================= */
+
+.table-wrapper{
+    overflow-x:auto;
+}
+
+.data-table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+.data-table th,
+.data-table td{
+    padding:12px;
+    text-align:left;
+    border-bottom:1px solid rgba(255,255,255,0.06);
+    font-size:13px;
+}
+
+.data-table th{
+    background:rgba(255,255,255,0.04);
+    color:#a3abff;
+}
+
+.data-table tr:hover{
+    background:rgba(255,255,255,0.03);
+}
+
+.data-table tbody tr{
+    transition: background 0.2s ease;
+}
+
+/* ================= STATUS ================= */
+
+.stock-good{
+    color:#52c28f;
+    font-weight:700;
+}
+
+.stock-low{
+    color:#ff7b72;
+    font-weight:700;
+}
+
+.stock-critical{
+    color:#ff6b6b;
+    font-weight:700;
+}
+
+/* ================= MODAL ================= */
+
+.modal-overlay{
+    position:fixed;
+    inset:0;
+
+    background:rgba(10,14,24,0.85);
+
+    display:none;
+    align-items:center;
+    justify-content:center;
+
+    z-index:9999;
+}
+
+.modal-overlay.open{
+    display:flex;
+}
+
+.sim-modal{
+    width:min(550px,95%);
+    background:#1e2128;
+    border:1px solid #4a55d8;
+    border-radius:16px;
+    padding:22px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.sim-modal h2{
+    margin-bottom:18px;
+    color:#52c28f;
+}
+
+/* ================= FORM ================= */
+
+.form-group{
+    display:flex;
+    flex-direction:column;
+    margin-bottom:14px;
+}
+
+.form-group label{
+    font-size:12px;
+    margin-bottom:5px;
+    color:#a3abff;
+}
+
+.form-group input,
+.form-group select{
+    background:#0b0d13;
+    border:1px solid #323847;
+    border-radius:8px;
+    padding:10px;
+    color:#e9edf4;
+    transition: border-color 0.3s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus{
+    outline:none;
+    border-color:#4a55d8;
+}
+
+.card-content .form-group input,
+.card-content .form-group select {
+    background:#0b0d13;
+    border:1px solid #323847;
+    border-radius:8px;
+    padding:10px;
+    color:#e9edf4;
+    transition: border-color 0.3s ease;
+    font-size: 13px;
+}
+
+.card-content .form-group input:focus,
+.card-content .form-group select:focus {
+    outline:none;
+    border-color:#4a55d8;
+}
+
+/* ================= BUTTONS ================= */
+
+.modal-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:10px;
+    margin-top:16px;
+}
+
+.modal-actions button{
+    border:none;
+    border-radius:8px;
+    padding:10px 16px;
+    cursor:pointer;
+    transition: all 0.3s ease;
+}
+
+.modal-actions .cancel{
+    background:#3d444d;
+    color:white;
+}
+
+.modal-actions .cancel:hover{
+    background:#4a5259;
+}
+
+.modal-actions .active{
+    background:#52c28f;
+    color:#071811;
+    font-weight:700;
+}
+
+.modal-actions .active:hover{
+    background:#5ed499;
+}
+
+.modal-actions .active:disabled{
+    background:#888;
+    cursor:not-allowed;
+}
+
+/* ================= RESPONSIVE ================= */
+
+@media(max-width:768px){
+
+    .sections-grid{
+        grid-template-columns:1fr;
+    }
+
+    .topbar{
+        flex-direction:column;
+        gap:14px;
+    }
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+    <!-- ================= TOPBAR ================= -->
+
+    <header class="topbar">
+
+        <h2>OptiWare</h2>
+
+        <div class="topbar-right">
+
+            <button
+                class="pill"
+                onclick="window.location.href='/app'"
+            >
+                Dashboard
+            </button>
+
+            <button
+                class="pill"
+                onclick="window.location.href='/stimulations'"
+            >
+                Simulations
+            </button>
+
+            <button class="pill dashboard-active">
+                Products
+            </button>
+
+            <div class="avatar"></div>
+
+        </div>
+
+    </header>
+
+    <!-- ================= HEADER ================= -->
+
+    <div class="page-header">
+
+        <h1>Inventory & Product Center</h1>
+
+        <p>
+            Manage products, raw materials, and monitor recent sales activity.
+            Add new inventory items directly from the dashboard.
+        </p>
+
+    </div>
+
+    <!-- ================= ACTIONS ================= -->
+
+    <div class="actions">
+
+        <button
+            class="action-btn"
+            onclick="openModal('product')"
+        >
+            + Add Product
+        </button>
+
+        <button
+            class="action-btn secondary"
+            onclick="openModal('raw')"
+        >
+            + Add Raw Material
+        </button>
+
+    </div>
+
+    <!-- ================= SECTIONS ================= -->
+
+    <div class="sections-grid">
+
+        <!-- PRODUCTS -->
+
+        <div class="data-card">
+
+            <div class="card-header">
+
+                <h3>Products</h3>
+
+                <span id="productCount">Loading...</span>
+
+            </div>
+
+            <div class="card-content">
+
+                <div id="productsLoading" class="loading">
+                    <span class="loading-spinner"></span>
+                    Loading products...
+                </div>
+
+                <div id="productsError" class="error-msg" style="display:none;"></div>
+
+                <div class="table-wrapper" id="productsTableWrapper" style="display:none;">
+
+                    <table class="data-table">
+
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Name</th>
+                                <th>Category</th>
+                                <th>Price</th>
+                                <th>Stock</th>
+                                <th>Reorder Level</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="productsTableBody">
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+                <div id="productsEmpty" class="empty-state" style="display:none;">
+                    No products found
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- RAW MATERIALS -->
+
+        <div class="data-card">
+
+            <div class="card-header">
+
+                <h3>Raw Materials</h3>
+
+                <span id="rawMaterialCount">Loading...</span>
+
+            </div>
+
+            <div class="card-content">
+
+                <div id="rawLoading" class="loading">
+                    <span class="loading-spinner"></span>
+                    Loading raw materials...
+                </div>
+
+                <div id="rawError" class="error-msg" style="display:none;"></div>
+
+                <div class="table-wrapper" id="rawTableWrapper" style="display:none;">
+
+                    <table class="data-table">
+
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Name</th>
+                                <th>Category</th>
+                                <th>Stock</th>
+                                <th>Reorder Level</th>
+                                <th>Size</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="rawTableBody">
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+                <div id="rawEmpty" class="empty-state" style="display:none;">
+                    No raw materials found
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- SALES -->
+
+        <div class="data-card">
+
+            <div class="card-header">
+
+                <h3>Recent Sales</h3>
+
+                <span id="salesCount">Loading...</span>
+
+            </div>
+
+            <div class="card-content">
+
+                <!-- Pagination Controls -->
+                <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap;">
+                    
+                    <div class="form-group" style="margin-bottom: 0; min-width: 120px;">
+                        <label>Records Per Page</label>
+                        <select 
+                            id="salesPageSize"
+                            onchange="resetSalesPagination()"
+                            style="width: 100%;"
+                        >
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                            <option value="200" selected>200</option>
+                        </select>
+                    </div>
+
+                    <div style="flex: 1; min-width: 200px; text-align: center; color: #a3abff; font-size: 12px;">
+                        <span id="salesPaginationInfo">Loading...</span>
+                    </div>
+
+                    <div style="display: flex; gap: 8px;">
+                        <button 
+                            id="salesPrevBtn"
+                            class="pill"
+                            onclick="previousSalesPage()"
+                            style="padding: 6px 12px;"
+                        >
+                            ← Prev
+                        </button>
+
+                        <button 
+                            id="salesNextBtn"
+                            class="pill"
+                            onclick="nextSalesPage()"
+                            style="padding: 6px 12px;"
+                        >
+                            Next →
+                        </button>
+                    </div>
+
+                </div>
+
+                <div id="salesLoading" class="loading">
+                    <span class="loading-spinner"></span>
+                    Loading sales...
+                </div>
+
+                <div id="salesError" class="error-msg" style="display:none;"></div>
+
+                <div class="table-wrapper" id="salesTableWrapper" style="display:none;">
+
+                    <table class="data-table">
+
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Sale Date</th>
+                                <th>Item ID</th>
+                                <th>Sales Amount</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="salesTableBody">
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+                <div id="salesEmpty" class="empty-state" style="display:none;">
+                    No sales found
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- ================= MODAL ================= -->
+
+<div
+    id="itemModal"
+    class="modal-overlay"
+>
+
+    <div class="sim-modal">
+
+        <h2 id="modalTitle">
+            Add Item
+        </h2>
+
+        <div class="form-group">
+
+            <label>
+                Item Code
+            </label>
+
+            <input
+                type="text"
+                id="itemCode"
+                placeholder="Enter item code (e.g., P001)"
+            >
+
+        </div>
+
+        <div class="form-group">
+
+            <label>
+                Item Name
+            </label>
+
+            <input
+                type="text"
+                id="itemName"
+                placeholder="Enter item name"
+            >
+
+        </div>
+
+        <div class="form-group">
+
+            <label>
+                Category
+            </label>
+
+            <input
+                type="text"
+                id="itemCategory"
+                placeholder="Enter category"
+            >
+
+        </div>
+
+        <div id="productFields"></div>
+        <div id="rawFields"></div>
+
+        <div class="form-group">
+
+            <label>
+                Stock Quantity
+            </label>
+
+            <input
+                type="number"
+                id="itemStockQty"
+                placeholder="Enter stock quantity"
+                min="0"
+            >
+
+        </div>
+
+        <div class="form-group">
+
+            <label>
+                Reorder Level
+            </label>
+
+            <input
+                type="number"
+                id="itemReorderLevel"
+                placeholder="Enter reorder level"
+                min="0"
+            >
+
+        </div>
+
+        <div class="form-group">
+
+            <label>
+                Size Category
+            </label>
+
+            <input
+                type="text"
+                id="itemSizeCategory"
+                placeholder="e.g., Small, Medium, Large"
+            >
+
+        </div>
+
+        <div class="modal-actions">
+
+            <button
+                class="cancel"
+                onclick="closeModal()"
+            >
+                Cancel
+            </button>
+
+            <button
+                class="active"
+                id="saveBtn"
+                onclick="saveItem()"
+            >
+                Save
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+let currentType = "product";
+
+// ================= API FUNCTIONS =================
+
+async function fetchProducts() {
+    try {
+        const response = await fetch('http://localhost:8080/get-products');
+        const text = await response.text();
+        
+        if (text.startsWith('<')) {
+            console.error('Server returned HTML:', text.substring(0, 200));
+            return { success: false, error: 'Server error: Check if /get-products endpoint exists.' };
+        }
+        
+        const data = JSON.parse(text);
+        return { success: true, data };
+    } catch (error) {
+        console.error('Error fetching products:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * RAW MATERIALS Schema:
+ * id, material_code, material_name, category, stock_qty, reorder_level, size_category, product_id, qty_per_unit
+ */
+async function fetchRawMaterials() {
+    try {
+        const response = await fetch('http://localhost:8080/get-raw-materials');
+        const text = await response.text();
+        
+        if (text.startsWith('<')) {
+            console.error('Server returned HTML:', text.substring(0, 200));
+            return { success: false, error: 'Server error: Check if /get-raw-materials endpoint exists.' };
+        }
+        
+        const data = JSON.parse(text);
+        return { success: true, data };
+    } catch (error) {
+        console.error('Error fetching raw materials:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * SALES Schema (Individual Records with Pagination):
+ * Returns sales_data with pagination support
+ */
+async function fetchSales(limit = 200, offset = 0) {
+    try {
+        const url = `http://localhost:8080/get-allsales?limit=${limit}&offset=${offset}`;
+        console.log('Fetching sales from:', url);
+        
+        const response = await fetch(url);
+        const text = await response.text();
+        
+        if (text.startsWith('<')) {
+            console.error('Server returned HTML:', text.substring(0, 200));
+            return { success: false, error: 'Server error: Check if /get-allsales endpoint exists.' };
+        }
+        
+        const result = JSON.parse(text);
+        console.log('Sales data received:', result);
+        return { success: true, ...result };
+    } catch (error) {
+        console.error('Error fetching sales:', error);
+        return { success: false, error: `Failed to fetch: ${error.message}` };
+    }
+}
+
+// Add new product
+async function addProduct(productData) {
+    try {
+        const response = await fetch('http://localhost:8080/add-product', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(productData)
+        });
+        const data = await response.json();
+        return { success: true, message: 'Product added successfully', data };
+    } catch (error) {
+        console.error('Error adding product:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// Add new raw material
+async function addRawMaterial(materialData) {
+    try {
+        const response = await fetch('http://localhost:8080/add-raw-material', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(materialData)
+        });
+        const data = await response.json();
+        return { success: true, message: 'Raw material added successfully', data };
+    } catch (error) {
+        console.error('Error adding raw material:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// ================= HELPER FUNCTIONS =================
+
+// Determine stock status based on stock and reorder level
+function getStockStatus(stock, reorderLevel) {
+    const stockNum = parseInt(stock);
+    const reorderNum = parseInt(reorderLevel);
+    
+    if (stockNum <= 0) {
+        return { class: 'stock-critical', text: 'Critical' };
+    } else if (stockNum <= reorderNum) {
+        return { class: 'stock-low', text: 'Low' };
+    } else {
+        return { class: 'stock-good', text: 'Healthy' };
+    }
+}
+
+// Format date
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-IN');
+}
+
+// ================= UI RENDERING FUNCTIONS =================
+
+// Render products table
+async function renderProducts() {
+    const result = await fetchProducts();
+    
+    const loading = document.getElementById('productsLoading');
+    const error = document.getElementById('productsError');
+    const wrapper = document.getElementById('productsTableWrapper');
+    const tbody = document.getElementById('productsTableBody');
+    const empty = document.getElementById('productsEmpty');
+    const count = document.getElementById('productCount');
+    
+    loading.style.display = 'none';
+    error.style.display = 'none';
+    wrapper.style.display = 'none';
+    empty.style.display = 'none';
+    
+    if (!result.success) {
+        error.textContent = `Error: ${result.error}`;
+        error.style.display = 'block';
+        count.textContent = '0 Items';
+        return;
+    }
+    
+    const products = result.data || [];
+    count.textContent = `${products.length} Items`;
+    
+    if (products.length === 0) {
+        empty.style.display = 'block';
+        return;
+    }
+    
+    tbody.innerHTML = products.map(product => {
+        const status = getStockStatus(product.stock_qty, product.reorder_level);
+        
+        return `
+            <tr>
+                <td>${product.product_code || 'N/A'}</td>
+                <td>${product.product_name || 'N/A'}</td>
+                <td>${product.category || 'N/A'}</td>
+                <td>₹${product.unit_price || 0}</td>
+                <td>${product.stock_qty || 0}</td>
+                <td>${product.reorder_level || 0}</td>
+                <td class="${status.class}">${status.text}</td>
+            </tr>
+        `;
+    }).join('');
+    
+    wrapper.style.display = 'block';
+}
+
+// Render raw materials table
+async function renderRawMaterials() {
+    const result = await fetchRawMaterials();
+    
+    const loading = document.getElementById('rawLoading');
+    const error = document.getElementById('rawError');
+    const wrapper = document.getElementById('rawTableWrapper');
+    const tbody = document.getElementById('rawTableBody');
+    const empty = document.getElementById('rawEmpty');
+    const count = document.getElementById('rawMaterialCount');
+    
+    loading.style.display = 'none';
+    error.style.display = 'none';
+    wrapper.style.display = 'none';
+    empty.style.display = 'none';
+    
+    if (!result.success) {
+        error.textContent = `Error: ${result.error}`;
+        error.style.display = 'block';
+        count.textContent = '0 Items';
+        return;
+    }
+    
+    const materials = result.data || [];
+    count.textContent = `${materials.length} Items`;
+    
+    if (materials.length === 0) {
+        empty.style.display = 'block';
+        return;
+    }
+    
+    tbody.innerHTML = materials.map(material => {
+        const status = getStockStatus(material.stock_qty, material.reorder_level);
+        
+        return `
+            <tr>
+                <td>${material.material_code || 'N/A'}</td>
+                <td>${material.material_name || 'N/A'}</td>
+                <td>${material.category || 'N/A'}</td>
+                <td>${material.stock_qty || 0}</td>
+                <td>${material.reorder_level || 0}</td>
+                <td>${material.size_category || 'N/A'}</td>
+                <td class="${status.class}">${status.text}</td>
+            </tr>
+        `;
+    }).join('');
+    
+    wrapper.style.display = 'block';
+}
+
+// ================= PAGINATION STATE =================
+
+let salesCurrentOffset = 0;
+let salesCurrentLimit = 200;
+let salesTotalRecords = 0;
+
+// Reset pagination to first page
+function resetSalesPagination() {
+    salesCurrentLimit = parseInt(document.getElementById('salesPageSize').value);
+    salesCurrentOffset = 0;
+    renderSales();
+}
+
+// Go to next page
+function nextSalesPage() {
+    const nextOffset = salesCurrentOffset + salesCurrentLimit;
+    if (nextOffset < salesTotalRecords) {
+        salesCurrentOffset = nextOffset;
+        renderSales();
+        // document.querySelector('.table-wrapper')?.scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
+// Go to previous page
+function previousSalesPage() {
+    const prevOffset = salesCurrentOffset - salesCurrentLimit;
+    if (prevOffset >= 0) {
+        salesCurrentOffset = prevOffset;
+        renderSales();
+        document.querySelector('.table-wrapper')?.scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
+// Render sales table
+async function renderSales() {
+    const result = await fetchSales(salesCurrentLimit, salesCurrentOffset);
+    
+    const loading = document.getElementById('salesLoading');
+    const error = document.getElementById('salesError');
+    const wrapper = document.getElementById('salesTableWrapper');
+    const tbody = document.getElementById('salesTableBody');
+    const empty = document.getElementById('salesEmpty');
+    const count = document.getElementById('salesCount');
+    const paginationInfo = document.getElementById('salesPaginationInfo');
+    const prevBtn = document.getElementById('salesPrevBtn');
+    const nextBtn = document.getElementById('salesNextBtn');
+    
+    loading.style.display = 'none';
+    error.style.display = 'none';
+    wrapper.style.display = 'none';
+    empty.style.display = 'none';
+    
+    if (!result.success) {
+        error.textContent = `Error: ${result.error}`;
+        error.style.display = 'block';
+        count.textContent = '0 Records';
+        paginationInfo.textContent = 'No data';
+        return;
+    }
+    
+    const sales = result.data || [];
+    const total = result.total || 0;
+    const limit = result.limit || salesCurrentLimit;
+    const offset = result.offset || salesCurrentOffset;
+    
+    // Update state
+    salesTotalRecords = total;
+    
+    // Update info
+    count.textContent = `${total.toLocaleString()} Total`;
+    
+    if (total === 0) {
+        empty.style.display = 'block';
+        paginationInfo.textContent = 'No data';
+        prevBtn.disabled = true;
+        nextBtn.disabled = true;
+        return;
+    }
+    
+    const startRecord = offset + 1;
+    const endRecord = Math.min(offset + limit, total);
+    paginationInfo.textContent = `Showing ${startRecord.toLocaleString()}-${endRecord.toLocaleString()} of ${total.toLocaleString()}`;
+    
+    // Update button states
+    prevBtn.disabled = offset === 0;
+    nextBtn.disabled = endRecord >= total;
+    
+    if (prevBtn.disabled) prevBtn.style.opacity = '0.5';
+    else prevBtn.style.opacity = '1';
+    
+    if (nextBtn.disabled) nextBtn.style.opacity = '0.5';
+    else nextBtn.style.opacity = '1';
+    
+    if (sales.length === 0) {
+        empty.style.display = 'block';
+        return;
+    }
+    
+    tbody.innerHTML = sales.map(sale => {
+        const saleDate = sale.sale_date ? formatDate(sale.sale_date) : 'N/A';
+        const saleAmount = sale.sales ? `₹${parseFloat(sale.sales).toFixed(2)}` : '₹0.00';
+        
+        return `
+            <tr>
+                <td>${sale.id || 'N/A'}</td>
+                <td>${saleDate}</td>
+                <td>${sale.item_id || 'N/A'}</td>
+                <td>${saleAmount}</td>
+            </tr>
+        `;
+    }).join('');
+    
+    wrapper.style.display = 'block';
+}
+
+// ================= MODAL FUNCTIONS =================
+
+// Open modal
+function openModal(type) {
+    currentType = type;
+    
+    document.getElementById("itemModal").classList.add("open");
+    document.getElementById("modalTitle").innerText = type === "product" ? "Add Product" : "Add Raw Material";
+    
+    // Clear form
+    document.getElementById("itemCode").value = '';
+    document.getElementById("itemName").value = '';
+    document.getElementById("itemCategory").value = '';
+    document.getElementById("itemStockQty").value = '';
+    document.getElementById("itemReorderLevel").value = '';
+    document.getElementById("itemSizeCategory").value = '';
+    
+    // Show/hide type-specific fields
+    const productFields = document.getElementById("productFields");
+    const rawFields = document.getElementById("rawFields");
+    
+    if (type === "product") {
+        productFields.innerHTML = `
+            <div class="form-group">
+                <label>Unit Price</label>
+                <input type="number" id="unitPrice" placeholder="Enter unit price" min="0" step="0.01">
+            </div>
+        `;
+        rawFields.innerHTML = '';
+    } else {
+        rawFields.innerHTML = `
+            <div class="form-group">
+                <label>Product ID (Related To)</label>
+                <input type="number" id="productId" placeholder="Enter product ID" min="1">
+            </div>
+            <div class="form-group">
+                <label>Quantity Per Unit</label>
+                <input type="number" id="qtyPerUnit" placeholder="Enter qty per unit" min="0" step="0.01">
+            </div>
+        `;
+        productFields.innerHTML = '';
+    }
+}
+
+// Close modal
+function closeModal() {
+    document.getElementById("itemModal").classList.remove("open");
+}
+
+// Save item
+async function saveItem() {
+    const code = document.getElementById("itemCode").value.trim();
+    const name = document.getElementById("itemName").value.trim();
+    const category = document.getElementById("itemCategory").value.trim();
+    const stockQty = document.getElementById("itemStockQty").value.trim();
+    const reorderLevel = document.getElementById("itemReorderLevel").value.trim();
+    const sizeCategory = document.getElementById("itemSizeCategory").value.trim();
+    
+    // Validate required fields
+    if (!code || !name || !category || !stockQty || !reorderLevel) {
+        alert("Please fill in all required fields");
+        return;
+    }
+    
+    const saveBtn = document.getElementById("saveBtn");
+    saveBtn.disabled = true;
+    
+    try {
+        let result;
+        
+        if (currentType === "product") {
+            const unitPrice = document.getElementById("unitPrice").value.trim();
+            if (!unitPrice) {
+                alert("Please enter unit price");
+                saveBtn.disabled = false;
+                return;
+            }
+            
+            result = await addProduct({
+                product_code: code,
+                product_name: name,
+                category,
+                unit_price: parseFloat(unitPrice),
+                stock_qty: parseInt(stockQty),
+                reorder_level: parseInt(reorderLevel),
+                size_category: sizeCategory
+            });
+        } else {
+            const productId = document.getElementById("productId").value.trim();
+            const qtyPerUnit = document.getElementById("qtyPerUnit").value.trim();
+            
+            result = await addRawMaterial({
+                material_code: code,
+                material_name: name,
+                category,
+                stock_qty: parseInt(stockQty),
+                reorder_level: parseInt(reorderLevel),
+                size_category: sizeCategory,
+                product_id: productId ? parseInt(productId) : null,
+                qty_per_unit: qtyPerUnit ? parseFloat(qtyPerUnit) : null
+            });
+        }
+        
+        if (result.success) {
+            alert(result.message || "Item added successfully");
+            closeModal();
+            
+            // Refresh the appropriate table
+            if (currentType === "product") {
+                renderProducts();
+            } else {
+                renderRawMaterials();
+            }
+        } else {
+            alert(`Error: ${result.error}`);
+        }
+    } catch (error) {
+        alert(`Error: ${error.message}`);
+    } finally {
+        saveBtn.disabled = false;
+    }
+}
+
+// ================= INITIALIZATION =================
+
+// Load all data on page load
+document.addEventListener('DOMContentLoaded', function() {
+    renderProducts();
+    renderRawMaterials();
+    renderSales();
+});
+
+</script>
+
+</body>
+</html>

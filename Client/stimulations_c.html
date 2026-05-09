@@ -286,11 +286,9 @@ body {
     <header class="topbar">
         <h2>OptiWare</h2>
         <div class="topbar-right">
-            <button class="pill active">Efficiency: 80/100</button>
             <button class="pill" onclick="window.location.href='/app'">Dashboard</button>
             <button class="pill dashboard-active">Simulations</button>
-            <button class="pill">Reports</button>
-            <button class="pill">Products</button>
+            <button class="pill" onclick="window.location.href='/products'">Products</button>
             <div class="avatar"></div>
         </div>
     </header>
@@ -445,14 +443,9 @@ body {
                         width: 100%;
                     "
                 >
-                    <thead>
-                        <tr>
-                            <th>Product</th>
-                            <th>Total Demand</th>
-                        </tr>
-                    </thead>
 
-                    <tbody id="resultsTableBody"></tbody>
+
+                    <tbody id="resultsTableBody"><thead id="resultsTableHead"></thead></tbody>
                 </table>
             </div>
 
@@ -905,6 +898,14 @@ async function executeSimulation() {
             // =====================================
             // TABLE
             // =====================================
+            document.querySelector(
+                ".results-table thead"
+            ).innerHTML = `
+                <tr>
+                    <th>Product</th>
+                    <th>Total Demand</th>
+                </tr>
+            `;
 
             const tableBody =
                 document.getElementById("resultsTableBody");
@@ -1557,7 +1558,14 @@ if (currentActiveScenario === "seasonalSurge") {
     // =====================================
     // SUMMARY
     // =====================================
-
+    document.querySelector(
+    ".results-table thead"
+    ).innerHTML = `
+        <tr>
+            <th>Week</th>
+            <th>Surge Demand</th>
+        </tr>
+    `;
     document.getElementById(
         "resultsSummary"
     ).innerHTML = `
@@ -1803,7 +1811,18 @@ if (currentActiveScenario === "newLaunch") {
     // =====================================
     // SUMMARY
     // =====================================
-
+        document.querySelector(
+            ".results-table thead"
+        ).innerHTML = `
+            <tr>
+                <th>Week</th>
+                <th>Predicted Demand</th>
+                <th>Inventory Before</th>
+                <th>Inventory After</th>
+                <th>Restocked</th>
+                <th>Restock Qty</th>
+            </tr>
+        `;
     document.getElementById(
         "resultsSummary"
     ).innerHTML = `
@@ -1817,8 +1836,6 @@ if (currentActiveScenario === "newLaunch") {
 
         <br>
 
-        Category:
-        <b>${result.category}</b>
 
         <br>
     `;
@@ -1832,22 +1849,33 @@ if (currentActiveScenario === "newLaunch") {
             "resultsTableBody"
         );
 
-    tableBody.innerHTML =
-        result.weekly_forecast.map(w => `
+    tableBody.innerHTML = result.weekly_forecast
+            .map(w => `
+                <tr>
+                    <td>${w.week}</td>
 
-            <tr>
+                    <td>
+                        ${w.predicted_demand}
+                    </td>
 
-                <td>
-                    Week ${w.week}
-                </td>
+                    <td>
+                        ${w.stock_before ?? 0}
+                    </td>
 
-                <td>
-                    ${w.predicted_demand}
-                </td>
+                    <td>
+                        ${w.stock_after ?? 0}
+                    </td>
 
-            </tr>
+                    <td>
+                        ${w.restocked ? 'Yes' : 'No'}
+                    </td>
 
-        `).join("");
+                    <td>
+                        ${w.restock_qty ?? 0}
+                    </td>
+                </tr>
+            `)
+            .join("");
 
     // =====================================
     // CHART

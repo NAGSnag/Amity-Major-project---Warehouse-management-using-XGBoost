@@ -61,6 +61,10 @@ app.get('/app',(req,res)=>{
 app.get('/setup',(req,res)=>{
   res.sendFile(path.join(__dirname, "../Client/setup.html"))
 })
+app.get('/products',(req,res)=>{
+  res.sendFile(path.join(__dirname, "../Client/products.html"))
+})
+
 
 
 app.get('/stimulations',(req,res)=>{
@@ -292,7 +296,47 @@ app.get("/get-sales", async (req, res) => {
   const rows = await db(sql, params);
   res.json(rows);
 });
+// ✅ FIXED: Correct way to handle pagination with LIMIT and OFFSET
 
+app.get("/get-allsales", async (req, res) => {
+    try {
+        // Parse parameters
+        const limit = Math.max(1, Math.min(parseInt(req.query.limit) || 200, 1000));
+        const offset = Math.max(0, parseInt(req.query.offset) || 0);
+        
+        console.log(`Fetching sales: limit=${limit}, offset=${offset}`);
+        
+        // Get total count (separate query)
+        const countRows = await db(`SELECT COUNT(*) as total FROM sales_data`);
+        const total = countRows[0]?.total || 0;
+        
+        // Fetch paginated data
+        // NOTE: LIMIT and OFFSET must be integers, not parameterized
+        const sql = `
+            SELECT *
+            FROM sales_data
+            ORDER BY id DESC
+            LIMIT ${limit} OFFSET ${offset}
+        `;
+        
+        const rows = await db(sql);
+
+        res.json({
+            data: rows || [],
+            total: total,
+            limit: limit,
+            offset: offset,
+            hasMore: (offset + limit) < total
+        });
+
+    } catch (e) {
+        console.error('Error fetching sales:', e);
+        res.status(500).json({
+            error: "Failed to fetch sales data",
+            message: e.message
+        });
+    }
+});
 app.post("/import-sales", async (req, res) => {
   try {
     const { records } = req.body;

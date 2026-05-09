@@ -549,8 +549,7 @@
 
 
             <button class="pill" onclick="window.location.href='/stimulations'">Simulations</button>
-            <button class="pill">Reports</button>
-            <button class="pill">Products</button>
+            <button class="pill" onclick="window.location.href='/products'">Products</button>
             <div class="avatar"></div>
         </div>
     </header>
@@ -1190,6 +1189,9 @@ function normalizeLocation(loc) {
 }
 document.getElementById("optimize_button").onclick = async () => {
     const btn = document.getElementById("optimize_button");
+    if(document.getElementById("section-title").innerHTML!="Finished Goods Section"){
+        document.getElementById("btn-prev").click()
+    }
 
     btn.disabled = true;
     btn.style.opacity = "0.5";
@@ -1265,6 +1267,7 @@ document.getElementById("optimize_button").onclick = async () => {
     btn.disabled = false;
     btn.style.opacity = "1";
     btn.textContent = "Optimize Current Layout";
+    loadEfficiency()
 };
 
 
@@ -1485,7 +1488,9 @@ function normalizeLocation_rawmaterials(loc) {
 
 document.getElementById("optimize_rm_button").onclick = async () => {
     const btn = document.getElementById("optimize_rm_button");
-
+    if(document.getElementById("section-title").innerHTML!="Raw Materials Section"){
+        document.getElementById("btn-prev").click()
+    }
     btn.disabled = true;
     btn.style.opacity = "0.5";
     btn.textContent = "Optimizing Raw Materials...";
@@ -1500,7 +1505,7 @@ document.getElementById("optimize_rm_button").onclick = async () => {
     }
 
     let movementLogs = [];
-    layoutUpdates = []; // ✅ IMPORTANT
+    layoutUpdates = [];
 
     renderSection();
     await new Promise(r => setTimeout(r, 300));
@@ -1554,6 +1559,7 @@ document.getElementById("optimize_rm_button").onclick = async () => {
     btn.disabled = false;
     btn.style.opacity = "1";
     btn.textContent = "Optimize Raw Materials";
+    loadEfficiency()
 };
 const locationMap = buildLocationMap();
 function swapBoxData(fromLoc, toLoc, locationMap) {

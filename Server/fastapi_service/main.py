@@ -1075,35 +1075,13 @@ def simulate_demand_spike(data: dict = Body(...)):
 def get_products():
 
     try:
-
-        Products, Boxes, Shelves, Racks, RawMaterials, Salesdata = load_data()
+        Products=[]
+        with engine.connect() as conn:
+            Products= [dict(r) for r in conn.execute(text("SELECT * FROM products")).mappings().all()]
 
         if not Products:
             return []
-
-        cleaned_products = []
-
-        for p in Products:
-
-            cleaned_products.append({
-
-                "product_code":
-                    p.get("product_code", ""),
-
-                "product_name":
-                    p.get("product_name", ""),
-
-                "category":
-                    p.get("category", ""),
-
-                "stock_qty":
-                    p.get("stock_qty", 0),
-
-                "price":
-                    p.get("price", 0)
-            })
-
-        return cleaned_products
+        return Products
 
     except Exception as e:
 
@@ -1113,7 +1091,26 @@ def get_products():
             status_code=500,
             detail="Failed to load products"
         )
-        
+@app.get("/get-sales")
+def get_sales():
+
+    try:
+        sales=[]
+        with engine.connect() as conn:
+            sales= [dict(r) for r in conn.execute(text("SELECT id,sale_date,item_id,sales FROM sales_data")).mappings().all()]
+
+        if not sales:
+            return []
+        return sales
+
+    except Exception as e:
+
+        print("Get sales Error:", e)
+
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to load sales"
+        )
         
 @app.post("/simulate_supply_delay")
 def simulate_supply_delay(data: dict = Body(...)):
@@ -1130,8 +1127,10 @@ def simulate_supply_delay(data: dict = Body(...)):
                 status_code=503,
                 detail="Model not loaded"
             )
-
-        Products, Boxes, Shelves, Racks, RawMaterials, Salesdata = load_data()
+        Products,Salesdata=[],[]
+        with engine.connect() as conn:
+            Products= [dict(r) for r in conn.execute(text("SELECT * FROM products")).mappings().all()]
+            Salesdata = [dict(r) for r in conn.execute(text("SELECT * FROM sales_data")).mappings().all()]
 
         df = pd.DataFrame(Salesdata)
 
