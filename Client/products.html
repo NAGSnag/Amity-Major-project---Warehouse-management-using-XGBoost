@@ -734,52 +734,35 @@ body{
 
         </div>
 
+        <div class="form-group">
+            <label>Stock Quantity</label>
+            <input type="number" id="itemStockQty" placeholder="Enter stock quantity" min="0">
+        </div>
+
+        <div class="form-group">
+            <label>Reorder Level</label>
+            <input type="number" id="itemReorderLevel" placeholder="Enter reorder level" min="0">
+        </div>
+
+        <div class="form-group">
+            <label>Size Category</label>
+            <select id="itemSizeCategory">
+                <option value="small">Small</option>
+                <option value="medium" selected>Medium</option>
+                <option value="large">Large</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Daily Consumption</label>
+            <input type="number" id="dailyConsumption" placeholder="Daily consumption qty" min="0" step="0.01">
+        </div>
+
+        <!-- Product-specific Fields -->
         <div id="productFields"></div>
+
+        <!-- Raw Material-specific Fields -->
         <div id="rawFields"></div>
-
-        <div class="form-group">
-
-            <label>
-                Stock Quantity
-            </label>
-
-            <input
-                type="number"
-                id="itemStockQty"
-                placeholder="Enter stock quantity"
-                min="0"
-            >
-
-        </div>
-
-        <div class="form-group">
-
-            <label>
-                Reorder Level
-            </label>
-
-            <input
-                type="number"
-                id="itemReorderLevel"
-                placeholder="Enter reorder level"
-                min="0"
-            >
-
-        </div>
-
-        <div class="form-group">
-
-            <label>
-                Size Category
-            </label>
-
-            <input
-                type="text"
-                id="itemSizeCategory"
-                placeholder="e.g., Small, Medium, Large"
-            >
-
-        </div>
 
         <div class="modal-actions">
 
@@ -879,7 +862,7 @@ async function fetchSales(limit = 200, offset = 0) {
 // Add new product
 async function addProduct(productData) {
     try {
-        const response = await fetch('http://localhost:8080/add-product', {
+        const response = await fetch('http://localhost:8080/create-single-product', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(productData)
@@ -895,7 +878,7 @@ async function addProduct(productData) {
 // Add new raw material
 async function addRawMaterial(materialData) {
     try {
-        const response = await fetch('http://localhost:8080/add-raw-material', {
+        const response = await fetch('http://localhost:8080/create-single-raw-material', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(materialData)
@@ -1051,7 +1034,7 @@ function nextSalesPage() {
     if (nextOffset < salesTotalRecords) {
         salesCurrentOffset = nextOffset;
         renderSales();
-        // document.querySelector('.table-wrapper')?.scrollIntoView({ behavior: 'smooth' });
+        document.querySelector('.table-wrapper')?.scrollIntoView({ behavior: 'smooth' });
     }
 }
 
@@ -1162,7 +1145,8 @@ function openModal(type) {
     document.getElementById("itemCategory").value = '';
     document.getElementById("itemStockQty").value = '';
     document.getElementById("itemReorderLevel").value = '';
-    document.getElementById("itemSizeCategory").value = '';
+    document.getElementById("itemSizeCategory").value = 'medium';
+    document.getElementById("dailyConsumption").value = '';
     
     // Show/hide type-specific fields
     const productFields = document.getElementById("productFields");
@@ -1171,20 +1155,52 @@ function openModal(type) {
     if (type === "product") {
         productFields.innerHTML = `
             <div class="form-group">
-                <label>Unit Price</label>
-                <input type="number" id="unitPrice" placeholder="Enter unit price" min="0" step="0.01">
+                <label>Unit Price (₹)</label>
+                <input type="number" id="unitPrice" placeholder="Enter unit price" min="0" step="0.01" required>
+            </div>
+            <div class="form-group">
+                <label>Manufacturing Cost (₹)</label>
+                <input type="number" id="mfgCost" placeholder="Enter manufacturing cost" min="0" step="0.01">
+            </div>
+            <div class="form-group">
+                <label>Demand (Units)</label>
+                <input type="number" id="demand" placeholder="Expected demand" min="0" step="0.01">
+            </div>
+            <div class="form-group">
+                <label>Box ID (Optional)</label>
+                <input type="number" id="boxId" placeholder="Box/Warehouse ID">
             </div>
         `;
         rawFields.innerHTML = '';
     } else {
         rawFields.innerHTML = `
             <div class="form-group">
-                <label>Product ID (Related To)</label>
-                <input type="number" id="productId" placeholder="Enter product ID" min="1">
+                <label>Unit of Measurement</label>
+                <select id="unit">
+                    <option value="">Select Unit</option>
+                    <option value="kg">Kg</option>
+                    <option value="pcs">Pcs (Pieces)</option>
+                    <option value="ltr">Ltr (Liters)</option>
+                    <option value="m">M (Meters)</option>
+                    <option value="box">Box</option>
+                    <option value="roll">Roll</option>
+                </select>
             </div>
             <div class="form-group">
-                <label>Quantity Per Unit</label>
-                <input type="number" id="qtyPerUnit" placeholder="Enter qty per unit" min="0" step="0.01">
+                <label>Unit Cost (₹)</label>
+                <input type="number" id="unitCost" placeholder="Cost per unit" min="0" step="0.01">
+            </div>
+            <div class="form-group">
+                <label>Lead Time (Days)</label>
+                <input type="number" id="leadTimeDays" placeholder="Days to receive from supplier" min="0">
+            </div>
+            <div class="form-group">
+                <label>Supplier Name</label>
+                <input type="text" id="supplierName" placeholder="Primary supplier name">
+            </div>
+            <div class="form-group">
+                <label>Box ID (Optional)</label>
+                <input type="number" id="boxId" placeholder="Box/Warehouse ID">
             </div>
         `;
         productFields.innerHTML = '';
@@ -1204,6 +1220,7 @@ async function saveItem() {
     const stockQty = document.getElementById("itemStockQty").value.trim();
     const reorderLevel = document.getElementById("itemReorderLevel").value.trim();
     const sizeCategory = document.getElementById("itemSizeCategory").value.trim();
+    const dailyConsumption = document.getElementById("dailyConsumption").value.trim() || 0;
     
     // Validate required fields
     if (!code || !name || !category || !stockQty || !reorderLevel) {
@@ -1219,6 +1236,10 @@ async function saveItem() {
         
         if (currentType === "product") {
             const unitPrice = document.getElementById("unitPrice").value.trim();
+            const mfgCost = document.getElementById("mfgCost").value.trim() || 0;
+            const demand = document.getElementById("demand").value.trim() || 0;
+            const boxId = document.getElementById("boxId").value.trim() || null;
+            
             if (!unitPrice) {
                 alert("Please enter unit price");
                 saveBtn.disabled = false;
@@ -1228,25 +1249,38 @@ async function saveItem() {
             result = await addProduct({
                 product_code: code,
                 product_name: name,
-                category,
+                category: category || null,
                 unit_price: parseFloat(unitPrice),
+                mfg_cost: parseFloat(mfgCost),
                 stock_qty: parseInt(stockQty),
                 reorder_level: parseInt(reorderLevel),
-                size_category: sizeCategory
+                daily_consumption: parseFloat(dailyConsumption),
+                size_category: sizeCategory,
+                demand: parseFloat(demand),
+                box_id: boxId ? parseInt(boxId) : null,
+                created_by: 1
             });
         } else {
-            const productId = document.getElementById("productId").value.trim();
-            const qtyPerUnit = document.getElementById("qtyPerUnit").value.trim();
+            const unit = document.getElementById("unit").value.trim() || null;
+            const unitCost = document.getElementById("unitCost").value.trim() || 0;
+            const leadTimeDays = document.getElementById("leadTimeDays").value.trim() || 0;
+            const supplierName = document.getElementById("supplierName").value.trim() || null;
+            const boxId = document.getElementById("boxId").value.trim() || null;
             
             result = await addRawMaterial({
                 material_code: code,
                 material_name: name,
-                category,
+                category: category || null,
+                unit: unit,
+                unit_cost: parseFloat(unitCost),
                 stock_qty: parseInt(stockQty),
                 reorder_level: parseInt(reorderLevel),
+                daily_consumption: parseFloat(dailyConsumption),
                 size_category: sizeCategory,
-                product_id: productId ? parseInt(productId) : null,
-                qty_per_unit: qtyPerUnit ? parseFloat(qtyPerUnit) : null
+                lead_time_days: parseInt(leadTimeDays),
+                supplier_name: supplierName,
+                box_id: boxId ? parseInt(boxId) : null,
+                created_by: 1
             });
         }
         

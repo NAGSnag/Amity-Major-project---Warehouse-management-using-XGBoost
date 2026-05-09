@@ -165,9 +165,18 @@
 <body>
 
 <div class="header">
-  <div class="header-icon">📦</div>
-  <div><h1>WAREHOUSE SETUP <span>/ Configuration</span></h1></div>
+    <header class="topbar">
+        <h2>OptiWare</h2>
+        <div class="topbar-right">
+            <button class="pill" onclick="window.location.href='/app'">Dashboard</button>
+            <button class="pill dashboard-active">Simulations</button>
+            <button class="pill" onclick="window.location.href='/products'">Products</button>
+            <button class="pill" onclick="window.location.href='/setup'">Setup</button>
+            <div class="avatar"></div>
+        </div>
+    </header>
 </div>
+
 
 <!-- ── STEPPER (hidden on choice screen) ── -->
 <!-- ORDER: Rack → Shelf → Boxes → Products → Raw Materials → Sales Data -->

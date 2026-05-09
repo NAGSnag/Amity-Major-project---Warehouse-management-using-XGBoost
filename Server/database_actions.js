@@ -31,18 +31,27 @@ export async function setupDatabase() {
       connectionLimit:    10,
     });
 
-    const q = (sql) => pool.query(sql);
-
+    const q = (sql, params=[]) => pool.query(sql, params);
     await q(`
-      CREATE TABLE IF NOT EXISTS users (
-        id         INT AUTO_INCREMENT PRIMARY KEY,
-        name       VARCHAR(255),
-        email      VARCHAR(255) UNIQUE,
-        role       VARCHAR(50),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      CREATE TABLE IF NOT EXISTS users(
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          name VARCHAR(255),
+          email VARCHAR(255) UNIQUE,
+          role VARCHAR(50),
+          password VARCHAR(255),
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
-    `);
+      `);
 
+    const hashedPassword = await bcrypt.hash(
+      process.env.DEMO_USER_PASSWORD || "demo123",
+      10
+    );
+
+    await q(
+      `INSERT IGNORE INTO users (name,email,password) VALUES (?,?,?)`,
+      ['demo','demo@gmail.com',hashedPassword]
+    );
     await q(`
       CREATE TABLE IF NOT EXISTS racks (
         id         INT AUTO_INCREMENT PRIMARY KEY,

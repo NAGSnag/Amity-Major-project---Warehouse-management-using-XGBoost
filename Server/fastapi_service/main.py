@@ -37,11 +37,14 @@ _scaler = None
 def load_model():
     global _model
     if not os.path.exists(MODEL_PATH):
-        print(f"Model file not found: {MODEL_PATH}")
+        #print(f"Model file not found: {MODEL_PATH}")
         return
     _model = joblib.load(MODEL_PATH)
-    print(f"XGBoost model loaded from {MODEL_PATH}")
+    #print(f"XGBoost model loaded from {MODEL_PATH}")
 load_model()
+
+# TODO: Learn how to optimize it make it work efficient
+
 
 app = FastAPI(title="Warehouse ML API", version="1.0")
 app.add_middleware(
@@ -53,7 +56,7 @@ app.add_middleware(
 )
 
 # m = joblib.load("./models/xgbmodel.pkl")
-# print(type(m)) 
+# #print(type(m)) 
 def load_data():
     Products, Boxes, Shelves, Racks, RawMaterials, Salesdata = [], [], [], [], [], []
     with engine.connect() as conn:
@@ -68,7 +71,7 @@ def load_data():
 @app.post("/optimizelayout")
 def optimize_layout():
     try:
-        print("Milestone 1: Starting layout optimization process...")
+        #print("Milestone 1: Starting layout optimization process...")
 
         if _model is None:
             raise HTTPException(status_code=503, detail="Model not loaded")
@@ -195,7 +198,7 @@ def optimize_layout():
                 })
 
             except Exception as e:
-                print("ERROR:", e)
+                #print("ERROR:", e)
                 continue
 
         # ---------- SORT ----------
@@ -241,7 +244,7 @@ def optimize_layout():
         }
 
     except Exception as e:
-        print("Critical Failure:", e)
+        #print("Critical Failure:", e)
         raise HTTPException(status_code=500, detail="Internal server error")  
     
     
@@ -261,7 +264,7 @@ def apply_layout_button(data: list = Body(...)):
                 box_id = u.get("box_id")
 
                 if not item_id or not box_id or not item_type:
-                    print("Skipping invalid row:", u)
+                    #print("Skipping invalid row:", u)
                     continue
 
                 # 📦 PRODUCTS
@@ -287,7 +290,7 @@ def apply_layout_button(data: list = Body(...)):
                     )
 
                 else:
-                    print("Unknown type:", item_type)
+                    #print("Unknown type:", item_type)
                     continue
 
                 count += 1
@@ -295,7 +298,7 @@ def apply_layout_button(data: list = Body(...)):
         return {"status": "applied", "count": count}
 
     except Exception as e:
-        print("Apply Error:", e)
+        #print("Apply Error:", e)
         raise HTTPException(status_code=500, detail="Apply failed")
     
 @app.post("/optimize_raw_materials")
@@ -444,7 +447,7 @@ def optimize_raw_materials():
         }
 
     except Exception as e:
-        print("RM Optimization Error:", e)
+        #print("RM Optimization Error:", e)
         raise HTTPException(status_code=500, detail="Internal server error")
     
     
@@ -474,7 +477,7 @@ def warehouse_efficiency():
             s for s in product_suggestions
             if s.get("action") in ["MOVE", "ASSIGN"]
         ]
-        print(product_moves)
+        #print(product_moves)
 
         rm_moves = [
             s for s in rm_suggestions
@@ -482,7 +485,7 @@ def warehouse_efficiency():
         ]
 
         total_suggestions = len(product_moves) + len(rm_moves)
-        print(total_suggestions,total_items)
+        #print(total_suggestions,total_items)
         # 🔥 EFFICIENCY CALCULATION
         if total_items == 0:
             efficiency = 100
@@ -512,7 +515,7 @@ def warehouse_efficiency():
         }
 
     except Exception as e:
-        print("Efficiency Error:", e)
+        #print("Efficiency Error:", e)
         raise HTTPException(status_code=500, detail="Failed to calculate efficiency")
     
     
@@ -704,7 +707,7 @@ def predict_until_date(data: dict = Body(...)):
                 })
 
             except Exception as e:
-                print("Prediction Error:", e)
+                #print("Prediction Error:", e)
                 continue
 
         # ---------------- SORT ----------------
@@ -734,7 +737,7 @@ def predict_until_date(data: dict = Body(...)):
         }
 
     except Exception as e:
-        print("Forecast Error:", e)
+        #print("Forecast Error:", e)
         raise HTTPException(
             status_code=500,
             detail="Forecast generation failed"
@@ -1063,7 +1066,7 @@ def simulate_demand_spike(data: dict = Body(...)):
 
     except Exception as e:
 
-        print("Demand Spike Error:", e)
+        #print("Demand Spike Error:", e)
 
         raise HTTPException(
             status_code=500,
@@ -1085,7 +1088,7 @@ def get_products():
 
     except Exception as e:
 
-        print("Get Products Error:", e)
+        #print("Get Products Error:", e)
 
         raise HTTPException(
             status_code=500,
@@ -1105,7 +1108,7 @@ def get_sales():
 
     except Exception as e:
 
-        print("Get sales Error:", e)
+        #print("Get sales Error:", e)
 
         raise HTTPException(
             status_code=500,
@@ -1274,7 +1277,7 @@ def simulate_supply_delay(data: dict = Body(...)):
 
     except Exception as e:
 
-        print("Supply Delay Error:", e)
+        #print("Supply Delay Error:", e)
 
         raise HTTPException(
             status_code=500,
@@ -1573,7 +1576,7 @@ def simulate_seasonal_surge(data: dict = Body(...)):
 
     except Exception as e:
 
-        print("Seasonal Surge Error:", e)
+        #print("Seasonal Surge Error:", e)
 
         raise HTTPException(
             status_code=500,
@@ -1899,10 +1902,10 @@ def simulate_new_product_launch(data: dict = Body(...)):
 
     except Exception as e:
 
-        print(
-            "New Launch Error:",
-            e
-        )
+        #print(
+        #     "New Launch Error:",
+        #     e
+        # )
 
         raise HTTPException(
             status_code=500,

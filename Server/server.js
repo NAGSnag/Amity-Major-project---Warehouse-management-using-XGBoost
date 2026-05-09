@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import 'dotenv/config';
+import bcrypt from 'bcrypt';
 import mysql from 'mysql2/promise';
 import path from "path";
 import { fileURLToPath } from "url";
@@ -64,8 +65,84 @@ app.get('/setup',(req,res)=>{
 app.get('/products',(req,res)=>{
   res.sendFile(path.join(__dirname, "../Client/products.html"))
 })
+app.get('/login',(req,res)=>{
+  res.sendFile(path.join(__dirname, "../Client/login.html"))
+})
+
+app.post("/login-user", async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        const users = await db(
+            `SELECT * FROM users WHERE email=?`,
+            [email]
+        );
+
+        if (!users.length)
+            return res.status(401).json({ error: "Invalid email" });
+
+        const user = users[0];
+
+        const valid = await bcrypt.compare(
+            password,
+            user.password
+        );
+
+        if (!valid)
+            return res.status(401).json({ error: "Invalid password" });
+
+        const token = jwt.sign(
+            {
+                id: user.id,
+                email: user.email
+            },
+            process.env.JWT_SECRETKEY,
+            { expiresIn: "7d" }
+        );
+
+        res.json({
+            success: true,
+            token,
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email
+            }
+        });
+
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: "Login failed" });
+    }
+});
+app.get("/verify-user", async (req, res) => {
+    try {
+        const token = req.headers.authorization?.split(" ")[1];
 
 
+        if (!token)
+            return res.status(401).json({ success:false, error:"Token missing" });
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRETKEY);
+        console.log(decoded)
+
+        const users = await db(
+            `SELECT id,name,email FROM users WHERE email=?`,
+            [decoded.email]
+        );
+
+        if (!users.length)
+            return res.status(404).json({ success:false, error:"User not found" });
+
+        res.json({
+            success: true,
+            user: users[0]
+        });
+
+    } catch (e) {
+        res.status(401).json({ success:false, error:"Invalid token" });
+    }
+});
 
 app.get('/stimulations',(req,res)=>{
   res.sendFile(path.join(__dirname, "../Client/stimulations_c.html"))
@@ -160,7 +237,160 @@ app.get("/get-boxes", async (req, res) => {
   );
   res.json(rows);
 });
+app.post("/create-single-raw-material", async (req, res) => {
+    try {
+        const {
+            material_code,
+            material_name,
+            category = "",
+            unit = "",
+            unit_cost = 0,
+            stock_qty = 0,
+            reorder_level = 0,
+            daily_consumption = 0,
+            size_category = "medium",
+            lead_time_days = 0,
+            supplier_name = "",
+            box_id = null,
+            created_by = null
+        } = req.body;
  
+        // Validate required fields
+        if (!material_code || !material_name) {
+            return res.status(400).json({ 
+                error: "material_code and material_name are required" 
+            });
+        }
+ 
+        // Check if material code already exists
+        const existing = await db(
+            `SELECT id FROM raw_materials WHERE material_code = ?`,
+            [material_code]
+        );
+ 
+        if (existing && existing.length > 0) {
+            return res.status(409).json({ 
+                error: `Material code '${material_code}' already exists` 
+            });
+        }
+ 
+        // Insert raw material
+        const result = await db(
+            `INSERT INTO raw_materials 
+            (material_code, material_name, category, unit, unit_cost, 
+             stock_qty, reorder_level, daily_consumption, size_category, 
+             lead_time_days, supplier_name, box_id, created_by, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+            [
+                material_code,
+                material_name,
+                category,
+                unit,
+                unit_cost,
+                stock_qty,
+                reorder_level,
+                daily_consumption,
+                size_category,
+                lead_time_days,
+                supplier_name,
+                box_id,
+                created_by
+            ]
+        );
+ 
+        res.status(201).json({
+            success: true,
+            message: "Raw material created successfully",
+            id: result.insertId,
+            material_code,
+            material_name
+        });
+ 
+    } catch (e) {
+        console.error('Error creating raw material:', e);
+        res.status(500).json({ 
+            error: "Failed to create raw material", 
+            message: e.message 
+        });
+    }
+});
+ 
+app.post("/create-single-product", async (req, res) => {
+    try {
+        const {
+            product_code,
+            product_name,
+            category = "",
+            unit_price = 0,
+            mfg_cost = 0,
+            stock_qty = 0,
+            reorder_level = 0,
+            daily_consumption = 0,
+            size_category = "medium",
+            demand = 0,
+            box_id = null,
+            created_by = null
+        } = req.body;
+ 
+        // Validate required fields
+        if (!product_code || !product_name) {
+            return res.status(400).json({ 
+                error: "product_code and product_name are required" 
+            });
+        }
+ 
+        // Check if product code already exists
+        const existing = await db(
+            `SELECT id FROM products WHERE product_code = ?`,
+            [product_code]
+        );
+ 
+        if (existing && existing.length > 0) {
+            return res.status(409).json({ 
+                error: `Product code '${product_code}' already exists` 
+            });
+        }
+ 
+        // Insert product
+        const result = await db(
+            `INSERT INTO products 
+            (product_code, product_name, category, unit_price, mfg_cost, 
+             stock_qty, reorder_level, daily_consumption, size_category, 
+             demand, box_id, created_by, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+            [
+                product_code,
+                product_name,
+                category,
+                unit_price,
+                mfg_cost,
+                stock_qty,
+                reorder_level,
+                daily_consumption,
+                size_category,
+                demand,
+                box_id,
+                created_by
+            ]
+        );
+ 
+        res.status(201).json({
+            success: true,
+            message: "Product created successfully",
+            id: result.insertId,
+            product_code,
+            product_name
+        });
+ 
+    } catch (e) {
+        console.error('Error creating product:', e);
+        res.status(500).json({ 
+            error: "Failed to create product", 
+            message: e.message 
+        });
+    }
+});
+
 app.post("/create-product", async (req, res) => {
   try {
     const {
@@ -296,7 +526,7 @@ app.get("/get-sales", async (req, res) => {
   const rows = await db(sql, params);
   res.json(rows);
 });
-// ✅ FIXED: Correct way to handle pagination with LIMIT and OFFSET
+
 
 app.get("/get-allsales", async (req, res) => {
     try {
