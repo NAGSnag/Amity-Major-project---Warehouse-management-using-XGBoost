@@ -509,7 +509,6 @@ body{
                                 <th>Code</th>
                                 <th>Name</th>
                                 <th>Category</th>
-                                <th>Price</th>
                                 <th>Stock</th>
                                 <th>Reorder Level</th>
                                 <th>Status</th>
@@ -753,10 +752,6 @@ body{
             </select>
         </div>
 
-        <div class="form-group">
-            <label>Daily Consumption</label>
-            <input type="number" id="dailyConsumption" placeholder="Daily consumption qty" min="0" step="0.01">
-        </div>
 
         <!-- Product-specific Fields -->
         <div id="productFields"></div>
@@ -790,8 +785,10 @@ body{
 <script>
 
 let currentType = "product";
+    let boxesCache = [];
+    let productsCache = [];
+    let rawMaterialsCache = [];
 
-// ================= API FUNCTIONS =================
 
 async function fetchProducts() {
     try {
@@ -810,11 +807,70 @@ async function fetchProducts() {
         return { success: false, error: error.message };
     }
 }
+function renderDynamicFields(type) {
 
-/**
- * RAW MATERIALS Schema:
- * id, material_code, material_name, category, stock_qty, reorder_level, size_category, product_id, qty_per_unit
- */
+    const productFields = document.getElementById("productFields");
+    const rawFields = document.getElementById("rawFields");
+
+    /* BOX DROPDOWN */
+    const boxOptions = boxesCache.map(b =>
+        `<option value="${b.id}">
+            ${b.box_code} - Shelf ${b.shelf_code}
+        </option>`
+    ).join("");
+
+    const boxDropdown = `
+        <div class="form-group">
+            <label>Box / Warehouse</label>
+            <select id="boxId">
+                <option value="">Select Box</option>
+                ${boxOptions}
+            </select>
+        </div>
+    `;
+
+    /* PRODUCT MODE */
+    if (type === "product") {
+
+        productFields.innerHTML = `
+
+            ${boxDropdown}
+        `;
+
+        rawFields.innerHTML = "";
+    }
+
+    /* RAW MATERIAL MODE */
+    else {
+
+        const productOptions = productsCache.map(p =>
+            `<option value="${p.id}">
+                ${p.product_code} - ${p.product_name}
+            </option>`
+        ).join("");
+
+        rawFields.innerHTML = `
+            <div class="form-group">
+                <label>Product (Linked)</label>
+                <select id="productId">
+                    <option value="">Select Product</option>
+                    ${productOptions}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Qty per Unit</label>
+                <input type="number" id="qtyPerUnit">
+            </div>
+
+            ${boxDropdown}
+        `;
+
+        productFields.innerHTML = "";
+    }
+}
+
+
 async function fetchRawMaterials() {
     try {
         const response = await fetch('http://localhost:8080/get-raw-materials');
@@ -954,7 +1010,6 @@ async function renderProducts() {
                 <td>${product.product_code || 'N/A'}</td>
                 <td>${product.product_name || 'N/A'}</td>
                 <td>${product.category || 'N/A'}</td>
-                <td>₹${product.unit_price || 0}</td>
                 <td>${product.stock_qty || 0}</td>
                 <td>${product.reorder_level || 0}</td>
                 <td class="${status.class}">${status.text}</td>
@@ -1132,182 +1187,122 @@ async function renderSales() {
 
 // ================= MODAL FUNCTIONS =================
 
-// Open modal
-function openModal(type) {
+// Fetch boxes
+async function fetchBoxes() {
+    try {
+        const res = await fetch("http://localhost:8080/get-boxes");
+        const data = await res.json();
+        return { success: true, data };
+    } catch (err) {
+        return { success: false, error: err.message };
+    }
+}
+
+async function openModal(type) {
     currentType = type;
-    
+
     document.getElementById("itemModal").classList.add("open");
-    document.getElementById("modalTitle").innerText = type === "product" ? "Add Product" : "Add Raw Material";
-    
-    // Clear form
+    document.getElementById("modalTitle").innerText =
+        type === "product" ? "Add Product" : "Add Raw Material";
+
+    /* FETCH ON OPEN (cached) */
+    const [boxesRes, productsRes, rawRes] = await Promise.all([
+        fetchBoxes(),
+        fetchProducts(),
+        fetchRawMaterials()
+    ]);
+
+    boxesCache = boxesRes.success ? boxesRes.data : [];
+    productsCache = productsRes.success ? productsRes.data : [];
+    rawMaterialsCache = rawRes.success ? rawRes.data : [];
+
+    /* CLEAR FORM */
     document.getElementById("itemCode").value = '';
     document.getElementById("itemName").value = '';
     document.getElementById("itemCategory").value = '';
     document.getElementById("itemStockQty").value = '';
     document.getElementById("itemReorderLevel").value = '';
     document.getElementById("itemSizeCategory").value = 'medium';
-    document.getElementById("dailyConsumption").value = '';
-    
-    // Show/hide type-specific fields
-    const productFields = document.getElementById("productFields");
-    const rawFields = document.getElementById("rawFields");
-    
-    if (type === "product") {
-        productFields.innerHTML = `
-            <div class="form-group">
-                <label>Unit Price (₹)</label>
-                <input type="number" id="unitPrice" placeholder="Enter unit price" min="0" step="0.01" required>
-            </div>
-            <div class="form-group">
-                <label>Manufacturing Cost (₹)</label>
-                <input type="number" id="mfgCost" placeholder="Enter manufacturing cost" min="0" step="0.01">
-            </div>
-            <div class="form-group">
-                <label>Demand (Units)</label>
-                <input type="number" id="demand" placeholder="Expected demand" min="0" step="0.01">
-            </div>
-            <div class="form-group">
-                <label>Box ID (Optional)</label>
-                <input type="number" id="boxId" placeholder="Box/Warehouse ID">
-            </div>
-        `;
-        rawFields.innerHTML = '';
-    } else {
-        rawFields.innerHTML = `
-            <div class="form-group">
-                <label>Unit of Measurement</label>
-                <select id="unit">
-                    <option value="">Select Unit</option>
-                    <option value="kg">Kg</option>
-                    <option value="pcs">Pcs (Pieces)</option>
-                    <option value="ltr">Ltr (Liters)</option>
-                    <option value="m">M (Meters)</option>
-                    <option value="box">Box</option>
-                    <option value="roll">Roll</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Unit Cost (₹)</label>
-                <input type="number" id="unitCost" placeholder="Cost per unit" min="0" step="0.01">
-            </div>
-            <div class="form-group">
-                <label>Lead Time (Days)</label>
-                <input type="number" id="leadTimeDays" placeholder="Days to receive from supplier" min="0">
-            </div>
-            <div class="form-group">
-                <label>Supplier Name</label>
-                <input type="text" id="supplierName" placeholder="Primary supplier name">
-            </div>
-            <div class="form-group">
-                <label>Box ID (Optional)</label>
-                <input type="number" id="boxId" placeholder="Box/Warehouse ID">
-            </div>
-        `;
-        productFields.innerHTML = '';
-    }
+
+
+    /* BUILD DYNAMIC UI */
+    renderDynamicFields(type);
 }
 
-// Close modal
 function closeModal() {
     document.getElementById("itemModal").classList.remove("open");
 }
-
 // Save item
 async function saveItem() {
+
     const code = document.getElementById("itemCode").value.trim();
     const name = document.getElementById("itemName").value.trim();
     const category = document.getElementById("itemCategory").value.trim();
     const stockQty = document.getElementById("itemStockQty").value.trim();
     const reorderLevel = document.getElementById("itemReorderLevel").value.trim();
     const sizeCategory = document.getElementById("itemSizeCategory").value.trim();
-    const dailyConsumption = document.getElementById("dailyConsumption").value.trim() || 0;
-    
-    // Validate required fields
-    if (!code || !name || !category || !stockQty || !reorderLevel) {
-        alert("Please fill in all required fields");
-        return;
-    }
-    
+
     const saveBtn = document.getElementById("saveBtn");
     saveBtn.disabled = true;
-    
+
     try {
+
         let result;
-        
+
         if (currentType === "product") {
-            const unitPrice = document.getElementById("unitPrice").value.trim();
-            const mfgCost = document.getElementById("mfgCost").value.trim() || 0;
-            const demand = document.getElementById("demand").value.trim() || 0;
-            const boxId = document.getElementById("boxId").value.trim() || null;
-            
-            if (!unitPrice) {
-                alert("Please enter unit price");
-                saveBtn.disabled = false;
-                return;
-            }
-            
+
+            const boxId = document.getElementById("boxId").value || null;
+
             result = await addProduct({
                 product_code: code,
                 product_name: name,
-                category: category || null,
-                unit_price: parseFloat(unitPrice),
-                mfg_cost: parseFloat(mfgCost),
+                category,
                 stock_qty: parseInt(stockQty),
                 reorder_level: parseInt(reorderLevel),
-                daily_consumption: parseFloat(dailyConsumption),
                 size_category: sizeCategory,
-                demand: parseFloat(demand),
-                box_id: boxId ? parseInt(boxId) : null,
-                created_by: 1
+                box_id: boxId ? parseInt(boxId) : null
             });
-        } else {
-            const unit = document.getElementById("unit").value.trim() || null;
-            const unitCost = document.getElementById("unitCost").value.trim() || 0;
-            const leadTimeDays = document.getElementById("leadTimeDays").value.trim() || 0;
-            const supplierName = document.getElementById("supplierName").value.trim() || null;
-            const boxId = document.getElementById("boxId").value.trim() || null;
-            
+        }
+
+        else {
+
+            const productId = document.getElementById("productId").value || null;
+            const qtyPerUnit = document.getElementById("qtyPerUnit").value || 0;
+            const boxId = document.getElementById("boxId").value || null;
+
             result = await addRawMaterial({
                 material_code: code,
                 material_name: name,
-                category: category || null,
-                unit: unit,
-                unit_cost: parseFloat(unitCost),
+                category,
                 stock_qty: parseInt(stockQty),
                 reorder_level: parseInt(reorderLevel),
-                daily_consumption: parseFloat(dailyConsumption),
                 size_category: sizeCategory,
-                lead_time_days: parseInt(leadTimeDays),
-                supplier_name: supplierName,
-                box_id: boxId ? parseInt(boxId) : null,
-                created_by: 1
+                product_id: productId ? parseInt(productId) : null,
+                qty_per_unit: parseFloat(qtyPerUnit),
+                box_id: boxId ? parseInt(boxId) : null
             });
         }
-        
-        if (result.success) {
-            alert(result.message || "Item added successfully");
-            closeModal();
-            
-            // Refresh the appropriate table
-            if (currentType === "product") {
-                renderProducts();
-            } else {
-                renderRawMaterials();
-            }
-        } else {
-            alert(`Error: ${result.error}`);
-        }
-    } catch (error) {
-        alert(`Error: ${error.message}`);
-    } finally {
-        saveBtn.disabled = false;
-    }
-}
 
+        if (result.success) {
+            alert("Saved successfully");
+            closeModal();
+
+            if (currentType === "product") renderProducts();
+            else renderRawMaterials();
+        } else {
+            alert(result.error);
+        }
+
+    } catch (err) {
+        alert(err.message);
+    }
+
+    saveBtn.disabled = false;
+}
 // ================= INITIALIZATION =================
 
 // Load all data on page load
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener("DOMContentLoaded", () => {
     renderProducts();
     renderRawMaterials();
     renderSales();

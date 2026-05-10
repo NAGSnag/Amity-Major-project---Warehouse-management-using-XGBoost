@@ -54,13 +54,10 @@ export async function setupDatabase() {
     );
     await q(`
       CREATE TABLE IF NOT EXISTS racks (
-        id         INT AUTO_INCREMENT PRIMARY KEY,
-        rack_code  VARCHAR(50) UNIQUE,
-        type       VARCHAR(50),
-        created_by INT,
-        FOREIGN KEY (created_by) REFERENCES users(id)
-          ON DELETE SET NULL ON UPDATE CASCADE
-      )
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        rack_code VARCHAR(50) UNIQUE,
+        type VARCHAR(50)
+      );
     `);
 
     await q(`
@@ -69,9 +66,7 @@ export async function setupDatabase() {
         shelf_code VARCHAR(50) UNIQUE,
         rack_id    INT,
         level      INT,
-        created_by INT,
-        FOREIGN KEY (rack_id)    REFERENCES racks(id)  ON DELETE CASCADE,
-        FOREIGN KEY (created_by) REFERENCES users(id)  ON DELETE SET NULL
+        FOREIGN KEY (rack_id)    REFERENCES racks(id)  ON DELETE CASCADE
       )
     `);
 
@@ -86,9 +81,7 @@ export async function setupDatabase() {
         box_code   VARCHAR(50) UNIQUE,
         shelf_id   INT,
         max_units  INT,
-        created_by INT,
-        FOREIGN KEY (shelf_id)   REFERENCES shelves(id) ON DELETE CASCADE,
-        FOREIGN KEY (created_by) REFERENCES users(id)   ON DELETE SET NULL
+        FOREIGN KEY (shelf_id)   REFERENCES shelves(id) ON DELETE CASCADE
       )
     `);
 
@@ -103,18 +96,13 @@ export async function setupDatabase() {
         product_code      VARCHAR(50) UNIQUE,
         product_name      VARCHAR(255),
         category          VARCHAR(100),
-        unit_price        FLOAT DEFAULT 0,
         mfg_cost          FLOAT DEFAULT 0,
         stock_qty         FLOAT DEFAULT 0,
-        reorder_level     FLOAT DEFAULT 0,
-        daily_consumption FLOAT DEFAULT 0,
         size_category     VARCHAR(50) DEFAULT 'medium',
-        demand            FLOAT DEFAULT 0,
         box_id            INT,
-        created_by        INT,
+        reorder_level     INT,
         updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (box_id)     REFERENCES boxes(id) ON DELETE SET NULL,
-        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+        FOREIGN KEY (box_id)     REFERENCES boxes(id) ON DELETE SET NULL
       )
     `);
 
@@ -124,62 +112,23 @@ export async function setupDatabase() {
         material_code     VARCHAR(50) UNIQUE,
         material_name     VARCHAR(255),
         category          VARCHAR(100),
-        unit              VARCHAR(50),
-        unit_cost         FLOAT DEFAULT 0,
         stock_qty         FLOAT DEFAULT 0,
-        reorder_level     FLOAT DEFAULT 0,  
-        daily_consumption FLOAT DEFAULT 0,
         size_category     VARCHAR(50) DEFAULT 'medium',
-        lead_time_days    INT DEFAULT 0,
-        supplier_name     VARCHAR(255),
         product_id        VARCHAR(50) DEFAULT NULL,
         qty_per_unit      FLOAT DEFAULT 0,
         box_id            INT,
-        created_by        INT,
+        reorder_level     INT,
         updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (product_id) REFERENCES products(product_code) ON DELETE SET NULL,
-        FOREIGN KEY (box_id)     REFERENCES boxes(id)    ON DELETE SET NULL,
-        FOREIGN KEY (created_by) REFERENCES users(id)    ON DELETE SET NULL
+        FOREIGN KEY (box_id)     REFERENCES boxes(id)    ON DELETE SET NULL
       )
     `);
-
-    await pool.query(`ALTER TABLE raw_materials ADD COLUMN IF NOT EXISTS product_id VARCHAR(50) DEFAULT NULL`).catch(() => {});
-    await pool.query(`ALTER TABLE raw_materials ADD COLUMN IF NOT EXISTS qty_per_unit FLOAT DEFAULT 0`).catch(() => {});
     await pool.query(`
       ALTER TABLE raw_materials
       ADD CONSTRAINT IF NOT EXISTS fk_rm_product
       FOREIGN KEY (product_id) REFERENCES products(product_code) ON DELETE SET NULL
     `).catch(() => {});
 
-    await q(`
-      CREATE TABLE IF NOT EXISTS ann_suggestions (
-        id               INT AUTO_INCREMENT PRIMARY KEY,
-        item_type        VARCHAR(50),
-        item_id          INT,
-        current_box_id   INT,
-        suggested_box_id INT,
-        reorder_qty      FLOAT,
-        priority_flag    INT,
-        confidence_score FLOAT,
-        generated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (current_box_id)   REFERENCES boxes(id) ON DELETE SET NULL,
-        FOREIGN KEY (suggested_box_id) REFERENCES boxes(id) ON DELETE SET NULL
-      )
-    `);
-
-    await q(`
-      CREATE TABLE IF NOT EXISTS product_boms (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-        product_id INT NOT NULL,
-        material_id INT NOT NULL,
-        qty_per_unit FLOAT DEFAULT 0,
-
-        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
-        FOREIGN KEY (material_id) REFERENCES raw_materials(id) ON DELETE CASCADE,
-
-        UNIQUE KEY uq_product_material (product_id, material_id)
-      )
-    `);
 
     await q(`
       CREATE TABLE IF NOT EXISTS sales_data (
@@ -276,15 +225,10 @@ export async function createProduct(pool, data) {
     product_code,
     product_name,
     category,
-    unit_price,
     mfg_cost,
     stock_qty,
-    reorder_level,
-    daily_consumption,
     size_category,
-    demand,
     box_id,
-    created_by
   } = data;
 
   const [result] = await pool.query(
@@ -292,29 +236,19 @@ export async function createProduct(pool, data) {
       product_code,
       product_name,
       category,
-      unit_price,
       mfg_cost,
       stock_qty,
-      reorder_level,
-      daily_consumption,
       size_category,
-      demand,
       box_id,
-      created_by
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [
       product_code,
       product_name,
       category,
-      unit_price,
       mfg_cost,
       stock_qty,
-      reorder_level,
-      daily_consumption,
       size_category,
-      demand,
       box_id,
-      created_by || null
     ]
   );
 

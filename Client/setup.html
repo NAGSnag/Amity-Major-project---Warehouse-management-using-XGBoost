@@ -268,8 +268,6 @@
     <div class="form-group"><label>Product Code</label><input id="product_code" placeholder="e.g. PRD-001"></div>
     <div class="form-group"><label>Product Name</label><input id="product_name" placeholder="e.g. Steel Bolt M8"></div>
     <div class="form-group"><label>Category</label><input id="p_category" placeholder="e.g. Fasteners"></div>
-    <div class="form-group"><label>Unit Price (₹)</label><input id="unit_price" type="number" placeholder="0.00" step="0.01"></div>
-    <div class="form-group"><label>Mfg Cost (₹)</label><input id="mfg_cost" type="number" placeholder="0.00" step="0.01"></div>
     <div class="form-group"><label>Stock Qty</label><input id="stock" type="number" placeholder="0"></div>
     <div class="form-group"><label>Reorder Level</label><input id="reorder" type="number" placeholder="0"></div>
     <div class="form-group"><label>Size Category</label>
@@ -279,13 +277,12 @@
   </div>
   <div class="btn-row">
     <button class="btn btn-success" onclick="createProduct()">⊕ Add Product</button>
-    <!-- FIX: was "Next: Sales →" — now correctly points to Raw Materials (step 4) -->
     <button class="btn btn-secondary" onclick="goStep(4)">Next: Raw Materials →</button>
   </div>
 
   <div class="divider">OR IMPORT FROM EXCEL</div>
   <div class="qi-note">
-    <strong>Columns:</strong> product_code, product_name, category, unit_price, mfg_cost, stock_qty, reorder_level, size_category, rack_code, shelf_level, box_code
+    <strong>Columns:</strong> product_code, product_name, category, stock_qty, reorder_level, size_category, rack_code, shelf_level, box_code
     <button class="btn btn-blue btn-sm" style="margin-left:8px;" onclick="downloadProductTemplate()">⬇ Template</button>
   </div>
   <div class="import-zone" id="p-import-zone"
@@ -300,13 +297,13 @@
 
   <div class="table-wrap">
     <table>
-      <thead><tr><th>CODE</th><th>NAME</th><th>CATEGORY</th><th>PRICE</th><th>MFG COST</th><th>STOCK</th><th>REORDER</th><th>SIZE</th><th>LOCATION</th><th>STATUS</th></tr></thead>
-      <tbody id="product_table"><tr><td colspan="10" class="empty-state">No products yet.</td></tr></tbody>
+      <thead><tr><th>CODE</th><th>NAME</th><th>CATEGORY</th><th>STOCK</th><th>REORDER</th><th>SIZE</th><th>LOCATION</th><th>STATUS</th></tr></thead>
+      <tbody id="product_table"><tr><td colspan="8" class="empty-state">No products yet.</td></tr></tbody>
     </table>
   </div>
 </div>
 
-<!-- ══ PANEL 4: RAW MATERIALS (moved before Sales) ══ -->
+<!-- ══ PANEL 4: RAW MATERIALS ══ -->
 <div class="panel" id="panel-4">
   <div class="panel-header"><h2>Raw Materials</h2><p>Register raw materials, link to products, and assign warehouse locations.</p></div>
 
@@ -314,7 +311,6 @@
     <div class="stat-card c-teal"><div class="s-val" id="rm_stat_total">—</div><div class="s-lbl">Total</div></div>
     <div class="stat-card c-red"><div class="s-val" id="rm_stat_low">—</div><div class="s-lbl">Low Stock</div></div>
     <div class="stat-card c-blue"><div class="s-val" id="rm_stat_cats">—</div><div class="s-lbl">Categories</div></div>
-    <div class="stat-card c-teal"><div class="s-val" id="rm_stat_suppliers">—</div><div class="s-lbl">Suppliers</div></div>
     <div class="stat-card c-blue"><div class="s-val" id="rm_stat_linked">—</div><div class="s-lbl">Linked to Product</div></div>
   </div>
 
@@ -322,16 +318,12 @@
     <div class="form-group"><label>Material Code</label><input id="rm_code" placeholder="e.g. RM-001"></div>
     <div class="form-group"><label>Material Name</label><input id="rm_name" placeholder="e.g. Copper Wire"></div>
     <div class="form-group"><label>Category</label><input id="rm_category" placeholder="e.g. Electrical"></div>
-    <div class="form-group"><label>Unit</label><input id="rm_unit" placeholder="kg / pcs / litre"></div>
     <div class="form-group"><label>Stock Qty</label><input id="rm_stock" type="number" placeholder="0"></div>
     <div class="form-group"><label>Qty Required / Product</label><input id="rm_qty_req" type="number" placeholder="e.g. 1.2" step="0.01"></div>
     <div class="form-group"><label>Reorder Level</label><input id="rm_reorder" type="number" placeholder="0"></div>
-    <div class="form-group"><label>Daily Consumption</label><input id="rm_daily" type="number" placeholder="0" step="0.01"></div>
     <div class="form-group"><label>Size Category</label>
       <select id="rm_size"><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option></select>
     </div>
-    <div class="form-group"><label>Lead Time (days)</label><input id="rm_lead" type="number" placeholder="0"></div>
-    <div class="form-group"><label>Supplier</label><input id="rm_supplier" placeholder="e.g. ABC Ltd"></div>
     <div class="form-group">
       <label>Linked Product <span style="font-weight:400;color:var(--muted);font-size:9px;">optional</span></label>
       <select id="rm_product_sel"><option value="">— Not linked —</option></select>
@@ -340,13 +332,12 @@
   </div>
   <div class="btn-row">
     <button class="btn btn-teal" onclick="createRawMaterial()">⊕ Add Material</button>
-    <!-- Next step is now Sales Data (step 5) -->
     <button class="btn btn-secondary" onclick="goStep(5)">Next: Sales Data →</button>
   </div>
 
   <div class="divider">OR IMPORT FROM EXCEL</div>
   <div class="qi-note green">
-    <strong>Columns:</strong> material_code, material_name, category, unit, quantity_required, stock_qty, reorder_level, daily_consumption, size_category, lead_time_days, supplier_name, product_id, rack, shelf, box_id
+    <strong>Columns:</strong> material_code, material_name, category, quantity_required, stock_qty, reorder_level, size_category, product_id <em style="font-size:10px;color:#6ee7b7;">(use product_code like PRD-001)</em>, rack, shelf, box_id
     <button class="btn btn-teal btn-sm" style="margin-left:8px;" onclick="downloadRMTemplate()">⬇ Template</button>
   </div>
   <div class="import-zone" id="rm-import-zone"
@@ -362,16 +353,15 @@
   <div class="table-wrap">
     <table>
       <thead><tr>
-        <th>CODE</th><th>NAME</th><th>CATEGORY</th><th>UNIT</th>
-        <th>STOCK</th><th>QTY REQ</th><th>REORDER</th><th>DAILY</th>
-        <th>LEAD</th><th>SUPPLIER</th><th>PRODUCT</th><th>LOCATION</th><th>SIZE</th><th>STATUS</th>
+        <th>CODE</th><th>NAME</th><th>STOCK</th><th>QTY REQ</th><th>REORDER</th>
+        <th>PRODUCT</th><th>LOCATION</th><th>SIZE</th><th>STATUS</th>
       </tr></thead>
-      <tbody id="rm_table"><tr><td colspan="14" class="empty-state">No raw materials yet.</td></tr></tbody>
+      <tbody id="rm_table"><tr><td colspan="9" class="empty-state">No raw materials yet.</td></tr></tbody>
     </table>
   </div>
 </div>
 
-<!-- ══ PANEL 5: SALES DATA (moved to last step) ══ -->
+<!-- ══ PANEL 5: SALES DATA ══ -->
 <div class="panel" id="panel-5">
   <div class="panel-header"><h2>Upload Sales Data</h2><p>Import 2+ years of daily sales. Columns: date, item (product_code), sales.</p></div>
   <div class="import-zone" id="sales-zone"
@@ -406,7 +396,6 @@
   <div class="import-result" id="import_result" style="display:none;">
     <div class="r-icon">✅</div><div><h4>Import Complete</h4><p id="import_result_msg">—</p></div>
   </div>
-  <!-- Sales is the last step — no "Next" button -->
 </div>
 
 <!-- ══ PANEL QI: QUICK IMPORT ══ -->
@@ -424,7 +413,7 @@
   <div class="qi-section">
     <div class="qi-title" style="color:var(--accent2);">📦 PRODUCTS</div>
     <div class="qi-note">
-      Columns: <strong>product_code, product_name, category, unit_price, mfg_cost, stock_qty, reorder_level, size_category, rack_code, shelf_level, box_code</strong>
+      Columns: <strong>product_code, product_name, category, stock_qty, reorder_level, size_category, rack_code, shelf_level, box_code</strong>
       <button class="btn btn-blue btn-sm" style="margin-left:8px;" onclick="downloadProductTemplate()">⬇ Template</button>
     </div>
     <div class="import-zone" id="qi-p-zone"
@@ -442,7 +431,7 @@
   <div class="qi-section">
     <div class="qi-title" style="color:var(--teal);">🏭 RAW MATERIALS</div>
     <div class="qi-note green">
-      Columns: <strong>material_code, material_name, category, unit, quantity_required, stock_qty, reorder_level, daily_consumption, size_category, lead_time_days, supplier_name, product_id, rack, shelf, box_id</strong>
+      Columns: <strong>material_code, material_name, category, quantity_required, stock_qty, reorder_level, size_category, product_id <em style="font-size:10px;color:#6ee7b7;">(use product_code like PRD-001)</em>, rack, shelf, box_id</strong>
       <button class="btn btn-teal btn-sm" style="margin-left:8px;" onclick="downloadRMTemplate()">⬇ Template</button>
     </div>
     <div class="import-zone" id="qi-rm-zone"
@@ -570,16 +559,14 @@ function goStep(n) {
   if (n === 1) loadRacks();
   if (n === 2) loadShelves();
   if (n === 3) { loadBoxes(); loadProducts(); }
-  // FIX: step 4 is now Raw Materials (was step 5)
   if (n === 4) { loadRMDropdowns(); loadRawMaterials(); loadRMStats(); }
-  // step 5 is now Sales Data — no pre-load needed
 }
 
 // ── RACK ──
 async function createRack() {
   const code=document.getElementById('rack_code').value.trim(), type=document.getElementById('rack_type').value;
   if(!code) return toast('Enter rack code','error');
-  try { await api('/create-rack',{rack_code:code,type,created_by:null}); toast(`Rack "${code}" created`); document.getElementById('rack_code').value=''; loadRacks(); }
+  try { await api('/create-rack',{rack_code:code,type}); toast(`Rack "${code}" created`); document.getElementById('rack_code').value=''; loadRacks(); }
   catch(e) { toast(e.message,'error'); }
 }
 async function loadRacks() {
@@ -595,7 +582,7 @@ async function createShelves() {
   const rack_id=document.getElementById('rack_select').value, levels=document.getElementById('levels').value;
   if(!rack_id||!levels) return toast('Select rack and levels','error');
   if(+levels>3) return toast('Max 3 shelves per rack','error');
-  try { await api('/create-shelves',{rack_id:+rack_id,levels:+levels,created_by:null}); toast(`${levels} shelf(ves) created`); document.getElementById('levels').value=''; loadShelves(); }
+  try { await api('/create-shelves',{rack_id:+rack_id,levels:+levels}); toast(`${levels} shelf(ves) created`); document.getElementById('levels').value=''; loadShelves(); }
   catch(e) { toast(e.message,'error'); }
 }
 async function loadShelves() {
@@ -611,7 +598,7 @@ async function createBoxes() {
   const shelf_id=document.getElementById('shelf_select').value, count=document.getElementById('box_count').value, max_units=document.getElementById('max_units').value;
   if(!shelf_id||!count||!max_units) return toast('Fill all fields','error');
   if(+count>3) return toast('Max 3 boxes per shelf','error');
-  try { await api('/create-boxes',{shelf_id:+shelf_id,count:+count,max_units:+max_units,created_by:null}); toast(`${count} box(es) created`); document.getElementById('box_count').value=''; document.getElementById('max_units').value=''; loadBoxes(); }
+  try { await api('/create-boxes',{shelf_id:+shelf_id,count:+count,max_units:+max_units}); toast(`${count} box(es) created`); document.getElementById('box_count').value=''; document.getElementById('max_units').value=''; loadBoxes(); }
   catch(e) { toast(e.message,'error'); }
 }
 async function loadBoxes() {
@@ -619,6 +606,7 @@ async function loadBoxes() {
     const d = await api('/get-boxes');
     document.getElementById('product_box').innerHTML = d.map(x=>`<option value="${x.id}">${x.box_code}</option>`).join('');
     document.getElementById('box_badges').innerHTML = d.map(x=>`<span class="badge">${x.box_code}</span>`).join('');
+    document.getElementById('rm_box_sel').innerHTML = `<option value="">— No box —</option>` + d.map(x=>`<option value="${x.id}">${x.box_code}</option>`).join('');
   } catch {}
 }
 
@@ -627,20 +615,17 @@ async function createProduct() {
   const data = {
     product_code:  document.getElementById('product_code').value.trim(),
     product_name:  document.getElementById('product_name').value.trim(),
-    category:      document.getElementById('p_category').value.trim(),
-    unit_price:   +document.getElementById('unit_price').value||0,
-    mfg_cost:     +document.getElementById('mfg_cost').value||0,
-    stock_qty:    +document.getElementById('stock').value||0,
-    reorder_level:+document.getElementById('reorder').value||0,
-    size_category: document.getElementById('size_category').value,
-    box_id:       +document.getElementById('product_box').value||null,
-    created_by: null
+    category:      document.getElementById('p_category').value.trim() || null,
+    stock_qty:    +(document.getElementById('stock').value || 0),
+    reorder_level:+(document.getElementById('reorder').value || 0),
+    size_category: document.getElementById('size_category').value || 'medium',
+    box_id:       document.getElementById('product_box').value ? +document.getElementById('product_box').value : null,
   };
   if(!data.product_code||!data.product_name) return toast('Code and Name required','error');
   try {
     await api('/create-product', data);
     toast(`Product "${data.product_name}" added`);
-    ['product_code','product_name','p_category','unit_price','mfg_cost','stock','reorder'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    ['product_code','product_name','p_category','stock','reorder'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     loadProducts();
   } catch(e) { toast(e.message,'error'); }
 }
@@ -649,12 +634,11 @@ async function loadProducts() {
   try {
     const d = await api('/get-products');
     const tbody = document.getElementById('product_table');
-    if(!d.length){tbody.innerHTML=`<tr><td colspan="10" class="empty-state">No products yet.</td></tr>`;return;}
+    if(!d.length){tbody.innerHTML=`<tr><td colspan="8" class="empty-state">No products yet.</td></tr>`;return;}
     tbody.innerHTML = d.map(p=>`
       <tr>
         <td class="td-mono">${p.product_code}</td><td>${p.product_name}</td>
-        <td>${p.category||'—'}</td><td>₹${(+p.unit_price).toFixed(2)}</td>
-        <td>₹${(+p.mfg_cost).toFixed(2)}</td>
+        <td>${p.category||'—'}</td>
         <td class="td-num">${p.stock_qty}</td><td class="td-num">${p.reorder_level}</td>
         <td><span class="pill pill-yellow">${p.size_category||'—'}</span></td>
         <td class="td-loc">${p.box_code||'—'}</td>
@@ -665,8 +649,8 @@ async function loadProducts() {
 
 function downloadProductTemplate() {
   const ws = XLSX.utils.aoa_to_sheet([
-    ['product_code','product_name','category','unit_price','mfg_cost','stock_qty','reorder_level','size_category','rack_code','shelf_level','box_code'],
-    ['PRD-001','Sample Product','Electronics',100,60,200,50,'medium','RK-E01',1,'RK-E01-SH01-BX01']
+    ['product_code','product_name','category','stock_qty','reorder_level','size_category','rack_code','shelf_level','box_code'],
+    ['PRD-001','Sample Product','Electronics',60,200,'medium','RK-E01',1,'RK-E01-SH01-BX01']
   ]);
   const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Products');
   XLSX.writeFile(wb,'products_template.xlsx');
@@ -692,20 +676,16 @@ function parseProductFile(file, previewId) {
 
 async function importProducts() {
   const rows = window._pRows; if (!rows) return;
-  if (rows[0]) console.log("📋 Excel columns found:", Object.keys(rows[0]));
   const products = rows.map(r => ({
     product_code:  (r.product_code  || r.code || '').toString().trim(),
     product_name:  (r.product_name  || r.name || '').toString().trim(),
-    category:      (r.category      || '').toString().trim(),
-    unit_price:   +r.unit_price     || 0,
-    mfg_cost:     +r.mfg_cost       || 0,
-    stock_qty:    +r.stock_qty      || +r.stock || 0,
-    reorder_level:+r.reorder_level  || +r.reorder || 0,
+    category:      (r.category      || '').toString().trim() || null,
+    stock_qty:    +(r.stock_qty || r.stock || 0),
+    reorder_level:+(r.reorder_level || r.reorder || 0),
     size_category: (r.size_category || r.size || 'medium').toString().trim(),
     rack_code:    (r.rack_code  || r.rack   || '').toString().trim(),
     shelf_level: +(r.shelf_level|| r.shelf  || r.level || 0),
     box_code:     (r.box_code   || r.box    || r.box_id || '').toString().trim(),
-    created_by: null,
   }));
   try {
     const res = await api('/import-products-with-location', { products });
@@ -721,7 +701,8 @@ async function loadRMDropdowns() {
   try {
     const [boxes, products] = await Promise.all([api('/get-boxes'), api('/get-products')]);
     document.getElementById('rm_box_sel').innerHTML = `<option value="">— No box —</option>` + boxes.map(x=>`<option value="${x.id}">${x.box_code}</option>`).join('');
-    document.getElementById('rm_product_sel').innerHTML = `<option value="">— Not linked —</option>` + products.map(p=>`<option value="${p.id}">${p.product_code} — ${p.product_name}</option>`).join('');
+    // FIXED: Store product_code (string) not id (number) — database FK references product_code
+    document.getElementById('rm_product_sel').innerHTML = `<option value="">— Not linked —</option>` + products.map(p=>`<option value="${p.product_code}">${p.product_code} — ${p.product_name}</option>`).join('');
   } catch {}
 }
 
@@ -732,33 +713,34 @@ async function loadRMStats() {
     document.getElementById('rm_stat_total').textContent     = s.total||'0';
     document.getElementById('rm_stat_low').textContent       = s.low_stock_count||'0';
     document.getElementById('rm_stat_cats').textContent      = s.categories||'0';
-    document.getElementById('rm_stat_suppliers').textContent = s.suppliers||'0';
     document.getElementById('rm_stat_linked').textContent    = s.linked_to_product||'0';
   } catch {}
 }
 
 async function createRawMaterial() {
+  // Extract values first for clarity and to avoid multiple DOM queries
+  const productCode = document.getElementById('rm_product_sel').value;
+  alert(productCode)
+  const boxId = document.getElementById('rm_box_sel').value;
+
   const data = {
-    material_code:     document.getElementById('rm_code').value.trim(),
-    material_name:     document.getElementById('rm_name').value.trim(),
-    category:          document.getElementById('rm_category').value.trim(),
-    unit:              document.getElementById('rm_unit').value.trim(),
-    stock_qty:        +document.getElementById('rm_stock').value||0,
-    qty_per_unit:     +document.getElementById('rm_qty_req').value||0,
-    reorder_level:    +document.getElementById('rm_reorder').value||0,
-    daily_consumption:+document.getElementById('rm_daily').value||0,
-    size_category:     document.getElementById('rm_size').value,
-    lead_time_days:   +document.getElementById('rm_lead').value||0,
-    supplier_name:     document.getElementById('rm_supplier').value.trim(),
-    product_id:       +document.getElementById('rm_product_sel').value||null,
-    box_id:           +document.getElementById('rm_box_sel').value||null,
-    created_by: null
+    material_code:  document.getElementById('rm_code').value.trim(),
+    material_name:  document.getElementById('rm_name').value.trim(),
+    category:       document.getElementById('rm_category').value.trim() || null,
+    stock_qty:     parseInt(document.getElementById('rm_stock').value || 0),
+    qty_per_unit:  parseFloat(document.getElementById('rm_qty_req').value || 0),
+    reorder_level: parseInt(document.getElementById('rm_reorder').value || 0),
+    size_category:  document.getElementById('rm_size').value || 'medium',
+    // FIXED: product_code is a STRING (like "PRD-001"), not an integer
+    product_id: productCode || null,
+    // box_id is still numeric
+    box_id:     boxId ? parseInt(boxId) : null,
   };
   if(!data.material_code||!data.material_name) return toast('Code and Name required','error');
   try {
     await api('/create-raw-material', data);
     toast(`Material "${data.material_name}" added`);
-    ['rm_code','rm_name','rm_category','rm_unit','rm_stock','rm_qty_req','rm_reorder','rm_daily','rm_lead','rm_supplier'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    ['rm_code','rm_name','rm_category','rm_stock','rm_qty_req','rm_reorder'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     loadRawMaterials(); loadRMStats();
   } catch(e) { toast(e.message,'error'); }
 }
@@ -767,23 +749,15 @@ async function loadRawMaterials() {
   try {
     const d = await api('/get-raw-materials');
     const tbody = document.getElementById('rm_table');
-    if(!d.length){tbody.innerHTML=`<tr><td colspan="14" class="empty-state">No raw materials yet.</td></tr>`;return;}
+    if(!d.length){tbody.innerHTML=`<tr><td colspan="9" class="empty-state">No raw materials yet.</td></tr>`;return;}
     tbody.innerHTML = d.map(m=>`
       <tr>
         <td class="td-teal">${m.material_code}</td>
         <td>${m.material_name}</td>
-        <td>${m.category||'—'}</td>
-        <td style="font-family:var(--mono);font-size:11px;">${m.unit||'—'}</td>
         <td class="td-num">${m.stock_qty}</td>
         <td class="td-num">${m.qty_per_unit||'—'}</td>
         <td class="td-num">${m.reorder_level}</td>
-        <td class="td-num">${m.daily_consumption||'—'}</td>
-        <td style="font-family:var(--mono);font-size:11px;">${m.lead_time_days}d</td>
-        <td style="font-size:11px;">${m.supplier_name||'—'}</td>
-        <!-- FIX: was m.product_code — API returns product_name from the JOIN -->
-        <td>${m.product_name
-              ? `<span class="pill pill-yellow">${m.product_name}</span>`
-              : '<span style="color:var(--muted)">—</span>'}</td>
+        <td>${m.product_name ? `<span class="pill pill-yellow">${m.product_name}</span>` : '<span style="color:var(--muted)">—</span>'}</td>
         <td class="td-loc">${m.box_code||'—'}</td>
         <td><span class="pill pill-teal">${m.size_category||'—'}</span></td>
         <td><span class="pill ${m.stock_qty>m.reorder_level?'pill-green':'pill-yellow'}">${m.stock_qty>m.reorder_level?'OK':'Low'}</span></td>
@@ -793,8 +767,9 @@ async function loadRawMaterials() {
 
 function downloadRMTemplate() {
   const ws = XLSX.utils.aoa_to_sheet([
-    ['material_code','material_name','category','unit','quantity_required','stock_qty','reorder_level','daily_consumption','size_category','lead_time_days','supplier_name','product_id','rack','shelf','box_id'],
-    ['RM-001','Copper Wire 1.5mm','Electrical','kg',1.2,5000,750,10.96,'medium',10,'CopperLine Ltd',1,'RK-M01',1,'RK-M01-SH01-BX01']
+    ['material_code','material_name','category','quantity_required','stock_qty','reorder_level','size_category','product_id','rack','shelf','box_id'],
+    // FIXED: product_id should be product_code (like 'PRD-001'), not numeric or supplier name
+    ['RM-001','Copper Wire 1.5mm','Electrical',1.2,5000,750,'medium','PRD-001',1,'RK-M01',1]
   ]);
   const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'RawMaterials');
   XLSX.writeFile(wb,'raw_materials_template.xlsx');
@@ -821,30 +796,24 @@ function parseRMFile(file, previewId) {
 async function importRawMaterials() {
   const rows = window._rmRows; if (!rows) return;
   const materials = rows.map(r => ({
-    material_code:     r.material_code     || '',
-    material_name:     r.material_name     || '',
-    category:          r.category          || '',
-    unit:              r.unit              || '',
-    unit_cost:        +r.unit_cost         || 0,
-    qty_per_unit:     +r.quantity_required || 0,
-    stock_qty:        +r.stock_qty         || 0,
-    reorder_level:    +r.reorder_level     || 0,
-    daily_consumption:+r.daily_consumption || 0,
-    size_category:     r.size_category     || 'medium',
-    lead_time_days:   +r.lead_time_days    || 0,
-    supplier_name:     r.supplier_name     || '',
-    product_id:        r.product_id        || null,
-    rack_code:         r.rack              || '',
-    shelf_level:      +r.shelf             || 0,
-    box_code:          r.box_id            || '',
-    created_by: null
+    material_code:     (r.material_code || '').toString().trim(),
+    material_name:     (r.material_name || '').toString().trim(),
+    category:          (r.category || '').toString().trim() || null,
+    qty_per_unit:     +(r.quantity_required || 0),
+    stock_qty:        +(r.stock_qty || 0),
+    reorder_level:    +(r.reorder_level || 0),
+    size_category:     (r.size_category || 'medium').toString().trim(),
+    // FIXED: product_id should be product_code (string like "PRD-001"), not numeric
+    product_id:        (r.product_id || '').toString().trim() || null,
+    rack_code:         (r.rack || '').toString().trim(),
+    shelf_level:      +(r.shelf || 0),
+    box_code:          (r.box_id || '').toString().trim(),
   }));
   try {
     const res = await api('/import-raw-materials-with-location', { materials });
     toast(`Imported ${res.inserted} material(s)${res.skipped ? ', ' + res.skipped + ' skipped' : ''}${res.unresolved ? ', ' + res.unresolved + ' location unresolved' : ''}`);
     document.getElementById(window._rmPreviewId).innerHTML = '';
     window._rmRows = null;
-    // FIX: panel-4 is now Raw Materials
     if (_currentPanel === 'panel-4') { loadRawMaterials(); loadRMStats(); }
   } catch (e) { toast(e.message, 'error'); }
 }
