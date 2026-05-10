@@ -811,87 +811,48 @@ def simulate_demand_spike(data: dict = Body(...)):
     try:
 
         if _model is None:
-            raise HTTPException(
-                status_code=503,
-                detail="Model not loaded"
-            )
+            raise HTTPException(status_code=503, detail="Model not loaded")
 
         product_code = data.get("product_code")
         spike_percent = float(data.get("spike_percent", 50))
-        spike_duration_weeks = int(
-            data.get("spike_duration_weeks", 2)
-        )
+        spike_duration_weeks = int(data.get("spike_duration_weeks", 2))
 
         Products, Boxes, Shelves, Racks, RawMaterials, Salesdata = load_data()
 
         df = pd.DataFrame(Salesdata)
 
         if df.empty:
-            raise HTTPException(
-                status_code=500,
-                detail="No sales data found"
-            )
+            raise HTTPException(status_code=500, detail="No sales data found")
 
         df['sale_date'] = pd.to_datetime(df['sale_date'])
         df['item_id'] = df['item_id'].astype(str)
 
         for col in FEATURES:
             if col in df.columns:
-                df[col] = pd.to_numeric(
-                    df[col],
-                    errors='coerce'
-                ).fillna(0.0)
+                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0)
 
-        latest_df = (
-            df.sort_values("sale_date")
-              .groupby("item_id")
-              .last()
-              .reset_index()
-        )
+        latest_df = df.sort_values("sale_date").groupby("item_id").last().reset_index()
 
         item_id = str(product_code).replace("P", "").lstrip("0")
 
-        row = latest_df[
-            latest_df["item_id"] == item_id
-        ]
+        row = latest_df[latest_df["item_id"] == item_id]
 
         if row.empty:
-            raise HTTPException(
-                status_code=404,
-                detail="Product sales history not found"
-            )
+            raise HTTPException(status_code=404, detail="Product sales history not found")
 
         row = row.iloc[0]
 
-        feature_dict = {
-            feat: float(row[feat])
-            for feat in FEATURES
-        }
+        feature_dict = {feat: float(row[feat]) for feat in FEATURES}
 
-        product = next(
-            (
-                p for p in Products
-                if p.get("product_code") == product_code
-            ),
-            None
-        )
+        product = next((p for p in Products if p.get("product_code") == product_code), None)
+        # print(product)
 
-        product_name = (
-            product.get("product_name")
-            if product else product_code
-        )
+        product_name = product.get("product_name") if product else product_code
+        product_id = product.get("product_code") if product else None
 
-        # =====================================
-        # FEATURE UPDATE
-        # =====================================
-
-        def update_features_for_next_week(
-            f,
-            weekly_sales
-        ):
+        def update_features_for_next_week(f, weekly_sales):
 
             new_f = f.copy()
-
             daily_avg = weekly_sales / 7
 
             new_f['lag_30'] = new_f['lag_14']
@@ -900,72 +861,33 @@ def simulate_demand_spike(data: dict = Body(...)):
 
             new_f['rolling_mean_7'] = daily_avg
 
-            new_f['rolling_mean_30'] = (
-                (
-                    new_f['rolling_mean_30'] * 23
-                ) + (
-                    daily_avg * 7
-                )
-            ) / 30
+            new_f['rolling_mean_30'] = ((new_f['rolling_mean_30'] * 23) + (daily_avg * 7)) / 30
+            new_f['rolling_mean_90'] = ((new_f['rolling_mean_90'] * 83) + (daily_avg * 7)) / 90
 
-            new_f['rolling_mean_90'] = (
-                (
-                    new_f['rolling_mean_90'] * 83
-                ) + (
-                    daily_avg * 7
-                )
-            ) / 90
+            raw_trend = new_f['lag_7'] - new_f['lag_30']
 
-            raw_trend = (
-                new_f['lag_7']
-                - new_f['lag_30']
-            )
+            new_f['trend_direction'] = max(min(raw_trend, 5.0), -5.0)
 
-            new_f['trend_direction'] = max(
-                min(raw_trend, 5.0),
-                -5.0
-            )
-
-            new_f['day_of_week'] = (
-                new_f['day_of_week'] + 7
-            ) % 7
-
-            new_f['is_weekend'] = (
-                1 if new_f['day_of_week'] >= 5 else 0
-            )
+            new_f['day_of_week'] = (new_f['day_of_week'] + 7) % 7
+            new_f['is_weekend'] = 1 if new_f['day_of_week'] >= 5 else 0
 
             new_f['month'] += 0.25
 
             if new_f['month'] > 12.75:
                 new_f['month'] = 1
 
-            new_f['quarter'] = (
-                (int(new_f['month']) - 1) // 3
-            ) + 1
+            new_f['quarter'] = ((int(new_f['month']) - 1) // 3) + 1
 
             return new_f
 
-        # =====================================
-        # PREDICTION
-        # =====================================
-
         def get_prediction(features):
 
-            X = np.array([[
-                features[f]
-                for f in FEATURES
-            ]], dtype=np.float32)
+            X = np.array([[features[f] for f in FEATURES]], dtype=np.float32)
 
             if _scaler:
                 X = _scaler.transform(X)
 
-            pred = float(_model.predict(X)[0])
-
-            return max(0, round(pred))
-
-        # =====================================
-        # SIMULATION
-        # =====================================
+            return max(0, round(float(_model.predict(X)[0])))
 
         num_weeks = 6
 
@@ -975,42 +897,24 @@ def simulate_demand_spike(data: dict = Body(...)):
         f_normal = feature_dict.copy()
         f_spike = feature_dict.copy()
 
-        multiplier = 1 + (
-            spike_percent / 100
-        )
+        multiplier = 1 + (spike_percent / 100)
 
         for w in range(num_weeks):
 
-            # ---------------- BASELINE ----------------
-
-            normal_pred = get_prediction(
-                f_normal
-            )
+            normal_pred = get_prediction(f_normal)
 
             baseline.append({
                 "week": w + 1,
                 "predicted_units": normal_pred
             })
 
-            f_normal = update_features_for_next_week(
-                f_normal,
-                normal_pred
-            )
+            f_normal = update_features_for_next_week(f_normal, normal_pred)
 
-            # ---------------- SPIKE ----------------
-
-            spike_base = get_prediction(
-                f_spike
-            )
+            spike_base = get_prediction(f_spike)
 
             if w < spike_duration_weeks:
-
-                spike_final = round(
-                    spike_base * multiplier
-                )
-
+                spike_final = round(spike_base * multiplier)
             else:
-
                 spike_final = spike_base
 
             spike.append({
@@ -1018,62 +922,67 @@ def simulate_demand_spike(data: dict = Body(...)):
                 "predicted_units": spike_final
             })
 
-            f_spike = update_features_for_next_week(
-                f_spike,
-                spike_final
-            )
+            f_spike = update_features_for_next_week(f_spike, spike_final)
 
-        # =====================================
-        # SUMMARY
-        # =====================================
+        baseline_total = sum(x["predicted_units"] for x in baseline)
+        spike_total = sum(x["predicted_units"] for x in spike)
 
-        baseline_total = sum(
-            x["predicted_units"]
-            for x in baseline
-        )
+        raw_material_impact = []
 
-        spike_total = sum(
-            x["predicted_units"]
-            for x in spike
-        )
+        if product_id:
+
+            bom_materials = [
+                m for m in RawMaterials
+                if str(m.get("product_id")) == str(product_id)
+                
+            ]
+            # print(RawMaterials)
+            
+
+            for m in bom_materials:
+
+                qty_per_unit = float(m.get("qty_per_unit") or 1)
+
+                baseline_usage = baseline_total * qty_per_unit
+                spike_usage = spike_total * qty_per_unit
+
+                stock_qty = float(m.get("stock_qty") or 0)
+
+                raw_material_impact.append({
+                    "material_code": m.get("material_code"),
+                    "material_name": m.get("material_name"),
+                    "unit": m.get("unit"),
+                    "unit_cost": float(m.get("unit_cost") or 0),
+                    "qty_per_unit": qty_per_unit,
+                    "baseline_consumption": baseline_usage,
+                    "spike_consumption": spike_usage,
+                    "extra_consumption": spike_usage - baseline_usage,
+                    "current_stock": stock_qty,
+                    "stock_risk": stock_qty - spike_usage
+                })
 
         return {
 
             "product_code": product_code,
-
             "product_name": product_name,
 
             "spike_percent": spike_percent,
+            "spike_duration_weeks": spike_duration_weeks,
 
-            "spike_duration_weeks":
-                spike_duration_weeks,
+            "baseline_total": baseline_total,
+            "spike_total": spike_total,
+            "extra_demand": spike_total - baseline_total,
 
-            "baseline_total":
-                baseline_total,
+            "baseline_forecast": baseline,
+            "spike_forecast": spike,
 
-            "spike_total":
-                spike_total,
-
-            "extra_demand":
-                spike_total - baseline_total,
-
-            "baseline_forecast":
-                baseline,
-
-            "spike_forecast":
-                spike
+            "raw_material_impact": raw_material_impact
         }
 
     except Exception as e:
 
-        #print("Demand Spike Error:", e)
-
-        raise HTTPException(
-            status_code=500,
-            detail="Demand spike simulation failed"
-        )
-        
-        
+        raise HTTPException(status_code=500, detail=str(e))
+    
 @app.get("/get-products")
 def get_products():
 
@@ -1126,14 +1035,14 @@ def simulate_supply_delay(data: dict = Body(...)):
     try:
 
         if _model is None:
-            raise HTTPException(
-                status_code=503,
-                detail="Model not loaded"
-            )
-        Products,Salesdata=[],[]
+            raise HTTPException(status_code=503, detail="Model not loaded")
+
+        Products, Salesdata, RawMaterials = [], [], []
+
         with engine.connect() as conn:
-            Products= [dict(r) for r in conn.execute(text("SELECT * FROM products")).mappings().all()]
+            Products = [dict(r) for r in conn.execute(text("SELECT * FROM products")).mappings().all()]
             Salesdata = [dict(r) for r in conn.execute(text("SELECT * FROM sales_data")).mappings().all()]
+            RawMaterials = [dict(r) for r in conn.execute(text("SELECT * FROM raw_materials")).mappings().all()]
 
         df = pd.DataFrame(Salesdata)
 
@@ -1142,74 +1051,41 @@ def simulate_supply_delay(data: dict = Body(...)):
 
         for col in FEATURES:
             if col in df.columns:
-                df[col] = pd.to_numeric(
-                    df[col],
-                    errors='coerce'
-                ).fillna(0.0)
+                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0)
 
-        latest_df = (
-            df.sort_values('sale_date')
-              .groupby('item_id')
-              .last()
-              .reset_index()
-        )
+        latest_df = df.sort_values('sale_date').groupby('item_id').last().reset_index()
 
         item_id = product_code.replace("P", "").lstrip("0")
 
-        row = latest_df[
-            latest_df['item_id'] == item_id
-        ]
+        row = latest_df[latest_df['item_id'] == item_id]
 
         if row.empty:
-            raise HTTPException(
-                status_code=404,
-                detail="Product sales history not found"
-            )
+            raise HTTPException(status_code=404, detail="Product sales history not found")
 
         row = row.iloc[0]
 
-        current_features = {
-            feat: float(row[feat])
-            for feat in FEATURES
-        }
+        current_features = {feat: float(row[feat]) for feat in FEATURES}
 
-        product = next(
-            (
-                p for p in Products
-                if p.get("product_code") == product_code
-            ),
-            {}
-        )
-
-        product_name = product.get(
-            "product_name",
-            product_code
-        )
+        product = next((p for p in Products if p.get("product_code") == product_code), {})
+        product_name = product.get("product_name", product_code)
+        product_id = product.get("product_code")
 
         num_weeks = 8
         arrival_week = 2 + delay_weeks
-
         inventory = current_stock
 
         weekly_forecast = []
-
         total_shortage = 0
         stockout_weeks = 0
 
         for week in range(1, num_weeks + 1):
 
-            X = np.array([[
-                current_features[f]
-                for f in FEATURES
-            ]], dtype=np.float32)
+            X = np.array([[current_features[f] for f in FEATURES]], dtype=np.float32)
 
             if _scaler:
                 X = _scaler.transform(X)
 
-            predicted_demand = max(
-                0,
-                round(float(_model.predict(X)[0]))
-            )
+            predicted_demand = max(0, round(float(_model.predict(X)[0])))
 
             restock_arrived = False
 
@@ -1219,20 +1095,11 @@ def simulate_supply_delay(data: dict = Body(...)):
 
             inventory_before = inventory
 
-            actual_sales = min(
-                inventory,
-                predicted_demand
-            )
+            actual_sales = min(inventory, predicted_demand)
 
-            shortage = max(
-                0,
-                predicted_demand - inventory
-            )
+            shortage = max(0, predicted_demand - inventory)
 
-            inventory = max(
-                0,
-                inventory - predicted_demand
-            )
+            inventory = max(0, inventory - predicted_demand)
 
             if inventory == 0:
                 stockout_weeks += 1
@@ -1249,40 +1116,64 @@ def simulate_supply_delay(data: dict = Body(...)):
                 "restock_arrived": restock_arrived
             })
 
-            current_features = update_features_for_next_week(
-                current_features,
-                predicted_demand
-            )
+            current_features = update_features_for_next_week(current_features, predicted_demand)
+
+        baseline_total = sum(w["predicted_demand"] for w in weekly_forecast)
+
+        raw_material_impact = []
+
+        if product_id:
+
+            bom = [
+                m for m in RawMaterials
+                if str(m.get("product_id")) == str(product_id)
+            ]
+
+            for m in bom:
+
+                qty_per_unit = float(m.get("qty_per_unit") or 1)
+                stock_qty = float(m.get("stock_qty") or 0)
+
+                required_qty = baseline_total * qty_per_unit
+
+                shortage_qty = max(0, required_qty - stock_qty)
+
+                raw_material_impact.append({
+                    "material_code": m.get("material_code"),
+                    "material_name": m.get("material_name"),
+                    "unit": m.get("unit"),
+                    "qty_per_unit": qty_per_unit,
+
+                    "required_qty": required_qty,
+                    "available_stock": stock_qty,
+                    "shortage": shortage_qty,
+
+                    "stock_risk": stock_qty - required_qty
+                })
 
         return {
 
             "product_code": product_code,
-
             "product_name": product_name,
 
             "current_stock": current_stock,
-
             "restock_qty": restock_qty,
-
             "delay_weeks": delay_weeks,
-
             "arrival_week": arrival_week,
 
             "total_shortage": total_shortage,
-
             "stockout_weeks": stockout_weeks,
 
-            "weekly_forecast": weekly_forecast
+            "weekly_forecast": weekly_forecast,
+
+            "raw_material_impact": raw_material_impact
         }
 
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-        #print("Supply Delay Error:", e)
 
-        raise HTTPException(
-            status_code=500,
-            detail=str(e)
-        )
+
 @app.post("/simulate_seasonal_surge")
 def simulate_seasonal_surge(data: dict = Body(...)):
 

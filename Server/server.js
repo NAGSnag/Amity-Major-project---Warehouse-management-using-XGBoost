@@ -124,7 +124,7 @@ app.get("/verify-user", async (req, res) => {
             return res.status(401).json({ success:false, error:"Token missing" });
 
         const decoded = jwt.verify(token, process.env.JWT_SECRETKEY);
-        console.log(decoded)
+        // console.log(decoded)
 
         const users = await db(
             `SELECT id,name,email FROM users WHERE email=?`,
@@ -534,7 +534,7 @@ app.get("/get-allsales", async (req, res) => {
         const limit = Math.max(1, Math.min(parseInt(req.query.limit) || 200, 1000));
         const offset = Math.max(0, parseInt(req.query.offset) || 0);
         
-        console.log(`Fetching sales: limit=${limit}, offset=${offset}`);
+        // console.log(`Fetching sales: limit=${limit}, offset=${offset}`);
         
         // Get total count (separate query)
         const countRows = await db(`SELECT COUNT(*) as total FROM sales_data`);

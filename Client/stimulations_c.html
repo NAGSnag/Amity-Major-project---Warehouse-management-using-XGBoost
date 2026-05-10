@@ -908,8 +908,7 @@ async function executeSimulation() {
                 </tr>
             `;
 
-            const tableBody =
-                document.getElementById("resultsTableBody");
+            const tableBody =document.getElementById("resultsTableBody");
 
             tableBody.innerHTML = result.predictions
                 .map(p => `
@@ -1022,488 +1021,397 @@ async function executeSimulation() {
             closeModal();
             openResultsModal();
     }
-    if (currentActiveScenario === "demandSpike") {
+ if (currentActiveScenario === "demandSpike") {
 
-        const response = await fetch(
-            "http://localhost:8000/simulate_demand_spike",
-            {
-                method: "POST",
-
-                headers: {
-                    "Content-Type": "application/json"
-                },
-
-                body: JSON.stringify({
-
-                    product_code:
-                        data.product_name_select,
-
-                    spike_percent:
-                        Number(data.spike_percent),
-
-                    spike_duration_weeks:
-                        Number(data.spike_duration_weeks)
-                })
-            }
-        );
-
-        const result = await response.json();
-
-        console.log(result);
-
-        if (!result.spike_forecast) {
-
-            alert(
-                result.detail ||
-                "Simulation failed"
-            );
-
-            return;
+    const response = await fetch(
+        "http://localhost:8000/simulate_demand_spike",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                product_code: data.product_name_select,
+                spike_percent: Number(data.spike_percent),
+                spike_duration_weeks: Number(data.spike_duration_weeks)
+            })
         }
+    );
 
-        // =====================================
-        // SUMMARY
-        // =====================================
+    const result = await response.json();
 
-        document.getElementById(
-            "resultsSummary"
-        ).innerHTML = `
+    console.log(result);
 
-            <b>Demand Spike Simulation Completed</b>
+    if (!result || !result.spike_forecast || !result.baseline_forecast) {
+        alert(result?.detail || "Simulation failed");
+        return;
+    }
 
-            <br><br>
+    document.getElementById("resultsSummary").innerHTML = `
+        <b>Demand Spike Simulation Completed</b>
+        <br><br>
 
-            Product:
-            <b>${result.product_name}</b>
+        Product:
+        <b>${result.product_name}</b>
+        <br>
 
-            <br>
+        Spike Increase:
+        <b>${result.spike_percent}%</b>
+        <br>
 
-            Spike Increase:
-            <b>${result.spike_percent}%</b>
+        Spike Duration:
+        <b>${result.spike_duration_weeks} weeks</b>
+        <br>
 
-            <br>
+        Baseline Demand:
+        <b>${result.baseline_total}</b>
+        <br>
 
-            Spike Duration:
-            <b>${result.spike_duration_weeks} weeks</b>
+        Spike Demand:
+        <b>${result.spike_total}</b>
+        <br>
 
-            <br>
+        Extra Demand:
+        <b>${result.extra_demand}</b>
+    `;
 
-            Baseline Demand:
-            <b>${result.baseline_total}</b>
+    document.querySelector(".results-table thead").innerHTML = `
+        <tr>
+            <th>Week</th>
+            <th>Baseline</th>
+            <th>Spike</th>
+        </tr>
+    `;
 
-            <br>
+    const tableBody = document.getElementById("resultsTableBody");
 
-            Spike Demand:
-            <b>${result.spike_total}</b>
+    tableBody.innerHTML = result.baseline_forecast.map((b, i) => {
+        const s = result.spike_forecast[i];
 
-            <br>
-
-            Extra Demand:
-            <b>${result.extra_demand}</b>
-        `;
-
-        // =====================================
-        // TABLE
-        // =====================================
-
-        const tableBody =
-            document.getElementById(
-                "resultsTableBody"
-            );
-
-        tableBody.innerHTML =
-            result.baseline_forecast.map(
-                (b, i) => {
-
-                    const s =
-                        result.spike_forecast[i];
-
-                    return `
-                        <tr>
-                            <td>
-                                Week ${b.week}
-                            </td>
-
-                            <td>
-                                ${b.predicted_units}
-                            </td>
-
-                            <td>
-                                ${s.predicted_units}
-                            </td>
-                        </tr>
-                    `;
-                }
-            ).join("");
-
-        // =====================================
-        // TABLE HEADER
-        // =====================================
-
-        document.querySelector(
-            ".results-table thead"
-        ).innerHTML = `
+        return `
             <tr>
-                <th>Week</th>
-                <th>Baseline</th>
-                <th>Spike</th>
+                <td>Week ${b.week}</td>
+                <td>${b.predicted_units}</td>
+                <td>${s ? s.predicted_units : 0}</td>
             </tr>
         `;
+    }).join("");
 
-        // =====================================
-        // CHART
-        // =====================================
+    const ctx = document.getElementById("simulationChart").getContext("2d");
 
-        const ctx = document
-            .getElementById(
-                "simulationChart"
-            )
-            .getContext("2d");
+    if (simulationChart) {
+        simulationChart.destroy();
+    }
 
-        if (simulationChart) {
-            simulationChart.destroy();
-        }
-
-        simulationChart = new Chart(ctx, {
-
-            type: "line",
-
-            data: {
-
-                labels:
-                    result.baseline_forecast.map(
-                        w => `Week ${w.week}`
-                    ),
-
-                datasets: [
-
-                    {
-                        label: "Baseline",
-
-                        data:
-                            result.baseline_forecast.map(
-                                w => w.predicted_units
-                            ),
-
-                        tension: 0.35,
-                        fill: false,
-                        borderWidth: 3,
-                        pointRadius: 4
-                    },
-
-                    {
-                        label: "Demand Spike",
-
-                        data:
-                            result.spike_forecast.map(
-                                w => w.predicted_units
-                            ),
-
-                        tension: 0.35,
-                        fill: false,
-                        borderWidth: 3,
-                        pointRadius: 4
-                    }
-                ]
+    simulationChart = new Chart(ctx, {
+        type: "line",
+        data: {
+            labels: result.baseline_forecast.map(w => `Week ${w.week}`),
+            datasets: [
+                {
+                    label: "Baseline",
+                    data: result.baseline_forecast.map(w => w.predicted_units),
+                    tension: 0.35,
+                    fill: false,
+                    borderWidth: 3,
+                    pointRadius: 4
+                },
+                {
+                    label: "Demand Spike",
+                    data: result.spike_forecast.map(w => w.predicted_units),
+                    tension: 0.35,
+                    fill: false,
+                    borderWidth: 3,
+                    pointRadius: 4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: "index",
+                intersect: false
             },
-
-            options: {
-
-                responsive: true,
-                maintainAspectRatio: false,
-
-                interaction: {
-                    mode: 'index',
-                    intersect: false
-                },
-
-                plugins: {
-
-                    legend: {
-                        labels: {
-                            color: '#fff'
-                        }
-                    }
-                },
-
-                scales: {
-
-                    x: {
-
-                        ticks: {
-                            color: '#fff'
-                        },
-
-                        grid: {
-                            color:
-                            'rgba(255,255,255,0.08)'
-                        }
-                    },
-
-                    y: {
-
-                        beginAtZero: true,
-
-                        ticks: {
-                            color: '#fff'
-                        },
-
-                        grid: {
-                            color:
-                            'rgba(255,255,255,0.08)'
-                        }
+            plugins: {
+                legend: {
+                    labels: {
+                        color: "#fff"
                     }
                 }
-            }
-        });
-
-        closeModal();
-        openResultsModal();
-    }
-    if (currentActiveScenario === "supplyDelay") {
-
-        const response = await fetch(
-            "http://localhost:8000/simulate_supply_delay",
-            {
-                method: "POST",
-
-                headers: {
-                    "Content-Type": "application/json"
+            },
+            scales: {
+                x: {
+                    ticks: { color: "#fff" },
+                    grid: { color: "rgba(255,255,255,0.08)" }
                 },
-
-                body: JSON.stringify({
-
-                    product_code:
-                        data.product_name_select,
-
-                    current_stock:
-                        Number(data.current_stock),
-
-                    restock_qty:
-                        Number(data.restock_qty),
-
-                    delay_weeks:
-                        Number(data.delay_weeks)
-                })
+                y: {
+                    beginAtZero: true,
+                    ticks: { color: "#fff" },
+                    grid: { color: "rgba(255,255,255,0.08)" }
+                }
             }
-        );
-
-        const result = await response.json();
-
-        console.log(result);
-
-        if (!result.weekly_forecast) {
-
-            alert(
-                result.detail ||
-                "Simulation failed"
-            );
-
-            return;
         }
+    });
 
-        // =====================================
-        // SUMMARY
-        // =====================================
+    // ================================
+    // RAW MATERIAL IMPACT SECTION (NEW)
+    // ================================
 
-        document.getElementById(
-            "resultsSummary"
-        ).innerHTML = `
 
-            <b>Supply Delay Simulation</b>
+    if (result.raw_material_impact && result.raw_material_impact.length > 0) {
 
+        let rmHtml = `
+            <br><hr><br>
+            <b>Raw Material Impact (BOM Explosion)</b>
             <br><br>
 
-            Product:
-            <b>${result.product_name}</b>
-
-            <br>
-
-            Current Stock:
-            <b>${result.current_stock}</b>
-
-            <br>
-
-            Restock Qty:
-            <b>${result.restock_qty}</b>
-
-            <br>
-
-            Delay:
-            <b>${result.delay_weeks} weeks</b>
-
-            <br>
-
-            Actual Arrival Week:
-            <b>${result.arrival_week}</b>
+            <table border="1" style="width:100%; color:white; border-collapse:collapse;">
+                <thead>
+                    <tr>
+                        <th>Material</th>
+                        <th>Baseline Consumption</th>
+                        <th>Spike Consumption</th>
+                        <th>Extra Consumption</th>
+                        <th>Current Stock</th>
+                        <th>Stock Risk</th>
+                    </tr>
+                </thead>
+                <tbody>
         `;
 
-        // =====================================
-        // TABLE
-        // =====================================
-
-        document.querySelector(
-            ".results-table thead"
-        ).innerHTML = `
+        rmHtml += result.raw_material_impact.map(rm => `
             <tr>
-                <th>Week</th>
-                <th>Demand</th>
-                <th>Inventory Before</th>
-                <th>Inventory After</th>
-                <th>Restock</th>
+                <td>${rm.material_name}</td>
+                <td>${rm.baseline_consumption}</td>
+                <td>${rm.spike_consumption}</td>
+                <td>${rm.extra_consumption}</td>
+                <td>${rm.current_stock}</td>
+                <td style="color:${rm.stock_risk < 0 ? 'red' : 'lightgreen'}">
+                    ${rm.stock_risk}
+                </td>
             </tr>
+        `).join("");
+
+        rmHtml += `
+                </tbody>
+            </table>
         `;
 
-        const tableBody =
-            document.getElementById(
-                "resultsTableBody"
-            );
+        document.getElementById("resultsSummary").innerHTML += rmHtml;
+    }
 
-        tableBody.innerHTML =
-            result.weekly_forecast.map(w => `
+    closeModal();
+    openResultsModal();
+}
+if (currentActiveScenario === "supplyDelay") {
 
-                <tr>
-
-                    <td>
-                        Week ${w.week}
-                    </td>
-
-                    <td>
-                        ${w.predicted_demand}
-                    </td>
-
-                    <td>
-                        ${w.inventory_before}
-                    </td>
-
-                    <td>
-                        ${w.inventory_after}
-                    </td>
-
-                    <td>
-                        ${
-                            w.restock_arrived
-                            ? '✔'
-                            : '-'
-                        }
-                    </td>
-
-                </tr>
-
-            `).join("");
-
-        // =====================================
-        // CHART
-        // =====================================
-
-        const ctx = document
-            .getElementById(
-                "simulationChart"
-            )
-            .getContext("2d");
-
-        if (simulationChart) {
-            simulationChart.destroy();
-        }
-
-        simulationChart = new Chart(ctx, {
-
-            data: {
-
-                labels:
-                    result.weekly_forecast.map(
-                        w => `Week ${w.week}`
-                    ),
-
-                datasets: [
-
-                    {
-                        type: 'bar',
-
-                        label: 'Demand',
-
-                        data:
-                            result.weekly_forecast.map(
-                                w => w.predicted_demand
-                            ),
-
-                        borderWidth: 1
-                    },
-
-                    {
-                        type: 'line',
-
-                        label: 'Inventory',
-
-                        data:
-                            result.weekly_forecast.map(
-                                w => w.inventory_after
-                            ),
-
-                        tension: 0.35,
-
-                        borderWidth: 3,
-
-                        pointRadius: 4
-                    }
-                ]
+    const response = await fetch(
+        "http://localhost:8000/simulate_supply_delay",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
             },
+            body: JSON.stringify({
+                product_code: data.product_name_select,
+                current_stock: Number(data.current_stock),
+                restock_qty: Number(data.restock_qty),
+                delay_weeks: Number(data.delay_weeks)
+            })
+        }
+    );
 
-            options: {
+    const result = await response.json();
 
-                responsive: true,
+    console.log(result);
 
-                maintainAspectRatio: false,
+    if (!result || !result.weekly_forecast) {
+        alert(result?.detail || "Simulation failed");
+        return;
+    }
 
-                interaction: {
-                    mode: 'index',
-                    intersect: false
+    // ================================
+    // SUMMARY
+    // ================================
+    document.getElementById("resultsSummary").innerHTML = `
+        <b>Supply Delay Simulation</b>
+        <br><br>
+
+        Product:
+        <b>${result.product_name}</b>
+        <br>
+
+        Current Stock:
+        <b>${result.current_stock}</b>
+        <br>
+
+        Restock Qty:
+        <b>${result.restock_qty}</b>
+        <br>
+
+        Delay Weeks:
+        <b>${result.delay_weeks}</b>
+        <br>
+
+        Arrival Week:
+        <b>${result.arrival_week}</b>
+        <br>
+
+        Total Shortage:
+        <b>${result.total_shortage}</b>
+        <br>
+
+        Stockout Weeks:
+        <b>${result.stockout_weeks}</b>
+    `;
+
+    // ================================
+    // TABLE HEADER
+    // ================================
+    document.querySelector(".results-table thead").innerHTML = `
+        <tr>
+            <th>Week</th>
+            <th>Demand</th>
+            <th>Sales</th>
+            <th>Shortage</th>
+            <th>Inventory Before</th>
+            <th>Inventory After</th>
+            <th>Restock</th>
+        </tr>
+    `;
+
+    // ================================
+    // TABLE BODY
+    // ================================
+    const tableBody = document.getElementById("resultsTableBody");
+
+    tableBody.innerHTML = result.weekly_forecast.map(w => `
+        <tr>
+            <td>Week ${w.week}</td>
+            <td>${w.predicted_demand}</td>
+            <td>${w.actual_sales}</td>
+            <td style="color:${w.shortage > 0 ? 'red' : 'lightgreen'}">
+                ${w.shortage}
+            </td>
+            <td>${w.inventory_before}</td>
+            <td>${w.inventory_after}</td>
+            <td>${w.restock_arrived ? "YES" : "NO"}</td>
+        </tr>
+    `).join("");
+
+    // ================================
+    // CHART
+    // ================================
+    const ctx = document
+        .getElementById("simulationChart")
+        .getContext("2d");
+
+    if (simulationChart) {
+        simulationChart.destroy();
+    }
+
+    simulationChart = new Chart(ctx, {
+        type: "line",
+        data: {
+            labels: result.weekly_forecast.map(w => `Week ${w.week}`),
+            datasets: [
+                {
+                    label: "Demand",
+                    data: result.weekly_forecast.map(w => w.predicted_demand),
+                    borderWidth: 3,
+                    tension: 0.35
                 },
-
-                plugins: {
-
-                    legend: {
-
-                        labels: {
-                            color: '#fff'
-                        }
-                    }
+                {
+                    label: "Sales",
+                    data: result.weekly_forecast.map(w => w.actual_sales),
+                    borderWidth: 3,
+                    tension: 0.35
                 },
-
-                scales: {
-
-                    x: {
-
-                        ticks: {
-                            color: '#fff'
-                        },
-
-                        grid: {
-                            color:
-                            'rgba(255,255,255,0.08)'
-                        }
-                    },
-
-                    y: {
-
-                        beginAtZero: true,
-
-                        ticks: {
-                            color: '#fff'
-                        },
-
-                        grid: {
-                            color:
-                            'rgba(255,255,255,0.08)'
-                        }
+                {
+                    label: "Inventory",
+                    data: result.weekly_forecast.map(w => w.inventory_after),
+                    borderWidth: 3,
+                    tension: 0.35
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: "index",
+                intersect: false
+            },
+            plugins: {
+                legend: {
+                    labels: {
+                        color: "#fff"
                     }
                 }
+            },
+            scales: {
+                x: {
+                    ticks: { color: "#fff" },
+                    grid: { color: "rgba(255,255,255,0.08)" }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: { color: "#fff" },
+                    grid: { color: "rgba(255,255,255,0.08)" }
+                }
             }
-        });
+        }
+    });
 
-        closeModal();
-        openResultsModal();
+    // ================================
+    // RAW MATERIAL IMPACT (NEW SECTION)
+    // ================================
+    if (result.raw_material_impact && result.raw_material_impact.length > 0) {
+
+        let rmHtml = `
+            <br><hr><br>
+            <b>Raw Material Impact (BOM Explosion)</b>
+            <br><br>
+
+            <table border="1" style="width:100%; color:white; border-collapse:collapse;">
+                <thead>
+                    <tr>
+                        <th>Material</th>
+                        <th>Required Qty</th>
+                        <th>Available Stock</th>
+                        <th>Shortage</th>
+                        <th>Risk</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        rmHtml += result.raw_material_impact.map(rm => `
+            <tr>
+                <td>${rm.material_name}</td>
+                <td>${rm.required_qty}</td>
+                <td>${rm.available_stock}</td>
+                <td style="color:${rm.shortage > 0 ? 'red' : 'lightgreen'}">
+                    ${rm.shortage}
+                </td>
+                <td style="color:${rm.stock_risk < 0 ? 'red' : 'lightgreen'}">
+                    ${rm.stock_risk}
+                </td>
+            </tr>
+        `).join("");
+
+        rmHtml += `
+                </tbody>
+            </table>
+        `;
+
+        document.getElementById("resultsSummary").innerHTML += rmHtml;
     }
+
+    closeModal();
+    openResultsModal();
+}  
     // =========================================
 // SEASONAL SURGE SIMULATION
 // =========================================
