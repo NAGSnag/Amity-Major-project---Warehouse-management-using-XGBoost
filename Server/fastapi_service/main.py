@@ -962,7 +962,6 @@ def simulate_demand_spike(data: dict = Body(...)):
                 })
 
         return {
-
             "product_code": product_code,
             "product_name": product_name,
 
