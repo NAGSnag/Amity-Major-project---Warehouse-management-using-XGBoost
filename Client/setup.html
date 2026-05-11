@@ -8,21 +8,21 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root {
-    --bg:#0a0c10;--surface:#111318;--surface2:#181c24;--border:#1f2535;
+    --bg:#000000;--surface:#111318;--surface2:#000000;--border:#1f2535;
     --accent:#f59e0b;--accent2:#3b82f6;--success:#10b981;--danger:#ef4444;
     --purple:#8b5cf6;--teal:#14b8a6;--text:#e2e8f0;--muted:#64748b;
     --mono:'Space Mono',monospace;--sans:'DM Sans',sans-serif;
   }
-  *{box-sizing:border-box;margin:0;padding:0;}
+  *{box-sizing:border-box;margin:0;padding:0;font-size: large;}
   body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;}
 
-  .header{background:var(--surface);border-bottom:1px solid var(--border);padding:18px 40px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:100;}
+  .header{border-bottom:1px solid var(--border);padding:10px 17px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:100;}
   .header-icon{width:38px;height:38px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;}
-  .header h1{font-family:var(--mono);font-size:15px;letter-spacing:.05em;}
-  .header span{color:var(--muted);font-size:12px;margin-left:4px;}
+  .header h1{font-family:var(--mono);font-size:18px;letter-spacing:.05em;}
+  .header span{color:var(--muted);font-size:15px;margin-left:4px;}
 
   /* ── STEPPER ── */
-  .stepper-wrap{padding:28px 40px 0;display:flex;overflow-x:auto;max-width:940px;margin:0 auto;}
+  .stepper-wrap{padding:28px 40px 0;display:flex;overflow-x:auto;max-width:100%;max-height: 300px;margin:0 auto;}
   .step-item{flex:1;min-width:60px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;position:relative;}
   .step-item:not(:last-child)::after{content:'';position:absolute;top:18px;left:50%;width:100%;height:2px;background:var(--border);z-index:0;}
   .step-item.done:not(:last-child)::after{background:var(--accent);}
@@ -33,18 +33,18 @@
   .step-item.active .step-label{color:var(--accent);}
 
   /* ── MAIN ── */
-  .main{padding:28px 40px 60px;max-width:940px;margin:0 auto;}
+  .main{padding:28px 40px 60px;max-width:1400px;margin:0 auto;}
   .panel{display:none;animation:fadeUp .3s ease;}
   .panel.active{display:block;}
   @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
   .panel-header{margin-bottom:22px;}
-  .panel-header h2{font-family:var(--mono);font-size:19px;margin-bottom:5px;}
-  .panel-header p{color:var(--muted);font-size:13px;}
+  .panel-header h2{font-family:var(--mono);font-size:24px;margin-bottom:5px;}
+  .panel-header p{color:var(--muted);font-size:20px;}
 
   /* ── FORMS ── */
   .form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:20px;}
   .form-group{display:flex;flex-direction:column;gap:5px;}
-  label{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;}
+  label{font-size:15px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;}
   input,select{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:9px 13px;color:var(--text);font-family:var(--sans);font-size:13px;outline:none;transition:border-color .2s;width:100%;}
   input:focus,select:focus{border-color:var(--accent);}
   input::placeholder{color:var(--muted);}
@@ -52,7 +52,7 @@
 
   /* ── BUTTONS ── */
   .btn-row{display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap;}
-  .btn{padding:9px 20px;border:none;border-radius:6px;font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:7px;}
+  .btn{padding:9px 20px;border:none;border-radius:6px;font-family:var(--sans);font-size:16px;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:7px;}
   .btn-primary{background:var(--accent);color:#000;}.btn-primary:hover{background:#d97706;}
   .btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border);}.btn-secondary:hover{border-color:var(--accent);}
   .btn-success{background:var(--success);color:#fff;}.btn-success:hover{background:#059669;}
@@ -60,7 +60,7 @@
   .btn-teal{background:var(--teal);color:#fff;}.btn-teal:hover{background:#0d9488;}
   .btn-outline{background:transparent;color:var(--text);border:1px solid var(--border);}.btn-outline:hover{border-color:var(--accent);}
   .btn-danger{background:var(--danger);color:#fff;}
-  .btn-sm{padding:6px 13px;font-size:12px;}
+  .btn-sm{padding:6px 13px;font-size:16px;}
   .btn:disabled{opacity:.4;cursor:not-allowed;}
 
   /* ── CHOICE SCREEN ── */
@@ -68,12 +68,12 @@
   .choice-title{font-family:var(--mono);font-size:24px;color:var(--text);}
   .choice-sub{color:var(--muted);font-size:14px;max-width:480px;line-height:1.7;}
   .choice-cards{display:flex;gap:20px;flex-wrap:wrap;justify-content:center;}
-  .choice-card{background:var(--surface);border:2px solid var(--border);border-radius:12px;padding:28px 32px;cursor:pointer;transition:all .25s;min-width:240px;max-width:280px;text-align:center;}
+  .choice-card{background:var(--surface);border:2px solid var(--border);border-radius:12px;padding:28px 32px;cursor:pointer;transition:all .25s;min-width:440px;max-width:280px;text-align:center;}
   .choice-card:hover{border-color:var(--accent);transform:translateY(-3px);box-shadow:0 12px 32px rgba(0,0,0,.4);}
   .choice-card.card-import:hover{border-color:var(--success);}
   .choice-card .c-icon{font-size:40px;margin-bottom:14px;display:block;}
-  .choice-card h3{font-family:var(--mono);font-size:14px;margin-bottom:8px;color:var(--text);}
-  .choice-card p{font-size:12px;color:var(--muted);line-height:1.6;}
+  .choice-card h3{font-family:var(--mono);font-size:17px;margin-bottom:8px;color:var(--text);}
+  .choice-card p{font-size:15px;color:var(--muted);line-height:1.6;}
   .choice-card .c-badge{display:inline-block;margin-top:12px;padding:4px 12px;border-radius:999px;font-size:11px;font-weight:600;}
   .card-step  .c-badge{background:rgba(245,158,11,.15);color:var(--accent);}
   .card-import .c-badge{background:rgba(16,185,129,.15);color:var(--success);}
@@ -133,6 +133,63 @@
   .stat-card.c-red .s-val{color:var(--danger);}
   .stat-card.c-blue .s-val{color:var(--accent2);}
   .stat-card.c-teal .s-val{color:var(--teal);}
+    .topbar {
+        border-radius: 18px;
+        display: flex;
+        width: 100%;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 16px 24px;
+    }
+
+    .topbar h2 {
+        font-size: 20px;
+        color: #eef2f9;
+    }
+
+    .topbar-right {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+
+
+    .pill {
+        border: none;
+        color: #eef2f9;
+        background: #2f3345;
+        border-radius: 999px;
+        padding: 8px 18px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .pill:hover {
+        background: #3a3e52;
+    }
+
+    .pill.active {
+        background: #52c28f;
+        color: #071811;
+        font-weight: 700;
+    }
+
+    .pill.dashboard-active {
+        background: #4a55d8;
+        color: #eff2fe;
+        font-weight: 700;
+        box-shadow: 0 0 0 2px rgba(74, 85, 216, 0.28);
+    }
+
+    .avatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #eceef4, #cbd0d9);
+    }
+
   .preview-block{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:16px;}
   .preview-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
   .preview-header span{font-family:var(--mono);font-size:12px;color:var(--accent);}
@@ -166,13 +223,12 @@
 
 <div class="header">
     <header class="topbar">
-        <h2>OptiWare</h2>
+        <h2>OptiWare-AI</h2>
         <div class="topbar-right">
             <button class="pill" onclick="window.location.href='/app'">Dashboard</button>
-            <button class="pill dashboard-active">Simulations</button>
+            <button class="pill"  >Simulations</button>
             <button class="pill" onclick="window.location.href='/products'">Products</button>
-            <button class="pill" onclick="window.location.href='/setup'">Setup</button>
-            <div class="avatar"></div>
+            <button class="pill dashboard-active" onclick="window.location.href='/setup'">Setup Warehouse</button>
         </div>
     </header>
 </div>
@@ -247,11 +303,9 @@
 
 <!-- ══ PANEL 2: BOXES ══ -->
 <div class="panel" id="panel-2">
-  <div class="panel-header"><h2>Create Boxes</h2><p>Max 3 boxes per shelf. Set max units to 30 (large) or 50 (small/medium).</p></div>
   <div class="form-grid">
     <div class="form-group"><label>Select Shelf</label><select id="shelf_select"></select></div>
     <div class="form-group"><label>Box Count (max 3)</label><input id="box_count" type="number" placeholder="1–3" min="1" max="3"></div>
-    <div class="form-group"><label>Max Units per Box</label><input id="max_units" type="number" placeholder="30 or 50" min="1"></div>
   </div>
   <div class="btn-row">
     <button class="btn btn-primary" onclick="createBoxes()">⊕ Create Boxes</button>
@@ -290,7 +344,6 @@
     ondragleave="this.classList.remove('drag')"
     ondrop="handleProductDrop(event)">
     <input type="file" id="p_file" accept=".xlsx,.xls,.csv" onchange="handleProductFile(event)">
-    <div class="icon">📊</div>
     <p><strong>Click to upload</strong> or drag & drop — rack_code, shelf_level, box_code auto-creates locations</p>
   </div>
   <div id="p_preview"></div>
@@ -345,7 +398,6 @@
     ondragleave="this.classList.remove('drag')"
     ondrop="handleRMDrop(event)">
     <input type="file" id="rm_file" accept=".xlsx,.xls,.csv" onchange="handleRMFile(event)">
-    <div class="icon">🏭</div>
     <p><strong>Click to upload</strong> or drag & drop — rack, shelf, box_id resolve locations automatically</p>
   </div>
   <div id="rm_preview"></div>
@@ -369,7 +421,6 @@
     ondragleave="this.classList.remove('drag')"
     ondrop="handleSalesDrop(event)">
     <input type="file" id="sales_file" accept=".xlsx,.xls,.csv" onchange="handleSalesFile(event)">
-    <div style="font-size:32px;margin-bottom:8px;">📈</div>
     <p><strong>Click to upload</strong> Sales CSV / Excel — date · item · sales</p>
   </div>
   <div id="sales_mapper" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px;">
@@ -405,9 +456,6 @@
     <p>Upload your products, raw materials and sales data. Racks, shelves and boxes are created automatically from location columns.</p>
   </div>
 
-  <div class="info-note">
-    💡 The import will auto-create any racks, shelves and boxes referenced in your files if they don't exist yet. Max 3 shelves per rack, 3 boxes per shelf.
-  </div>
 
   <!-- ── Products ── -->
   <div class="qi-section">
@@ -421,7 +469,6 @@
       ondragleave="this.classList.remove('drag')"
       ondrop="handleQIProductDrop(event)">
       <input type="file" id="qi_p_file" accept=".xlsx,.xls,.csv" onchange="handleQIProductFile(event)">
-      <div class="icon">📊</div>
       <p><strong>Click to upload</strong> Products Excel / CSV</p>
     </div>
     <div id="qi_p_preview"></div>
@@ -429,7 +476,7 @@
 
   <!-- ── Raw Materials ── -->
   <div class="qi-section">
-    <div class="qi-title" style="color:var(--teal);">🏭 RAW MATERIALS</div>
+    <div class="qi-title" style="color:var(--teal);">RAW MATERIALS</div>
     <div class="qi-note green">
       Columns: <strong>material_code, material_name, category, quantity_required, stock_qty, reorder_level, size_category, product_id <em style="font-size:10px;color:#6ee7b7;">(use product_code like PRD-001)</em>, rack, shelf, box_id</strong>
       <button class="btn btn-teal btn-sm" style="margin-left:8px;" onclick="downloadRMTemplate()">⬇ Template</button>
@@ -439,7 +486,6 @@
       ondragleave="this.classList.remove('drag')"
       ondrop="handleQIRMDrop(event)">
       <input type="file" id="qi_rm_file" accept=".xlsx,.xls,.csv" onchange="handleQIRMFile(event)">
-      <div class="icon">🏭</div>
       <p><strong>Click to upload</strong> Raw Materials Excel / CSV</p>
     </div>
     <div id="qi_rm_preview"></div>
@@ -447,7 +493,7 @@
 
   <!-- ── Sales Data ── -->
   <div class="qi-section">
-    <div class="qi-title" style="color:var(--purple);">📈 SALES DATA</div>
+    <div class="qi-title" style="color:var(--purple);">SALES DATA</div>
     <div class="qi-note purple">
       Columns: <strong>date, item (product_code), sales</strong> — Import 2+ years of daily sales records for forecasting.
     </div>
@@ -456,7 +502,6 @@
       ondragleave="this.classList.remove('drag')"
       ondrop="handleQISalesDrop(event)">
       <input type="file" id="qi_sales_file" accept=".xlsx,.xls,.csv" onchange="handleQISalesFile(event)">
-      <div class="icon">📈</div>
       <p><strong>Click to upload</strong> Sales CSV / Excel — date · item · sales</p>
     </div>
 
@@ -595,10 +640,10 @@ async function loadShelves() {
 
 // ── BOXES ──
 async function createBoxes() {
-  const shelf_id=document.getElementById('shelf_select').value, count=document.getElementById('box_count').value, max_units=document.getElementById('max_units').value;
-  if(!shelf_id||!count||!max_units) return toast('Fill all fields','error');
+  const shelf_id=document.getElementById('shelf_select').value, count=document.getElementById('box_count').value;
+  if(!shelf_id||!count) return toast('Fill all fields','error');
   if(+count>3) return toast('Max 3 boxes per shelf','error');
-  try { await api('/create-boxes',{shelf_id:+shelf_id,count:+count,max_units:+max_units}); toast(`${count} box(es) created`); document.getElementById('box_count').value=''; document.getElementById('max_units').value=''; loadBoxes(); }
+  try { await api('/create-boxes',{shelf_id:+shelf_id,count:+count}); toast(`${count} box(es) created`); document.getElementById('box_count').value=''; loadBoxes(); }
   catch(e) { toast(e.message,'error'); }
 }
 async function loadBoxes() {

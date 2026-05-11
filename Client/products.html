@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
-<title>OptiWare - Products</title>
+<title>OptiWare AI - Products</title>
 
 <style>
 
@@ -16,13 +16,7 @@
 
 body{
     font-family:"Monospac821 BT","Lucida Console","Courier New",monospace;
-    background:
-        radial-gradient(
-            1000px 400px at 50% -100px,
-            #29324a 0%,
-            #0d0f18 60%
-        ),
-        #0b0d13;
+    background:black;
 
     color:#e9edf4;
     min-height:100vh;
@@ -40,8 +34,6 @@ body{
 
 .topbar{
     border-radius:18px;
-    border:1px solid #262b3b;
-    background:rgba(12,15,24,0.9);
 
     display:flex;
     align-items:center;
@@ -414,7 +406,7 @@ body{
 
     <header class="topbar">
 
-        <h2>OptiWare</h2>
+        <h2>OptiWare-AI</h2>
 
         <div class="topbar-right">
 
@@ -435,8 +427,7 @@ body{
             <button class="pill dashboard-active">
                 Products
             </button>
-
-            <div class="avatar"></div>
+            <button class="pill" onclick="window.location.href='/setup'">Setup Warehouse</button>
 
         </div>
 

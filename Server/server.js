@@ -202,9 +202,9 @@ app.get("/get-shelves", async (req, res) => {
  
 app.post("/create-boxes", async (req, res) => {
   try {
-    const { shelf_id, count, max_units } = req.body;
-    if (!shelf_id || !count || !max_units)
-      return res.status(400).json({ error: "shelf_id, count, max_units required" });
+    const { shelf_id, count } = req.body;
+    if (!shelf_id || !count )
+      return res.status(400).json({ error: "shelf_id, count required" });
  
     const [shelf] = await db(`SELECT shelf_code FROM shelves WHERE id = ?`, [shelf_id]);
     if (!shelf) return res.status(404).json({ error: "Shelf not found" });
@@ -218,8 +218,8 @@ app.post("/create-boxes", async (req, res) => {
       const boxNum = +existing + i;
       const box_code = `${shelf.shelf_code}-BX${String(boxNum).padStart(2, "0")}`;
       const r = await db(
-        `INSERT INTO boxes (box_code, shelf_id, max_units) VALUES (?, ?, ?)`,
-        [box_code, shelf_id, max_units]
+        `INSERT INTO boxes (box_code, shelf_id) VALUES (?, ?)`,
+        [box_code, shelf_id]
       );
       created.push({ box_code, id: r.insertId });
     }
@@ -231,7 +231,7 @@ app.post("/create-boxes", async (req, res) => {
  
 app.get("/get-boxes", async (req, res) => {
   const rows = await db(
-    `SELECT b.id, b.box_code, b.shelf_id, b.max_units, s.shelf_code
+    `SELECT b.id, b.box_code, b.shelf_id, s.shelf_code
      FROM boxes b JOIN shelves s ON s.id = b.shelf_id
      ORDER BY b.shelf_id, b.id`
   );
@@ -1295,7 +1295,7 @@ async function ensureLocation(rack_code, shelf_level, box_code) {
     const shelf_id = shelf_rows[0]?.id;
     if (!shelf_id) { console.error('shelf_id not resolved for', shelf_code); return null; }
 
-    await db(`INSERT IGNORE INTO boxes (box_code, shelf_id, max_units) VALUES (?, ?, 50)`, [box_code, shelf_id]);
+    await db(`INSERT IGNORE INTO boxes (box_code, shelf_id) VALUES (?, ?)`, [box_code, shelf_id]);
     const box_rows = await db(`SELECT id FROM boxes WHERE shelf_id = ? AND box_code = ?`, [shelf_id, box_code]);
     const box_id = box_rows[0]?.id;
     if (!box_id) { console.error('box_id not resolved for', box_code); return null; }
