@@ -221,7 +221,7 @@
 </head>
 <body>
 
-<div class="header">
+<div class="header" style='font-family:"Monospac821 BT","Lucida Console","Courier New",monospace;'>
     <header class="topbar">
         <h2>OptiWare-AI</h2>
         <div class="topbar-right">
@@ -261,7 +261,7 @@
         <p>Create racks, shelves, boxes first — then add products, raw materials and finally sales data.</p>
         <span class="c-badge">Manual Setup</span>
       </div>
-      <div class="choice-card card-import" onclick="startQuickImport()">
+      <div class="choice-card card-import" id="quickimport" onclick="startQuickImport()">
         <span class="c-icon">⚡</span>
         <h3>Quick Import</h3>
         <p>Already have your data? Upload Excel files for products, raw materials and sales data. Location columns are created automatically.</p>
@@ -372,7 +372,6 @@
     <div class="form-group"><label>Material Name</label><input id="rm_name" placeholder="e.g. Copper Wire"></div>
     <div class="form-group"><label>Category</label><input id="rm_category" placeholder="e.g. Electrical"></div>
     <div class="form-group"><label>Stock Qty</label><input id="rm_stock" type="number" placeholder="0"></div>
-    <div class="form-group"><label>Qty Required / Product</label><input id="rm_qty_req" type="number" placeholder="e.g. 1.2" step="0.01"></div>
     <div class="form-group"><label>Reorder Level</label><input id="rm_reorder" type="number" placeholder="0"></div>
     <div class="form-group"><label>Size Category</label>
       <select id="rm_size"><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option></select>
@@ -405,7 +404,7 @@
   <div class="table-wrap">
     <table>
       <thead><tr>
-        <th>CODE</th><th>NAME</th><th>STOCK</th><th>QTY REQ</th><th>REORDER</th>
+        <th>CODE</th><th>NAME</th><th>STOCK</th><th>REORDER</th>
         <th>PRODUCT</th><th>LOCATION</th><th>SIZE</th><th>STATUS</th>
       </tr></thead>
       <tbody id="rm_table"><tr><td colspan="9" class="empty-state">No raw materials yet.</td></tr></tbody>
@@ -800,7 +799,6 @@ async function loadRawMaterials() {
         <td class="td-teal">${m.material_code}</td>
         <td>${m.material_name}</td>
         <td class="td-num">${m.stock_qty}</td>
-        <td class="td-num">${m.qty_per_unit||'—'}</td>
         <td class="td-num">${m.reorder_level}</td>
         <td>${m.product_name ? `<span class="pill pill-yellow">${m.product_name}</span>` : '<span style="color:var(--muted)">—</span>'}</td>
         <td class="td-loc">${m.box_code||'—'}</td>

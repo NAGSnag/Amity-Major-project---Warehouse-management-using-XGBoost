@@ -97,7 +97,7 @@ app.post("/login-user", async (req, res) => {
                 email: user.email
             },
             process.env.JWT_SECRETKEY,
-            { expiresIn: "7d" }
+            { expiresIn: "2d" }
         );
 
         res.json({
@@ -109,7 +109,6 @@ app.post("/login-user", async (req, res) => {
                 email: user.email
             }
         });
-
     } catch (e) {
         console.error(e);
         res.status(500).json({ error: "Login failed" });
