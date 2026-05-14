@@ -280,6 +280,85 @@
             transition: background 0.15s;
             padding: 4px;
         }
+        .search-open-btn{
+            padding:10px 18px;
+            border:none;
+            border-radius:10px;
+            background:#dc2626;
+            color:white;
+            font-weight:600;
+            cursor:pointer;
+        }
+
+        .search-modal-overlay{
+            position:fixed;
+            inset:0;
+            background:rgba(0,0,0,0.45);
+            display:none;
+            align-items:center;
+            justify-content:center;
+            z-index:99999;
+        }
+
+        .search-modal-overlay.open{
+            display:flex;
+        }
+
+        .search-modal{
+            width:620px;
+            background:linear-gradient(145deg, #0b1430, #101b3b);
+            border-radius:18px;
+            /* background-color: linear-gradient(145deg, #0b1430, #101b3b); */
+            padding:40px;
+            color: white;
+            box-shadow:0 20px 60px rgba(0,0,0,0.2);
+        }
+
+        .search-modal-header{
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            margin-bottom:20px;
+            color: white;
+        }
+
+        .search-modal-header h2{
+            margin:0;
+            font-size:20px;
+            color: white;
+        }
+
+        .search-modal-header button{
+            border:none;
+            background:none;
+            font-size:20px;
+            cursor:pointer;
+            color: white;
+        }
+
+        .search-modal-body{
+            display:flex;
+            color: white;
+            flex-direction:column;
+            gap:14px;
+        }
+
+        .search-modal-body input,
+        .search-modal-body select{
+            padding:12px;
+            border-radius:10px;
+            border:1px solid #ccc;
+        }
+
+        .search-modal-body button{
+            padding:12px;
+            border:none;
+            border-radius:10px;
+            background:#dc2626;
+            color:white;
+            font-weight:600;
+            cursor:pointer;
+        }
 
         .arrow:hover { background: rgba(0,0,0,0.08); }
 
@@ -599,6 +678,9 @@
             <button id="optimize_rm_button" class="action-btn-special">
                 Optimize Raw Materials Layout
             </button>
+            <button id="open_search_modal" class="search-open-btn" style="padding:10px ;background:#7125eb;color:white;font-weight:600;border:none;border-radius:8px;cursor:pointer;">
+                🔍 Search Item
+            </button>
             </article>
             <article class="panel" style="height:100%;padding:0;">
                 <div class="bot-card">
@@ -637,7 +719,44 @@
         <div id="box-modal-body"></div>
     </div>
 </div>
+<div id="search_modal_overlay" class="search-modal-overlay">
 
+    <div class="search-modal">
+
+        <div class="search-modal-header">
+            <h2>Search Inventory Item</h2>
+
+            <button onclick="closeSearchModal()">
+                ✕
+            </button>
+        </div>
+
+        <div class="search-modal-body">
+
+            <select id="search_type">
+                <option value="all">All</option>
+                <option value="product">Products</option>
+                <option value="raw_material">Raw Materials</option>
+            </select>
+
+            <input
+                type="text"
+                id="item_search"
+                placeholder="Search product or raw material..."
+                list="items_list"
+            >
+
+            <datalist id="items_list"></datalist>
+
+            <button id="search_btn">
+                Search
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
 <script>
     const API = 'http://localhost:8080';
     let currentSection = 0;
@@ -651,6 +770,7 @@
         type: 'raw_material' 
         }
     ];
+    let pendingLayoutChanges = false;
 
     let allRacks=[],allShelves=[], allBoxes=[];
     let allProducts=[], allRawMaterials=[];
@@ -710,28 +830,74 @@
     }
     
     
-    async function init() {
-        verifyUser()
-        try {
-            const container=document.getElementById('shelves');
-            container.innerHTML='<div class="loading-state">Syncing Warehouse Data...</div>';
+async function init() {
+    verifyUser();
 
-            let results=await Promise.all([
-                get('/get-racks'),get('/get-shelves'),
-                get('/get-boxes'),get('/get-products'),
-                get('/get-raw-materials'),
-            ]);
+    try {
+        const container = document.getElementById('shelves');
+        container.innerHTML = '<div class="loading-state">Syncing Warehouse Data...</div>';
 
-            allRacks=results[0] || []; allShelves=results[1] || [];
-            allBoxes=results[2] || [];allProducts=results[3] || [];
-            allRawMaterials=results[4] || []; allRacks.sort((a, b) => a.rack_code.localeCompare(b.rack_code, undefined, { numeric: true }));
-            renderSection();
+        let results = await Promise.all([
+            get('/get-racks'),
+            get('/get-shelves'),
+            get('/get-boxes'),
+            get('/get-products'),
+            get('/get-raw-materials'),
+        ]);
 
-            loadEfficiency()
-        } catch (e) {
-            document.getElementById('shelves').innerHTML = `<div class="loading-state">⚠️ Error loading data</div>`;
+        allRacks = results[0] || [];
+        allShelves = results[1] || [];
+        allBoxes = results[2] || [];
+        allProducts = results[3] || [];
+        allRawMaterials = results[4] || [];
+
+        const isEmpty =
+            allRacks.length === 0 ||
+            allShelves.length === 0 ||
+            allBoxes.length === 0 ||
+            allProducts.length === 0 ||
+            allRawMaterials.length === 0;
+
+        if (isEmpty) {
+            window.location.href = "/setup";
+            return;
         }
+
+        allRacks.sort((a, b) =>
+            a.rack_code.localeCompare(b.rack_code, undefined, { numeric: true })
+        );
+
+        renderSection();
+        loadEfficiency();
+        populateSearchItems();
+     
+
+    } catch (e) {
+        document.getElementById('shelves').innerHTML =
+            `<div class="loading-state">⚠️ Error loading data</div>`;
     }
+}
+function populateSearchItems() {
+
+    const list = document.getElementById("items_list");
+    list.innerHTML = "";
+
+    allProducts.forEach(p => {
+
+        const option = document.createElement("option");
+        option.value = p.product_name;
+        list.appendChild(option);
+
+    });
+
+    allRawMaterials.forEach(r => {
+
+        const option = document.createElement("option");
+        option.value = r.material_name;
+        list.appendChild(option);
+
+    });
+}
    async function loadEfficiency() {
 
     const el = document.getElementById("efficiency_score");
@@ -941,7 +1107,16 @@
 
         const header = document.createElement('div');
         const rack_name = rack.name || `Rack ${rack.rack_code}`; // Define for data-loc
-        header.innerHTML = `<p class="shelf-id">#${rack.rack_code}</p><p class="shelf-title">${rackIdx === 0 ? 'Terminal Front' : ''}</p>`;
+        header.innerHTML = `
+            <p class="shelf-id">#${rack.rack_code}</p>
+            <p class="shelf-title">
+                ${rackIdx === 0 
+                    ? 'Close to Terminal' 
+                    : rackIdx === sectionRacks.length - 1 
+                        ? 'Away from Terminal' 
+                        : ''}
+            </p>
+        `;
         card.appendChild(header);
 
         const rackEl = document.createElement('div');
@@ -1008,6 +1183,11 @@
 
 function openModal(box, items) {
     console.log(box)
+    if (pendingLayoutChanges) {
+
+            alert("Please click 'Apply Changes' before viewing box details.")
+            return
+        }
         document.getElementById('box-modal-title').textContent=`Box: ${box.box_code}`;
         const shelf=allShelves.find(s => s.id === box.shelf_id);
         const rack=shelf ? allRacks.find(r => r.id === shelf.rack_id) : null;
@@ -1331,6 +1511,8 @@ document.getElementById("optimize_button").onclick = async () => {
     }
     console.log(layoutUpdates)
 
+    pendingLayoutChanges = true;
+
     // 🔥 SINGLE ALERT
     if (movementLogs.length > 0) {
         const formattedText = `🔔
@@ -1622,6 +1804,7 @@ document.getElementById("optimize_rm_button").onclick = async () => {
         });
     }
     console.log(layoutUpdates)
+    pendingLayoutChanges = true;
 
     if (movementLogs.length > 0) {
 
@@ -1659,6 +1842,124 @@ function swapBoxData(fromLoc, toLoc, locationMap) {
     fromItems.forEach(i => i.box_id = toBoxId);
     toItems.forEach(i => i.box_id = fromBoxId);
 }
-</script>
+document.getElementById("open_search_modal").onclick = () => {
+
+    document
+        .getElementById("search_modal_overlay")
+        .classList.add("open");
+
+    populateSearchItems();
+};
+function closeSearchModal(){
+
+    document
+        .getElementById("search_modal_overlay")
+        .classList.remove("open");
+}
+document.getElementById("search_modal_overlay")
+.addEventListener("click", e => {
+
+    if(e.target === e.currentTarget){
+        closeSearchModal();
+    }
+});
+document.getElementById("search_btn").onclick = () => {
+
+    const value = document.getElementById("item_search")
+        .value
+        .trim()
+        .toLowerCase();
+
+    if (!value) return;
+
+    let foundItem = null;
+
+    function searchItem() {
+
+        // PRODUCTS
+        foundItem = allProducts.find(p =>
+            (p.product_name || "").toLowerCase() === value ||
+            (p.product_code || "").toLowerCase() === value
+        );
+
+        // RAW MATERIALS
+        if (!foundItem) {
+            foundItem = allRawMaterials.find(r =>
+                (r.material_name || "").toLowerCase() === value ||
+                (r.material_code || "").toLowerCase() === value
+            );
+        }
+
+        return foundItem;
+    }
+
+    foundItem = searchItem();
+
+    if (!foundItem || !foundItem.box_id) {
+        alert("Item not found");
+        return;
+    }
+
+    function focusBox() {
+
+        const targetBox = allBoxes.find(b => b.id == foundItem.box_id);
+
+        if (!targetBox) {
+            alert("Box not found");
+            return;
+        }
+
+        const boxEl = [...document.querySelectorAll(".box")]
+            .find(el => {
+
+                const loc = el.getAttribute("data-loc");
+
+                return loc && loc.includes(
+                    String(targetBox.box_code).padStart(2, '0')
+                );
+            });
+
+        if (!boxEl) {
+            return false; // not in current section
+        }
+
+        boxEl.scrollIntoView({
+            behavior: "smooth",
+            block: "center"
+        });
+
+        boxEl.style.outline = "4px solid blue";
+        boxEl.style.transform = "scale(1.05)";
+
+        setTimeout(() => {
+            boxEl.style.outline = "";
+            boxEl.style.transform = "";
+        }, 5000);
+
+        return true;
+    }
+
+    // try first in current section
+    let found = focusBox();
+
+    if (!found) {
+
+        // switch section and try again
+        document.getElementById("btn-prev").click();
+
+        setTimeout(() => {
+
+            let foundAgain = focusBox();
+
+            if (!foundAgain) {
+                alert("Item not available in any section");
+            }
+
+        }, 400);
+    }
+
+    closeSearchModal();
+    document.getElementById("item_search").value = "";
+};</script>
 </body>
 </html>
