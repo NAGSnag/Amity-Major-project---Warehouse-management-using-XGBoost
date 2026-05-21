@@ -306,7 +306,6 @@ app.post("/create-single-product", async (req, res) => {
             product_code,
             product_name,
             category = "",
-            mfg_cost = 0,
             stock_qty = 0,
             reorder_level = 0,
             size_category = "medium",
@@ -335,15 +334,14 @@ app.post("/create-single-product", async (req, res) => {
         // Insert product
         const result = await db(
             `INSERT INTO products 
-            (product_code, product_name, category, mfg_cost, 
+            (product_code, product_name, category,
              stock_qty, reorder_level, size_category, 
              box_id, updated_at)
-            VALUES (?, ?, ?, ?, ?,  ?, ?,  ?, NOW())`,
+            VALUES (?, ?, ?, ?,  ?, ?,  ?, NOW())`,
             [
                 product_code,
                 product_name,
                 category,
-                mfg_cost,
                 stock_qty,
                 reorder_level,
                 size_category,
@@ -409,13 +407,12 @@ app.post("/import-products", async (req, res) => {
       try {
         await db(
           `INSERT INTO products
-            (product_code, product_name, category,  mfg_cost,
+            (product_code, product_name, category,
              stock_qty, reorder_level, size_category,
              box_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?,)`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, )`,
           [
-            p.product_code, p.product_name, p.category || "", p.mfg_cost || 0,
-            p.stock_qty || 0, p.reorder_level || 0, p.size_category || "medium", p.box_id || null, 
+            p.product_code, p.product_name, p.category || "",p.stock_qty || 0, p.reorder_level || 0, p.size_category || "medium", p.box_id || null, 
           ]
         );
         inserted++;
@@ -465,7 +462,7 @@ app.get("/get-product/:id", async (req, res) => {
 });
  
 app.patch("/update-product/:id", async (req, res) => {
-  const fields = ["category","mfg_cost","stock_qty","reorder_level","size_category","box_id"];
+  const fields = ["category","stock_qty","reorder_level","size_category","box_id"];
   const updates = [];
   const values = [];
   for (const f of fields) {
@@ -772,15 +769,14 @@ app.post("/import-products-with-location", async (req, res) => {
       try {
         await db(
           `INSERT INTO products
-            (product_code, product_name, category, mfg_cost,
+            (product_code, product_name, category,
              stock_qty, reorder_level, size_category,
               box_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+           VALUES (?, ?, ?, ?, ?,  ?, ?)`,
           [
             (p.product_code   || '').toString().trim(),
             (p.product_name   || '').toString().trim(),
             (p.category       || '').toString().trim(),
-            +p.mfg_cost       || 0,
             +p.stock_qty      || 0,
             +p.reorder_level  || 0,
             p.size_category   || 'medium',
@@ -1243,23 +1239,6 @@ app.get('/optimize_raw_materials', async (req, res) => {
 app.listen(3000, () => {
     console.log('Node server running on port 3000');
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
