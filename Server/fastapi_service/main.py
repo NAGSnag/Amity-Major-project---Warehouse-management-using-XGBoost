@@ -30,7 +30,6 @@ DB_URL=URL.create(
     database=os.getenv("DATABASE_NAME")
 )
 engine=create_engine(DB_URL, pool_pre_ping=True)
-
 _model =None
 _scaler=None
 def load_model():
