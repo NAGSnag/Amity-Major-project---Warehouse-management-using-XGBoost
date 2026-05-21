@@ -33,7 +33,6 @@ engine=create_engine(DB_URL, pool_pre_ping=True)
 
 _model =None
 _scaler=None
-
 def load_model():
     global _model
     if not os.path.exists(MODEL_PATH):
