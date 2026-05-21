@@ -244,7 +244,7 @@ def _map_product_locations(products, enriched_boxes, box_sorter):
 
 def _extract_sales_features(salesdata):
     """Extract ML features from latest sales records per product."""
-    df = pd.DataFrame(Salesdata)
+    df = pd.DataFrame(salesdata)
     df['sale_date'] = pd.to_datetime(df['sale_date'])
     df['item_id'] = df['item_id'].astype(str)
 
@@ -320,7 +320,6 @@ def _determine_action(current_location, ideal_location):
         return "MOVE"
     else:
         return "OK"
-    
     
 @app.post("/apply_layout_button")
 def apply_layout_button(data: list = Body(...)):
@@ -540,7 +539,7 @@ def warehouse_efficiency():
 
         total_items=total_products+total_rm
         product_data=optimize_layout()
-        rm_data     =optimize_raw_materials()
+        rm_data=optimize_raw_materials()
 
         product_suggestions=product_data.get("suggestions", [])
         rm_suggestions     =rm_data.get("suggestions", [])
