@@ -18,7 +18,8 @@ export async function setupDatabase() {
       password: process.env.DATABASE_PASSWORD,
       port:     +process.env.DATABASE_PORT    || 3306,
     });
-    await bootstrap.query(`CREATE DATABASE IF NOT EXISTS warehouse_optimizer`);
+    let databasename = process.env.DATABASE_NAME || "warehouse_optimizer";
+    await bootstrap.query(`CREATE DATABASE IF NOT EXISTS ${databasename}`);
     await bootstrap.end();
 
     const pool = mysql.createPool({
@@ -26,7 +27,7 @@ export async function setupDatabase() {
       user:               process.env.DATABASE_USER,
       password:           process.env.DATABASE_PASSWORD,
       port:               +process.env.DATABASE_PORT    || 3306,
-      database:           "warehouse_optimizer",
+      database:           databasename,
       waitForConnections: true,
       connectionLimit:    10,
     });
