@@ -1,1 +1,12 @@
 .env
+*.env
+
+.vscode/
+
+Ai\ Training\ data/
+
+__pycache__/
+*.pyc
+
+venv/
+.venv/
