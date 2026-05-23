@@ -789,7 +789,7 @@
 
         const token = localStorage.getItem("token");
         // console.log(token)
-        alert(token)
+        // alert(token)
         if(!token){
             window.location.href="/login";
             return;
@@ -805,7 +805,7 @@
             );
 
             const result = await response.json();
-            alert(JSON.stringify(result));
+            // alert(JSON.stringify(result));
             if(!result || !result.success){
 
                 localStorage.removeItem("token");
