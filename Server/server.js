@@ -47,7 +47,12 @@ app.use(cors({
     return rows;
   };
    
-
+app.get("/health", (req, res) => {
+    res.status(200).json({
+        status: "ok",
+        message: "Server is running"
+    });
+});
 app.get('/',async (req,res)=>{
   try {
     const response = await axios.get("http://127.0.0.1:8000/");
