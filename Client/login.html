@@ -294,8 +294,7 @@ body{
 
 <script>
 
-const API_URL = "http://localhost:8080";
-
+const API_URL = process.env.DOMAIN || "http://localhost:8080";
 // Handle Login
 async function handleLogin(event) {
     event.preventDefault();

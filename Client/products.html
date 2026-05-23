@@ -767,6 +767,7 @@ body{
 <script>
 
 let currentType = "product";
+const API=process.env.DOMAIN;
     let boxesCache = [];
     let productsCache = [];
     let rawMaterialsCache = [];
@@ -774,7 +775,7 @@ let currentType = "product";
 
 async function fetchProducts() {
     try {
-        const response = await fetch('http://localhost:8080/get-products');
+        const response = await fetch(`${API}/get-products`);
         const text = await response.text();
         
         if (text.startsWith('<')) {
@@ -855,7 +856,7 @@ function renderDynamicFields(type) {
 
 async function fetchRawMaterials() {
     try {
-        const response = await fetch('http://localhost:8080/get-raw-materials');
+        const response = await fetch(`${API}/get-raw-materials`);
         const text = await response.text();
         
         if (text.startsWith('<')) {
@@ -877,7 +878,7 @@ async function fetchRawMaterials() {
  */
 async function fetchSales(limit = 200, offset = 0) {
     try {
-        const url = `http://localhost:8080/get-allsales?limit=${limit}&offset=${offset}`;
+        const url = `${API}/get-allsales?limit=${limit}&offset=${offset}`;
         console.log('Fetching sales from:', url);
         
         const response = await fetch(url);
@@ -900,7 +901,7 @@ async function fetchSales(limit = 200, offset = 0) {
 // Add new product
 async function addProduct(productData) {
     try {
-        const response = await fetch('http://localhost:8080/create-single-product', {
+        const response = await fetch(`${API}/create-single-product`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(productData)
@@ -916,7 +917,7 @@ async function addProduct(productData) {
 // Add new raw material
 async function addRawMaterial(materialData) {
     try {
-        const response = await fetch('http://localhost:8080/create-single-raw-material', {
+        const response = await fetch(`${API}/create-single-raw-material`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(materialData)
@@ -1172,7 +1173,7 @@ async function renderSales() {
 // Fetch boxes
 async function fetchBoxes() {
     try {
-        const res = await fetch("http://localhost:8080/get-boxes");
+        const res = await fetch(`${API}/get-boxes`);
         const data = await res.json();
         return { success: true, data };
     } catch (err) {
