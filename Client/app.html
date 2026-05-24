@@ -841,7 +841,7 @@ async function init() {
         container.innerHTML =
             '<div class="loading-state">Syncing Warehouse Data...</div>';
 
-        const data = await get('/get-warehouse-data');
+        const data = await fetch(`${FASTAPI}/get-warehouse-data`).then(res => res.json());
 
         allRacks = data.racks || [];
         allShelves = data.shelves || [];
