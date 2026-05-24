@@ -282,7 +282,7 @@ body {
 <body>
 <div class="app">
     <header class="topbar">
-        <h2>OptiWare-AI</h2>
+        <h2 onclick="window.location.href='/app'">OptiWare-AI</h2>
         <div class="topbar-right">
             <button class="pill" onclick="window.location.href='/app'">Dashboard</button>
             <button class="pill dashboard-active">Simulations</button>
@@ -402,7 +402,7 @@ body {
         </div>
     </div>
 </div>
-<!-- 🔥 RESULTS MODAL -->
+
 <div 
     id="resultsModal" 
     class="modal-overlay" 
@@ -506,10 +506,6 @@ const API = "https://amity-major-project-warehouse-management.onrender.com"
 const FastAPI = "https://amity-major-project-warehouse-management-1bec.onrender.com";
 
 
-// ======================================================
-// API GET
-// ======================================================
-
 async function get(path) {
 
     try {
@@ -526,11 +522,6 @@ async function get(path) {
         return [];
     }
 }
-
-
-// ======================================================
-// SIMULATION CONFIG
-// ======================================================
 
 const simConfigs = {
 
@@ -679,10 +670,6 @@ const simConfigs = {
 };
 
 
-// ======================================================
-// OPEN MODAL
-// ======================================================
-
 function openSimulationModal(scenarioKey) {
 
     currentActiveScenario = scenarioKey;
@@ -771,10 +758,6 @@ function openSimulationModal(scenarioKey) {
 }
 
 
-// ======================================================
-// CLOSE MODAL
-// ======================================================
-
 function closeModal() {
 
     document.getElementById("simModal").classList.remove("open");
@@ -789,10 +772,6 @@ function handleOutsideClick(event) {
     }
 }
 
-
-// ======================================================
-// RESULTS MODAL
-// ======================================================
 
 function openResultsModal() {
 
@@ -809,11 +788,6 @@ function closeResultsModal(event = null) {
 
     document.getElementById("resultsModal").classList.remove("open");
 }
-
-
-// ======================================================
-// PRODUCT CHANGE
-// ======================================================
 
 function handleProductChange(selectElement) {
 
@@ -853,9 +827,6 @@ function handleProductChange(selectElement) {
 }
 
 
-// ======================================================
-// EXECUTE SIMULATION
-// ======================================================
 
 async function executeSimulation() {
 
@@ -877,10 +848,6 @@ async function executeSimulation() {
     btn.textContent = "Processing...";
 
     try {
-
-        // =========================================
-        // TEMPORAL FORECAST
-        // =========================================
 
         if (currentActiveScenario === "timeTravel") {
 
@@ -908,10 +875,6 @@ async function executeSimulation() {
                 return;
             }
 
-            // =====================================
-            // SUMMARY
-            // =====================================
-
             document.getElementById("resultsSummary").innerHTML = `
 
                 <b>Forecast Completed Successfully</b>
@@ -937,9 +900,6 @@ async function executeSimulation() {
                 <b>${result.total_inventory_demand}</b>
             `;
 
-            // =====================================
-            // TABLE
-            // =====================================
             document.querySelector(
                 ".results-table thead"
             ).innerHTML = `
@@ -960,10 +920,6 @@ async function executeSimulation() {
                 `)
                 .join("");
 
-            // =====================================
-        // LINE GRAPH (LIKE PYTHON MATPLOTLIB)
-        // =====================================
-
         const ctx = document
             .getElementById("simulationChart")
             .getContext("2d");
@@ -972,7 +928,6 @@ async function executeSimulation() {
             simulationChart.destroy();
         }
 
-        // 🔥 top 5 products only
         const topProducts = result.predictions
 
         // X AXIS LABELS
@@ -1195,9 +1150,7 @@ async function executeSimulation() {
         }
     });
 
-    // ================================
-    // RAW MATERIAL IMPACT SECTION (NEW)
-    // ================================
+
 
 
     if (result.raw_material_impact && result.raw_material_impact.length > 0) {
@@ -1272,9 +1225,6 @@ if (currentActiveScenario === "supplyDelay") {
         return;
     }
 
-    // ================================
-    // SUMMARY
-    // ================================
     document.getElementById("resultsSummary").innerHTML = `
         <b>Supply Delay Simulation</b>
         <br><br>
@@ -1307,9 +1257,7 @@ if (currentActiveScenario === "supplyDelay") {
         <b>${result.stockout_weeks}</b>
     `;
 
-    // ================================
-    // TABLE HEADER
-    // ================================
+
     document.querySelector(".results-table thead").innerHTML = `
         <tr>
             <th>Week</th>
@@ -1322,9 +1270,6 @@ if (currentActiveScenario === "supplyDelay") {
         </tr>
     `;
 
-    // ================================
-    // TABLE BODY
-    // ================================
     const tableBody = document.getElementById("resultsTableBody");
 
     tableBody.innerHTML = result.weekly_forecast.map(w => `
@@ -1341,9 +1286,6 @@ if (currentActiveScenario === "supplyDelay") {
         </tr>
     `).join("");
 
-    // ================================
-    // CHART
-    // ================================
     const ctx = document
         .getElementById("simulationChart")
         .getContext("2d");
@@ -1405,9 +1347,6 @@ if (currentActiveScenario === "supplyDelay") {
         }
     });
 
-    // ================================
-    // RAW MATERIAL IMPACT (NEW SECTION)
-    // ================================
     if (result.raw_material_impact && result.raw_material_impact.length > 0) {
 
         let rmHtml = `
@@ -1453,9 +1392,7 @@ if (currentActiveScenario === "supplyDelay") {
     closeModal();
     openResultsModal();
 }  
-    // =========================================
-// SEASONAL SURGE SIMULATION
-// =========================================
+
 
 if (currentActiveScenario === "seasonalSurge") {
 
@@ -1505,9 +1442,6 @@ if (currentActiveScenario === "seasonalSurge") {
         return;
     }
 
-    // =====================================
-    // SUMMARY
-    // =====================================
     document.querySelector(
     ".results-table thead"
     ).innerHTML = `
@@ -1554,9 +1488,6 @@ if (currentActiveScenario === "seasonalSurge") {
         </b>
     `;
 
-    // =====================================
-    // TABLE
-    // =====================================
 
     const tableBody =
         document.getElementById(
@@ -1580,9 +1511,7 @@ if (currentActiveScenario === "seasonalSurge") {
 
         `).join("");
 
-    // =====================================
-    // CHART
-    // =====================================
+
 
     const ctx = document
         .getElementById("simulationChart")
@@ -1698,9 +1627,7 @@ if (currentActiveScenario === "seasonalSurge") {
 
     closeModal();
     openResultsModal();
-}// =========================================
-// NEW PRODUCT LAUNCH SIMULATION
-// =========================================
+}
 
 if (currentActiveScenario === "newLaunch") {
 
@@ -1758,9 +1685,6 @@ if (currentActiveScenario === "newLaunch") {
         return;
     }
 
-    // =====================================
-    // SUMMARY
-    // =====================================
         document.querySelector(
             ".results-table thead"
         ).innerHTML = `
@@ -1789,10 +1713,6 @@ if (currentActiveScenario === "newLaunch") {
 
         <br>
     `;
-
-    // =====================================
-    // TABLE
-    // =====================================
 
     const tableBody =
         document.getElementById(
@@ -1827,9 +1747,6 @@ if (currentActiveScenario === "newLaunch") {
             `)
             .join("");
 
-    // =====================================
-    // CHART
-    // =====================================
 
     const ctx = document
         .getElementById("simulationChart")
@@ -1956,10 +1873,6 @@ if (currentActiveScenario === "newLaunch") {
     btn.textContent = "Run Simulation";
 }
 
-
-// ======================================================
-// INIT
-// ======================================================
 
 async function initApp() {
 

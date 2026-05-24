@@ -789,10 +789,10 @@
         async function verifyUser(){
 
         const token = localStorage.getItem("token");
-        console.log(token)
-        alert(token)
+        // console.log(token)
+        // alert(token)
         if(!token){
-            alert("no token")
+            // alert("no token")
             window.location.href="/login";
             return;
         }
@@ -825,7 +825,7 @@
         
             localStorage.removeItem("token");
             localStorage.removeItem("user");
-            alert(str(e));
+            // alert(str(e));
 
             window.location.href="/login";
         }
@@ -858,15 +858,15 @@ async function init() {
 
         if (isEmpty) {
 
-            alert("Some data is missing. Please complete the setup.");
+            // alert("Some data is missing. Please complete the setup.");
 
-            alert(
-                `Racks: ${allRacks.length}, ` +
-                `Shelves: ${allShelves.length}, ` +
-                `Boxes: ${allBoxes.length}, ` +
-                `Products: ${allProducts.length}, ` +
-                `Raw Materials: ${allRawMaterials.length}`
-            );
+            // alert(
+            //     `Racks: ${allRacks.length}, ` +
+            //     `Shelves: ${allShelves.length}, ` +
+            //     `Boxes: ${allBoxes.length}, ` +
+            //     `Products: ${allProducts.length}, ` +
+            //     `Raw Materials: ${allRawMaterials.length}`
+            // );
 
             window.location.href = "/setup";
 
@@ -934,10 +934,8 @@ function populateSearchItems() {
 
         const data = await response.json();
 
-        // 🔥 SCORE DISPLAY
         el.textContent = `Warehouse Efficiency ${data.efficiency}/100`;
 
-        // 🔥 COLOR
         if (data.efficiency >= 75) {
 
             el.style.background = "#52c28f";
@@ -954,7 +952,6 @@ function populateSearchItems() {
             el.style.color = "#fff";
         }
 
-        // 🔥 EXPLAINABLE ALERTS
         let alerts = [];
 
         if (data.efficiency >= 85) {
@@ -1007,7 +1004,6 @@ function populateSearchItems() {
 
         }
 
-        // 🔥 CATEGORY BREAKDOWN ALERT
         alerts.push({
             type: "success",
             text: `
@@ -1455,17 +1451,13 @@ function normalizeLocation(loc) {
         return loc;
     }
 
-    // ✅ rack
     const rack = String(parseInt(rackMatch[1])).padStart(2, '0');
 
-    // ✅ shelf → take FIRST match and trim to 2 digits
     let shelfRaw = shelfMatches[0][1];
     let shelf = String(parseInt(shelfRaw.slice(0, 2))).padStart(2, '0');
 
-    // ✅ box
     const box = String(parseInt(boxMatch[1])).padStart(2, '0');
 
-    // ✅ Build YOUR required format
     const rackCode  = `RR${rack}`;
     const shelfCode = `${rackCode}-SHR${rack}-SH00`;
     const boxCode   = `BB${box}`;
@@ -1494,7 +1486,7 @@ document.getElementById("optimize_button").onclick = async () => {
     renderSection();
     await new Promise(r => setTimeout(r, 300));
 
-    const locationMap = buildLocationMap(); // 🔥 IMPORTANT
+    const locationMap = buildLocationMap(); 
     layoutUpdates = []; 
 
     const moves = data.suggestions.filter(s => s.action === "MOVE" || s.action === "ASSIGN");
@@ -1507,7 +1499,6 @@ document.getElementById("optimize_button").onclick = async () => {
         const fromLoc = normalizeLocation(s.from);
         const toLoc   = normalizeLocation(s.to);
 
-        // 🔥 GET BOX ID
         const targetBoxId = locationMap[toLoc];
 
         if (!targetBoxId) {
@@ -1521,7 +1512,6 @@ document.getElementById("optimize_button").onclick = async () => {
             box_id: targetBoxId
         });
 
-        // 🔥 VISUAL MOVE
         if (fromLoc !== "Unassigned" && fromLoc !== toLoc) {
             await animateBoxMove(fromLoc, toLoc, 200);
             movementLogs.push(`Moved ${s.product} from ${fromLoc} → ${toLoc}`);
@@ -1533,7 +1523,6 @@ document.getElementById("optimize_button").onclick = async () => {
 
     pendingLayoutChanges = true;
 
-    // 🔥 SINGLE ALERT
     if (movementLogs.length > 0) {
         const formattedText = `🔔
             <ul style="margin:0; padding-left:18px;">
@@ -1609,7 +1598,6 @@ function findBoxByPath_rawmaterials(loc) {
     const shelf = String(parseInt(shelfMatch[shelfMatch.length - 1][1])).padStart(2, '0');
     const box   = String(parseInt(boxMatch[1] || boxMatch[2])).padStart(2, '0');
 
-    // 🔥 FIND ELEMENT WITHOUT REBUILDING STRING
     return [...document.querySelectorAll('.box')].find(el => {
         const d = el.getAttribute('data-loc');
 
@@ -1631,7 +1619,6 @@ async function animateBoxMove_rawmaterials(fromPath, toPath, duration = 500) {
     const sourceRect = sourceBox.getBoundingClientRect();
     const targetRect = targetBox.getBoundingClientRect();
 
-    // 🔥 SAVE BOTH CONTENTS
     const sourceContent = sourceBox.innerHTML;
     const targetContent = targetBox.innerHTML;
 
@@ -1657,7 +1644,6 @@ async function animateBoxMove_rawmaterials(fromPath, toPath, duration = 500) {
         { duration, easing: "ease-in-out", fill: "forwards" }
     ).finished;
 
-    // 🔥 SWAP (not overwrite)
     targetBox.innerHTML = sourceContent;
     sourceBox.innerHTML = targetContent;
 
@@ -1677,7 +1663,6 @@ async function animateBoxMove(fromPath, toPath, duration = 900) {
     const sourceRect = sourceBox.getBoundingClientRect();
     const targetRect = targetBox.getBoundingClientRect();
 
-    // 🔥 SAVE BOTH CONTENTS
     const sourceContent = sourceBox.innerHTML;
     const targetContent = targetBox.innerHTML;
 
@@ -1703,7 +1688,6 @@ async function animateBoxMove(fromPath, toPath, duration = 900) {
         { duration, easing: "ease-in-out", fill: "forwards" }
     ).finished;
 
-    // 🔥 SWAP (not overwrite)
     targetBox.innerHTML = sourceContent;
     sourceBox.innerHTML = targetContent;
 
@@ -1714,9 +1698,6 @@ function normalizeLocation_rawmaterials(loc) {
 
     let rack, shelf, box;
 
-    // =========================
-    // ✅ FORMAT 1: RRK-M08 ...
-    // =========================
     if (loc.includes("RRK-M")) {
 
         const rackMatch = loc.match(/M(\d+)/i);
@@ -1733,9 +1714,6 @@ function normalizeLocation_rawmaterials(loc) {
         box = boxMatch[1];
     }
 
-    // =========================
-    // ✅ FORMAT 2: RR01 ...
-    // =========================
     else if (loc.includes("RR")) {
 
         const rackMatch = loc.match(/RR(\d+)/i);
@@ -1752,9 +1730,6 @@ function normalizeLocation_rawmaterials(loc) {
         box = boxMatch[1];
     }
 
-    // =========================
-    // ❌ UNKNOWN FORMAT
-    // =========================
     else {
         console.warn("Unknown format:", loc);
         return loc;
@@ -1765,7 +1740,6 @@ function normalizeLocation_rawmaterials(loc) {
     shelf = String(parseInt(shelf)).padStart(2, '0');
     box   = String(parseInt(box)).padStart(2, '0');
 
-    // ✅ RETURN IN DOM FORMAT (pick ONE format your UI uses)
     const rackCode  = `RRK-M${rack}`;
     const shelfCode = `${rackCode}-SHRK-M${rack}-SH${shelf}`;
     const boxCode   = `BRK-M${rack}-SH${shelf}-BX${box}`;
@@ -1816,10 +1790,9 @@ document.getElementById("optimize_rm_button").onclick = async () => {
 
         movementLogs.push(`Moved ${s.material} from ${fromLoc} → ${toLoc}`);
 
-        // ✅ FIXED STRUCTURE (IMPORTANT)
         layoutUpdates.push({
-            id: s.material_id,     // 🔥 use ID, not name
-            type: "raw_material",  // 🔥 required for backend
+            id: s.material_id,   
+            type: "raw_material",  
             box_id: locationMap[toLoc]
         });
     }

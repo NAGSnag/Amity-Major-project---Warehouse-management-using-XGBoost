@@ -227,8 +227,8 @@ def optimize_layout():
 
             suggestions.append({
                 'product': p['name'],
-                'product_code': f"P{p['item_id'].zfill(3)}",  # ✅ REQUIRED for DB update
-                'box_id': target_box_id,                      # ✅ REQUIRED for DB update
+                'product_code': f"P{p['item_id'].zfill(3)}", 
+                'box_id': target_box_id,                      
                 'from': p['current_loc'],
                 'to': ideal_loc,
                 'risk': p['stockout_risk'],
@@ -457,7 +457,7 @@ def optimize_raw_materials():
 @app.get("/warehouse_efficiency")
 def warehouse_efficiency():
     try:
-        # 🔥 LOAD DATA (for total count)
+
         Products, Boxes, Shelves, Racks, RawMaterials, Salesdata = load_data()
 
         total_products = len(Products)
@@ -465,14 +465,12 @@ def warehouse_efficiency():
 
         total_items = total_products + total_rm
 
-        # 🔥 GET SUGGESTIONS
         product_data = optimize_layout()
         rm_data      = optimize_raw_materials()
 
         product_suggestions = product_data.get("suggestions", [])
         rm_suggestions      = rm_data.get("suggestions", [])
 
-        # 🔥 COUNT ONLY ACTIONABLE SUGGESTIONS
         product_moves = [
             s for s in product_suggestions
             if s.get("action") in ["MOVE", "ASSIGN"]
@@ -486,7 +484,7 @@ def warehouse_efficiency():
 
         total_suggestions = len(product_moves) + len(rm_moves)
         #print(total_suggestions,total_items)
-        # 🔥 EFFICIENCY CALCULATION
+
         if total_items == 0:
             efficiency = 100
         else:
@@ -495,7 +493,6 @@ def warehouse_efficiency():
                 1
             )
 
-        # 🔥 LABEL (optional but useful)
         if efficiency >= 85:
             label = "Excellent"
         elif efficiency >= 70:

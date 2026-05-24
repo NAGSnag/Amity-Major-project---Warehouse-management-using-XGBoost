@@ -223,10 +223,10 @@
 
 <div class="header" style='font-family:"Monospac821 BT","Lucida Console","Courier New",monospace;'>
     <header class="topbar">
-        <h2>OptiWare-AI</h2>
+        <h2 onclick="window.location.href='/app'">OptiWare-AI</h2>
         <div class="topbar-right">
             <button class="pill" onclick="window.location.href='/app'">Dashboard</button>
-            <button class="pill"  >Simulations</button>
+            <button class="pill"  onclick="window.location.href='/stimulations'" >Simulations</button>
             <button class="pill" onclick="window.location.href='/products'">Products</button>
             <button class="pill dashboard-active" onclick="window.location.href='/setup'">Setup Warehouse</button>
         </div>
@@ -775,7 +775,7 @@ async function createRawMaterial() {
     qty_per_unit:  parseFloat(document.getElementById('rm_qty_req').value || 0),
     reorder_level: parseInt(document.getElementById('rm_reorder').value || 0),
     size_category:  document.getElementById('rm_size').value || 'medium',
-    // FIXED: product_code is a STRING (like "PRD-001"), not an integer
+
     product_id: productCode || null,
     // box_id is still numeric
     box_id:     boxId ? parseInt(boxId) : null,
