@@ -1205,38 +1205,27 @@ function openModal(box, items) {
         return;
     }
 
-    document.getElementById('box-modal-title').textContent =
-        `Box: ${box.box_code}`;
+    document.getElementById('box-modal-title').textContent = `Box: ${box.box_code}`;
 
     const shelf = allShelves.find(s => s.id === box.shelf_id);
-
-    const rack = shelf
-        ? allRacks.find(r => r.id === shelf.rack_id)
-        : null;
+    const rack = shelf ? allRacks.find(r => r.id === shelf.rack_id) : null;
 
     let html = `
-        <div class="modal-meta">
-            <div class="modal-meta-item">
-                Location
-                <strong>
-                    ${rack?.rack_code || '--'} › ${shelf?.shelf_code || '--'}
-                </strong>
-            </div>
-
-            <div class="modal-meta-item">
-                Box
-                <strong>${box.box_code}</strong>
-            </div>
+    <div class="modal-meta">
+        <div class="modal-meta-item">
+            Location
+            <strong>${rack?.rack_code || '--'} › ${shelf?.shelf_code || '--'}</strong>
         </div>
-    `;
+
+        <div class="modal-meta-item">
+            Box
+            <strong>${box.box_code}</strong>
+        </div>
+    </div>`;
 
     if (!items.length) {
 
-        html += `
-            <div class="empty-modal">
-                📦 This Box is empty
-            </div>
-        `;
+        html += `<div class="empty-modal">📦 This Box is empty</div>`;
 
     } else {
 
@@ -1244,85 +1233,48 @@ function openModal(box, items) {
 
             console.log(item);
 
-            const code =
-                item.material_code ||
-                item.product_code ||
-                '--';
+            const code = item.material_code || item.product_code || '--';
 
-            const name =
-                item.material_name ||
-                item.product_name ||
-                'Unknown Item';
+            const name = item.material_name || item.product_name || 'Unknown Item';
 
-            const linkedProduct =
-                item.product_name ||
-                'No Product';
+            const low = item.stock_qty <= (item.reorder_level || 0);
 
-            const low =
-                item.stock_qty <= (item.reorder_level || 0);
+            const linkedProduct = allProducts.find(
+                p => p.product_code === item.product_id
+            );
 
-            if (item.material_name) {
+            const linkedProductName =
+                linkedProduct?.product_name || item.product_id || 'No Product';
 
-                html += `
-                    <div class="modal-item-row ${low ? 'low-stock-row' : ''}">
+            html += `
+            <div class="modal-item-row ${low ? 'low-stock-row' : ''}">
 
-                        <div>
-                            <div class="modal-item-code">
-                                ${code}
-                            </div>
+                <div>
+                    <div class="modal-item-code">${code}</div>
 
-                            <div class="modal-item-name">
-                                ${name} for ${linkedProduct}
-                            </div>
-                        </div>
-
-                        <div style="text-align:right;">
-                            <strong>${item.stock_qty}</strong><br>
-
-                            <span class="stock-badge ${low ? 'stock-low' : 'stock-ok'}">
-                                ${low ? 'LOW' : 'OK'}
-                            </span>
-                        </div>
-
+                    <div class="modal-item-name">
+                        ${item.material_name ? `${name} for ${linkedProductName}` : name}
                     </div>
-                `;
+                </div>
 
-            } else {
+                <div style="text-align:right;">
+                    <strong>${item.stock_qty}</strong><br>
 
-                html += `
-                    <div class="modal-item-row ${low ? 'low-stock-row' : ''}">
+                    <span class="stock-badge ${low ? 'stock-low' : 'stock-ok'}">
+                        ${low ? 'LOW' : 'OK'}
+                    </span>
+                </div>
 
-                        <div>
-                            <div class="modal-item-code">
-                                ${code}
-                            </div>
-
-                            <div class="modal-item-name">
-                                ${name}
-                            </div>
-                        </div>
-
-                        <div style="text-align:right;">
-                            <strong>${item.stock_qty}</strong><br>
-
-                            <span class="stock-badge ${low ? 'stock-low' : 'stock-ok'}">
-                                ${low ? 'LOW' : 'OK'}
-                            </span>
-                        </div>
-
-                    </div>
-                `;
-            }
-
+            </div>`;
         });
     }
 
     document.getElementById('box-modal-body').innerHTML = html;
 
-    document.getElementById('box-modal-overlay')
-        .classList.add('open');
+    document.getElementById('box-modal-overlay').classList.add('open');
 }
-    function closeModal(){
+
+function closeModal(){
         document.getElementById('box-modal-overlay').classList.remove('open'); 
     }
     document.getElementById('box-modal-overlay').addEventListener('click', e => {
