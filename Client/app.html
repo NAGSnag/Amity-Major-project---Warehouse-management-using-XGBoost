@@ -789,9 +789,10 @@
         async function verifyUser(){
 
         const token = localStorage.getItem("token");
-        // console.log(token)
-        // alert(token)
+        console.log(token)
+        alert(token)
         if(!token){
+            alert("no token")
             window.location.href="/login";
             return;
         }
@@ -812,7 +813,7 @@
                 localStorage.removeItem("token");
                 localStorage.removeItem("user");
 
-                window.location.href="/app";
+                // window.location.href="/app";
                 return;
             }
 
@@ -821,10 +822,10 @@
 
         }catch(e){
 
-            alert(e);
-
+        
             localStorage.removeItem("token");
             localStorage.removeItem("user");
+            alert(str(e));
 
             window.location.href="/login";
         }
@@ -860,6 +861,8 @@ async function init() {
             allRawMaterials.length === 0;
 
         if (isEmpty) {
+            alert("Some data is missing. Please complete the setup.");
+            alert(`Racks: ${allRacks.length}, Shelves: ${allShelves.length}, Boxes: ${allBoxes.length}, Products: ${allProducts.length}, Raw Materials: ${allRawMaterials.length}`);
             window.location.href = "/setup";
             return;
         }
