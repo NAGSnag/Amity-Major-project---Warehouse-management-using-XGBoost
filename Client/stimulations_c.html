@@ -885,7 +885,7 @@ async function executeSimulation() {
         if (currentActiveScenario === "timeTravel") {
 
             const response = await fetch(
-                `${API}/predict_until_date`,
+                `${FastAPI}/predict_until_date`,
                 {
                     method: "POST",
 
@@ -1065,7 +1065,7 @@ async function executeSimulation() {
  if (currentActiveScenario === "demandSpike") {
 
     const response = await fetch(
-        `${API}/simulate_demand_spike`,
+        `${FastAPI}/simulate_demand_spike`,
         {
             method: "POST",
             headers: {
@@ -1248,7 +1248,7 @@ async function executeSimulation() {
 if (currentActiveScenario === "supplyDelay") {
 
     const response = await fetch(
-        `${API}/simulate_supply_delay`,
+        `${FastAPI}/simulate_supply_delay`,
         {
             method: "POST",
             headers: {
@@ -1460,7 +1460,7 @@ if (currentActiveScenario === "supplyDelay") {
 if (currentActiveScenario === "seasonalSurge") {
 
     const response = await fetch(
-        `${API}/simulate_seasonal_surge`,
+        `${FastAPI}/simulate_seasonal_surge`,
         {
             method: "POST",
 
@@ -1705,7 +1705,7 @@ if (currentActiveScenario === "seasonalSurge") {
 if (currentActiveScenario === "newLaunch") {
 
     const response = await fetch(
-        `${API}/simulate_new_product_launch`,
+        `${FastAPI}/simulate_new_product_launch`,
         {
             method: "POST",
 

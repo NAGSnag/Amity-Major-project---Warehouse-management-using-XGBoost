@@ -759,6 +759,7 @@
 </div>
 <script>
     const API = "https://amity-major-project-warehouse-management.onrender.com";
+    const FASTAPI="https://amity-major-project-warehouse-management-1bec.onrender.com"
     let currentSection = 0;
     let layoutUpdates = []; 
     const sections=[
@@ -911,7 +912,7 @@ function populateSearchItems() {
 
     try {
 
-        const response = await fetch(`${API}/warehouse_efficiency`);
+        const response = await fetch(`${FASTAPI}/warehouse_efficiency`);
 
         const data = await response.json();
 
@@ -1316,7 +1317,7 @@ async function applyLayoutChanges() {
 
 
     try {
-        const res = await fetch(`${API}/apply_layout_button`, {  
+        const res = await fetch(`${FASTAPI}/apply_layout_button`, {  
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
