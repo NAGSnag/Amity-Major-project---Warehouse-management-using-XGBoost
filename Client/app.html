@@ -1198,7 +1198,7 @@ function populateSearchItems() {
 
 function openModal(box, items) {
 
-    console.log(box);
+    // console.log(box);
 
     if (pendingLayoutChanges) {
         alert("Please click 'Apply Changes' before viewing box details.");
@@ -1231,7 +1231,7 @@ function openModal(box, items) {
 
         items.forEach(item => {
 
-            console.log(item);
+            // console.log(item);
 
             const code = item.material_code || item.product_code || '--';
 
@@ -1335,7 +1335,7 @@ function buildAlerts(alertsList = [], showApplyButton = false) {
     }
 }
 async function applyLayoutChanges() {
-    console.log(layoutUpdates)
+    // console.log(layoutUpdates)
 
     if (!layoutUpdates || layoutUpdates.length === 0) {
         alert("No changes to apply");
@@ -1507,7 +1507,7 @@ document.getElementById("optimize_button").onclick = async () => {
     layoutUpdates = []; 
 
     const moves = data.suggestions.filter(s => s.action === "MOVE" || s.action === "ASSIGN");
-    console.log(moves)
+    // console.log(moves)
 
     let movementLogs = [];
 
@@ -1536,7 +1536,7 @@ document.getElementById("optimize_button").onclick = async () => {
             movementLogs.push(`Assigned ${s.product} to ${toLoc}`);
         }
     }
-    console.log(layoutUpdates)
+    // console.log(layoutUpdates)
 
     pendingLayoutChanges = true;
 
@@ -1813,7 +1813,7 @@ document.getElementById("optimize_rm_button").onclick = async () => {
             box_id: locationMap[toLoc]
         });
     }
-    console.log(layoutUpdates)
+    // console.log(layoutUpdates)
     pendingLayoutChanges = true;
 
     if (movementLogs.length > 0) {

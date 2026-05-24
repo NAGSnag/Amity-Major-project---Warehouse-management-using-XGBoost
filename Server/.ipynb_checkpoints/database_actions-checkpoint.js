@@ -1,4 +1,4 @@
-import fs from 'fs/promises' // in modules this is the way to import
+import fs from 'fs/promises'
 import { domainToUnicode } from 'url';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
@@ -6,9 +6,6 @@ import mysql from 'mysql2/promise'
 import ExcelJS from 'exceljs/dist/es5/index.js';
 // const ExcelJS = require('exceljs/dist/es5');
 
-
-
-// database_actions.js — only the setupDatabase function needs changes
 
 export async function setupDatabase() {
   try {

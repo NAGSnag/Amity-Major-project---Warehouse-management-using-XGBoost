@@ -879,7 +879,7 @@ async function fetchRawMaterials() {
 async function fetchSales(limit = 200, offset = 0) {
     try {
         const url = `${API}/get-allsales?limit=${limit}&offset=${offset}`;
-        console.log('Fetching sales from:', url);
+        // console.log('Fetching sales from:', url);
         
         const response = await fetch(url);
         const text = await response.text();
@@ -890,7 +890,7 @@ async function fetchSales(limit = 200, offset = 0) {
         }
         
         const result = JSON.parse(text);
-        console.log('Sales data received:', result);
+        // console.log('Sales data received:', result);
         return { success: true, ...result };
     } catch (error) {
         console.error('Error fetching sales:', error);

@@ -840,7 +840,7 @@ async function executeSimulation() {
         data[f.id] = document.getElementById(f.id).value;
     });
 
-    console.log("Simulation Params:", data);
+    // console.log("Simulation Params:", data);
 
     const btn = document.querySelector('.modal-actions .active');
 
@@ -868,7 +868,7 @@ async function executeSimulation() {
 
             const result = await response.json();
 
-            console.log(result);
+            // console.log(result);
 
             if (!result.predictions) {
                 alert(result.detail || "Simulation failed");
@@ -1036,7 +1036,7 @@ async function executeSimulation() {
 
     const result = await response.json();
 
-    console.log(result);
+    // console.log(result);
 
     if (!result || !result.spike_forecast || !result.baseline_forecast) {
         alert(result?.detail || "Simulation failed");
@@ -1218,7 +1218,7 @@ if (currentActiveScenario === "supplyDelay") {
 
     const result = await response.json();
 
-    console.log(result);
+    // console.log(result);
 
     if (!result || !result.weekly_forecast) {
         alert(result?.detail || "Simulation failed");
@@ -1430,7 +1430,7 @@ if (currentActiveScenario === "seasonalSurge") {
 
     const result = await response.json();
 
-    console.log(result);
+    // console.log(result);
 
     if (!result.weekly_forecast) {
 
@@ -1673,7 +1673,7 @@ if (currentActiveScenario === "newLaunch") {
 
     const result = await response.json();
 
-    console.log(result);
+    // console.log(result);
 
     if (!result.weekly_forecast) {
 
@@ -1891,8 +1891,8 @@ async function initApp() {
 
         categoryList = Array.from(categoriesSet);
 
-        console.log("Products:", productList);
-        console.log("Categories:", categoryList);
+        // console.log("Products:", productList);
+        // console.log("Categories:", categoryList);
 
     } catch (e) {
 
