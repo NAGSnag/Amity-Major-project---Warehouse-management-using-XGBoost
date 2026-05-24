@@ -63,7 +63,23 @@ def load_data():
         Salesdata   =[dict(r) for r in conn.execute(text("SELECT*FROM sales_data")).mappings().all()]
     return Products, Boxes, Shelves, Racks, RawMaterials, Salesdata
 
-
+@app.get("/get-warehouse-data")
+def get_warehouse_data():
+    Products, Boxes, Shelves, Racks, RawMaterials=[], [], [], [], []
+    with engine.connect() as conn:
+        Products    =[dict(r) for r in conn.execute(text("SELECT*FROM products")).mappings().all()]
+        Boxes       =[dict(r) for r in conn.execute(text("SELECT*FROM boxes")).mappings().all()]
+        Shelves     =[dict(r) for r in conn.execute(text("SELECT*FROM shelves")).mappings().all()]
+        Racks       =[dict(r) for r in conn.execute(text("SELECT*FROM racks")).mappings().all()]
+        RawMaterials=[dict(r) for r in conn.execute(text("SELECT*FROM raw_materials")).mappings().all()]
+    return {
+        "racks": Racks,
+        "shelves": Shelves,
+        "boxes": Boxes,
+        "products": Products,
+        "raw_materials": RawMaterials,
+    }
+    
 @app.post("/optimizelayout")
 def optimize_layout():
     """Rank products by demand & stockout risk, suggest optimal warehouse locations."""

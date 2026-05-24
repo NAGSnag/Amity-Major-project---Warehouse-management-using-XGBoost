@@ -837,21 +837,17 @@ async function init() {
 
     try {
         const container = document.getElementById('shelves');
-        container.innerHTML = '<div class="loading-state">Syncing Warehouse Data...</div>';
 
-        let results = await Promise.all([
-            get('/get-racks'),
-            get('/get-shelves'),
-            get('/get-boxes'),
-            get('/get-products'),
-            get('/get-raw-materials'),
-        ]);
+        container.innerHTML =
+            '<div class="loading-state">Syncing Warehouse Data...</div>';
 
-        allRacks = results[0] || [];
-        allShelves = results[1] || [];
-        allBoxes = results[2] || [];
-        allProducts = results[3] || [];
-        allRawMaterials = results[4] || [];
+        const data = await get('/get-warehouse-data');
+
+        allRacks = data.racks || [];
+        allShelves = data.shelves || [];
+        allBoxes = data.boxes || [];
+        allProducts = data.products || [];
+        allRawMaterials = data.raw_materials || [];
 
         const isEmpty =
             allRacks.length === 0 ||
@@ -861,26 +857,45 @@ async function init() {
             allRawMaterials.length === 0;
 
         if (isEmpty) {
+
             alert("Some data is missing. Please complete the setup.");
-            alert(`Racks: ${allRacks.length}, Shelves: ${allShelves.length}, Boxes: ${allBoxes.length}, Products: ${allProducts.length}, Raw Materials: ${allRawMaterials.length}`);
+
+            alert(
+                `Racks: ${allRacks.length}, ` +
+                `Shelves: ${allShelves.length}, ` +
+                `Boxes: ${allBoxes.length}, ` +
+                `Products: ${allProducts.length}, ` +
+                `Raw Materials: ${allRawMaterials.length}`
+            );
+
             window.location.href = "/setup";
+
             return;
         }
 
         allRacks.sort((a, b) =>
-            a.rack_code.localeCompare(b.rack_code, undefined, { numeric: true })
+            a.rack_code.localeCompare(
+                b.rack_code,
+                undefined,
+                { numeric: true }
+            )
         );
 
         renderSection();
-        loadEfficiency();
+
+        await loadEfficiency();
+
         populateSearchItems();
-     
 
     } catch (e) {
+
+        console.error(e);
+
         document.getElementById('shelves').innerHTML =
             `<div class="loading-state">⚠️ Error loading data</div>`;
     }
 }
+
 function populateSearchItems() {
 
     const list = document.getElementById("items_list");

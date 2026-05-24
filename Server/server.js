@@ -40,7 +40,7 @@ app.use(cors({
     database: process.env.DATABASE_NAME, 
     port: process.env.DATABASE_PORT,
     waitForConnections: true,
-    connectionLimit: 10
+    connectionLimit: 4
   });
   const db = async (sql, params = []) => {
     const [rows] = await pool.execute(sql, params);
