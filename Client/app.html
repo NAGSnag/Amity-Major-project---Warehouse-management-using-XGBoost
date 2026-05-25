@@ -762,6 +762,7 @@
     const FASTAPI="https://amity-major-project-warehouse-management-1bec.onrender.com"
     let currentSection = 0;
     let layoutUpdates = []; 
+    let latestSuggestions = [];
     const sections=[
         { title: 'Finished Goods Section',  
         badge: 'Products → Racks → Shelves → Boxes',
@@ -1314,14 +1315,20 @@ function buildAlerts(alertsList = [], showApplyButton = false) {
 
     document.getElementById('alerts-container').innerHTML = `
 
-        ${showApplyButton ? `
-            <div style="margin-bottom:10px;">
-                <button id="apply_button" class="apply-btn">
-                    Apply Changes
-                </button>
-            </div>
-        ` : ''}
+    ${showApplyButton ? `
+        <div style="margin-bottom:10px; display:flex; gap:10px; flex-wrap:wrap;">
+            
+            <button id="apply_button" class="apply-btn">
+                Apply Changes
+            </button>
 
+            <button id="print_button" class="apply-btn"
+                style="background:#2563eb;">
+                Print Suggestions
+            </button>
+
+        </div>
+    ` : ''}
         ${alerts.map(a => `
             <div class="alert ${a.type}">
                 <span class="alert-text">${a.text}</span>
@@ -1332,7 +1339,100 @@ function buildAlerts(alertsList = [], showApplyButton = false) {
 
     if (showApplyButton) {
         document.getElementById("apply_button").onclick = applyLayoutChanges;
+
+        document.getElementById("print_button").onclick = printOptimizationSuggestions;
     }
+}
+function printOptimizationSuggestions() {
+
+    if (!latestSuggestions || !latestSuggestions.length) {
+        alert("No optimization suggestions available.");
+        return;
+    }
+
+    let rows = latestSuggestions.map((s, i) => `
+        <tr>
+            <td>${i + 1}</td>
+            <td>${s.product || s.material || '-'}</td>
+            <td>${s.from}</td>
+            <td>${s.to}</td>
+            <td>${s.action}</td>
+            <td>${s.risk}</td>
+            <td>${s.weekly_demand}</td>
+            <td>${s.days_of_stock}</td>
+        </tr>
+    `).join("");
+
+    const win = window.open("", "", "width=1200,height=700");
+
+    win.document.write(`
+        <html>
+        <head>
+            <title>Warehouse Optimization Report</title>
+
+            <style>
+
+                body{
+                    font-family: Arial;
+                    padding:20px;
+                }
+
+                h2{
+                    text-align:center;
+                    margin-bottom:20px;
+                }
+
+                table{
+                    width:100%;
+                    border-collapse:collapse;
+                }
+
+                th, td{
+                    border:1px solid #ccc;
+                    padding:10px;
+                    text-align:left;
+                    font-size:13px;
+                }
+
+                th{
+                    background:#f3f4f6;
+                }
+
+            </style>
+        </head>
+
+        <body>
+
+            <h2>Warehouse Layout Optimization Report</h2>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Item</th>
+                        <th>From</th>
+                        <th>To</th>
+                        <th>Action</th>
+                        <th>Risk</th>
+                        <th>Weekly Demand</th>
+                        <th>Days Left</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    ${rows}
+                </tbody>
+            </table>
+
+        </body>
+        </html>
+    `);
+
+    win.document.close();
+
+    setTimeout(() => {
+        win.print();
+    }, 500);
 }
 async function applyLayoutChanges() {
     // console.log(layoutUpdates)
@@ -1507,6 +1607,7 @@ document.getElementById("optimize_button").onclick = async () => {
     layoutUpdates = []; 
 
     const moves = data.suggestions.filter(s => s.action === "MOVE" || s.action === "ASSIGN");
+    latestSuggestions = moves;
     // console.log(moves)
 
     let movementLogs = [];
@@ -1789,6 +1890,7 @@ document.getElementById("optimize_rm_button").onclick = async () => {
     await new Promise(r => setTimeout(r, 300));
 
     const locationMap = buildLocationMap(); 
+    latestSuggestions = data.suggestions;
 
     for (const s of data.suggestions) {
 
