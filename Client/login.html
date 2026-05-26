@@ -276,7 +276,7 @@ body{
             <input type="password" id="loginPassword" placeholder="Enter your password" required>
         </div>
 
-        <button type="submit" class="submit-btn" id="loginBtn">Login In</button>
+        <button type="submit" class="submit-btn" id="loginBtn">Log In</button>
     </form>
 
 </div>
@@ -298,7 +298,7 @@ async function handleLogin(event) {
     successMsg.classList.remove('show');
 
     btn.disabled = true;
-    btn.innerText = 'Signing In...';
+    btn.innerText = 'Logging In...';
 
     try {
         const response = await fetch(`${API_URL}/login-user`, {
@@ -313,7 +313,7 @@ async function handleLogin(event) {
             errorMsg.innerText = result.error || 'Login failed';
             errorMsg.classList.add('show');
             btn.disabled = false;
-            btn.innerText = 'Sign In';
+            btn.innerText = 'Log In';
             return;
         }
 
@@ -335,7 +335,7 @@ async function handleLogin(event) {
         errorMsg.innerText = 'Connection error. Please try again.';
         errorMsg.classList.add('show');
         btn.disabled = false;
-        btn.innerText = 'Sign In';
+        btn.innerText = 'Log In';
     }
 }
 
@@ -365,7 +365,7 @@ window.addEventListener('load', function() {
 ">
     <span style="color:#52c28f;font-weight:600;">OptiWare-AI</span>
     • Designed & Developed by
-    <span style="color:#ffffff;font-weight:700;">Nagasheshu</span>
+    <span style="color:#ffffff;font-weight:700;">A Nagasheshu</span>
 </footer>
 </body>
 </html>
