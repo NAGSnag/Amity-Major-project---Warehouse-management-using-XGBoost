@@ -54,12 +54,7 @@ app.get("/health", (req, res) => {
     });
 });
 app.get('/',async (req,res)=>{
-  try {
-    const response = await axios.get("https://amity-major-project-warehouse-management-1bec.onrender.com/");
-    res.json(response.data);
-  } catch (error) {
-      res.status(500).send("Error calling FastAPI");
-  }
+  res.sendFile(path.join(__dirname, "../Client/login.html"))
 })
 app.get('/app',(req,res)=>{
   res.sendFile(path.join(__dirname, "../Client/app.html"))
