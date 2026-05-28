@@ -82,7 +82,7 @@ def get_warehouse_data():
     
 @app.post("/optimizelayout")
 def optimize_layout():
-    """Rank products by demand & stockout risk, suggest optimal warehouse locations."""
+
     
     try:
         if _model is None:
@@ -150,10 +150,10 @@ def optimize_layout():
                 print(f"Skipping {product.get('product_code')}: {e}")
                 continue
 
-        # rank by importance (demand velocity + stockout risk)
+
         results.sort(key=lambda x: x['importance'], reverse=True)
 
-        # assign best-positioned boxes to highest-importance products
+
         suggestions = []
 
         for i, product_result in enumerate(results):
@@ -190,20 +190,20 @@ def optimize_layout():
 
 
 class _BoxLocationBuilder:
-    """Helper for warehouse location codes and box organization."""
+
 
     def __init__(self, shelf_map, rack_map):
         self.shelf_map = shelf_map
         self.rack_map = rack_map
 
     def _clean_code(self, val):
-        """Extract digits from code and zero-pad to 2 chars."""
+
         if not val:
             return "00"
         return ''.join(filter(str.isdigit, str(val))).zfill(2)
 
     def build_sorted_boxes(self, boxes):
-        """Create sortable box list with location codes."""
+
         enriched = []
         
         for box in boxes:
@@ -226,7 +226,7 @@ class _BoxLocationBuilder:
         return enriched
 
     def build_location(self, box):
-        """Generate warehouse location code (R01-SH02-B03)."""
+
         if not box:
             return "Unassigned"
         
@@ -237,7 +237,7 @@ class _BoxLocationBuilder:
 
 
 def _map_product_locations(products, enriched_boxes, box_sorter):
-    """Get current location for each product."""
+
     locations = {}
     
     for product in products:
@@ -257,7 +257,7 @@ def _map_product_locations(products, enriched_boxes, box_sorter):
 
 
 def _extract_sales_features(salesdata):
-    """Extract ML features from latest sales records per product."""
+
     df = pd.DataFrame(salesdata)
     df['sale_date'] = pd.to_datetime(df['sale_date'])
     df['item_id'] = df['item_id'].astype(str)
@@ -282,7 +282,7 @@ def _extract_sales_features(salesdata):
 
 
 def _predict_weekly_demand(features, model, scaler):
-    """Get demand forecast from ML model."""
+
     X = np.array([[features[f] for f in FEATURES]], dtype=np.float32)
     
     if scaler:
@@ -292,7 +292,7 @@ def _predict_weekly_demand(features, model, scaler):
 
 
 def _calculate_stockout_risk(days_left):
-    """Classify stockout risk based on inventory days."""
+
     if days_left <= 3:
         return 'CRITICAL'
     elif days_left <= 7:
@@ -304,12 +304,12 @@ def _calculate_stockout_risk(days_left):
 
 
 def _calculate_importance_score(weekly_demand, days_left, trend_direction):
-    """
-    Weighted importance score combines:
-    - Demand velocity (50%)
-    - Stockout urgency (25%)
-    - Trend direction (10%)
-    """
+
+    
+    
+    
+    
+    
     demand_component = min(100, (weekly_demand / 500) * 100) * 0.5
     
     urgency_map = {
@@ -327,7 +327,7 @@ def _calculate_importance_score(weekly_demand, days_left, trend_direction):
 
 
 def _determine_action(current_location, ideal_location):
-    """Decide what action is needed for this product."""
+
     if current_location == "Unassigned":
         return "ASSIGN"
     elif current_location != ideal_location:
@@ -337,7 +337,7 @@ def _determine_action(current_location, ideal_location):
     
 @app.post("/apply_layout_button")
 def apply_layout_button(data: list = Body(...)):
-    """Persist warehouse layout changes (products and materials to boxes)."""
+
     
     try:
         if not data:
@@ -384,7 +384,7 @@ def apply_layout_button(data: list = Body(...)):
     
 @app.post("/optimize_raw_materials")
 def optimize_raw_materials():
-    """Suggest raw material relocations based on demand velocity."""
+
     
     try:
         if _model is None:
@@ -479,14 +479,14 @@ def optimize_raw_materials():
 
 
 class _BoxPositionSorter:
-    """Helper for managing box location logic and sorting."""
+
 
     def __init__(self, shelf_map, rack_map):
         self.shelf_map = shelf_map
         self.rack_map = rack_map
 
     def build_location(self, box):
-        """Generate human-readable location string (R01-SH02-B03)."""
+
         if not box:
             return "Unassigned"
 
@@ -503,7 +503,7 @@ class _BoxPositionSorter:
         return f"{rack_code} {shelf_code} {box_code}"
 
     def _position_tuple(self, box):
-        """Extract sortable position for a box."""
+
         shelf = self.shelf_map.get(str(box.get('shelf_id')), {})
         rack = self.rack_map.get(str(shelf.get('rack_id')), {})
 
@@ -514,12 +514,12 @@ class _BoxPositionSorter:
         )
 
     def sort_boxes(self, boxes):
-        """Sort boxes by warehouse position (front to back)."""
+
         return sorted(boxes, key=self._position_tuple)
 
 
 def _calculate_material_usage(raw_materials, product_demand):
-    """Aggregate product demand up to raw materials via BOM."""
+
     raw_usage = {}
 
     for rm in raw_materials:
@@ -604,7 +604,7 @@ def warehouse_efficiency():
 
 @app.post("/predict_until_date")
 def predict_until_date(data: dict = Body(...)):
-    """Generate demand forecast for all products through a target date."""
+
     
     target_date = data.get("target_date")
 
@@ -724,7 +724,7 @@ def predict_until_date(data: dict = Body(...)):
 
 
 def _forecast_product_weeks(features, num_weeks, start_date, model, scaler):
-    """Generate week-by-week demand forecast for a product."""
+
     weekly_forecast = []
 
     for week_idx in range(num_weeks):
@@ -755,7 +755,7 @@ def _forecast_product_weeks(features, num_weeks, start_date, model, scaler):
 
 
 def _update_forecast_features(features, weekly_pred, week_idx):
-    """Apply conservative drift to features for next week prediction."""
+
     f = features.copy()
 
     # minimal drift only (prevents model drift over long forecasts)
@@ -810,7 +810,7 @@ def update_features_for_next_week(f, weekly_sales):
 
 @app.post("/simulate_demand_spike")
 def simulate_demand_spike(data: dict = Body(...)):
-    """Compare product demand under normal vs spiked conditions."""
+
     
     try:
         if _model is None:
@@ -913,7 +913,7 @@ def simulate_demand_spike(data: dict = Body(...)):
 
 
 def _predict_demand(features, model, scaler):
-    """Get single-week demand forecast from trained model."""
+
     X = np.array([[features[f] for f in FEATURES]], dtype=np.float32)
 
     if scaler:
@@ -924,7 +924,7 @@ def _predict_demand(features, model, scaler):
 
 
 def _calculate_bom_impact(product_id, raw_materials, baseline_total, spike_total):
-    """Calculate material consumption differences between scenarios."""
+
     impact = []
 
     if not product_id:
@@ -1000,7 +1000,7 @@ def get_sales():
         
 @app.post("/simulate_supply_delay")
 def simulate_supply_delay(data: dict = Body(...)):
-    """Forecast inventory impact when supplier delivery is delayed."""
+
     
     product_code = data.get("product_code")
     current_stock = int(data.get("current_stock", 0))
@@ -1125,7 +1125,7 @@ def simulate_supply_delay(data: dict = Body(...)):
 
 
 def _fetch_products():
-    """Load product master data from database."""
+
     with engine.connect() as conn:
         return [
             dict(r) for r in conn.execute(
@@ -1135,7 +1135,7 @@ def _fetch_products():
 
 
 def _fetch_sales_data():
-    """Load historical sales transactions."""
+
     with engine.connect() as conn:
         return [
             dict(r) for r in conn.execute(
@@ -1145,7 +1145,7 @@ def _fetch_sales_data():
 
 
 def _fetch_raw_materials():
-    """Load raw material inventory and BOM data."""
+
     with engine.connect() as conn:
         return [
             dict(r) for r in conn.execute(
@@ -1155,7 +1155,7 @@ def _fetch_raw_materials():
 
 
 def _calculate_bom_impact_suply_delay(product_id, raw_materials, total_demand):
-    """Calculate upstream material shortages based on BOM."""
+
     impact = []
 
     if not product_id:

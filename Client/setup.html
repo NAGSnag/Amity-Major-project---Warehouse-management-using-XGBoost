@@ -7,216 +7,940 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-  :root {
-    --bg:#000000;--surface:#111318;--surface2:#000000;--border:#1f2535;
-    --accent:#f59e0b;--accent2:#3b82f6;--success:#10b981;--danger:#ef4444;
-    --purple:#8b5cf6;--teal:#14b8a6;--text:#e2e8f0;--muted:#64748b;
-    --mono:'Space Mono',monospace;--sans:'DM Sans',sans-serif;
+:root {
+  --bg: #000000;
+  --surface: #111318;
+  --surface2: #000000;
+  --border: #1f2535;
+  --accent: #f59e0b;
+  --accent2: #3b82f6;
+  --success: #10b981;
+  --danger: #ef4444;
+  --purple: #8b5cf6;
+  --teal: #14b8a6;
+  --text: #e2e8f0;
+  --muted: #64748b;
+  --mono: 'Space Mono', monospace;
+  --sans: 'DM Sans', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-size: large;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+}
+
+.header {
+  border-bottom: 1px solid var(--border);
+  padding: 10px 17px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-icon {
+  width: 38px;
+  height: 38px;
+  background: var(--accent);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.header h1 {
+  font-family: var(--mono);
+  font-size: 18px;
+  letter-spacing: 0.05em;
+}
+
+.header span {
+  color: var(--muted);
+  font-size: 15px;
+  margin-left: 4px;
+}
+
+.stepper-wrap {
+  padding: 28px 40px 0;
+  display: flex;
+  overflow-x: auto;
+  max-width: 100%;
+  max-height: 300px;
+  margin: 0 auto;
+}
+
+.step-item {
+  flex: 1;
+  min-width: 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  position: relative;
+}
+
+.step-item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  width: 100%;
+  height: 2px;
+  background: var(--border);
+  z-index: 0;
+}
+
+.step-item.done:not(:last-child)::after {
+  background: var(--accent);
+}
+
+.step-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--surface2);
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  z-index: 1;
+  transition: all 0.3s;
+}
+
+.step-item.active .step-circle {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #000;
+}
+
+.step-item.done .step-circle {
+  border-color: var(--accent);
+  background: transparent;
+  color: var(--accent);
+}
+
+.step-label {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 500;
+  text-align: center;
+}
+
+.step-item.active .step-label {
+  color: var(--accent);
+}
+
+.main {
+  padding: 28px 40px 60px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.panel {
+  display: none;
+  animation: fadeUp 0.3s ease;
+}
+
+.panel.active {
+  display: block;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
-  *{box-sizing:border-box;margin:0;padding:0;font-size: large;}
-  body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;}
-
-  .header{border-bottom:1px solid var(--border);padding:10px 17px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:100;}
-  .header-icon{width:38px;height:38px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;}
-  .header h1{font-family:var(--mono);font-size:18px;letter-spacing:.05em;}
-  .header span{color:var(--muted);font-size:15px;margin-left:4px;}
-
-  /* ── STEPPER ── */
-  .stepper-wrap{padding:28px 40px 0;display:flex;overflow-x:auto;max-width:100%;max-height: 300px;margin:0 auto;}
-  .step-item{flex:1;min-width:60px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;position:relative;}
-  .step-item:not(:last-child)::after{content:'';position:absolute;top:18px;left:50%;width:100%;height:2px;background:var(--border);z-index:0;}
-  .step-item.done:not(:last-child)::after{background:var(--accent);}
-  .step-circle{width:36px;height:36px;border-radius:50%;background:var(--surface2);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:700;z-index:1;transition:all .3s;}
-  .step-item.active .step-circle{border-color:var(--accent);background:var(--accent);color:#000;}
-  .step-item.done .step-circle{border-color:var(--accent);background:transparent;color:var(--accent);}
-  .step-label{font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;text-align:center;}
-  .step-item.active .step-label{color:var(--accent);}
-
-  /* ── MAIN ── */
-  .main{padding:28px 40px 60px;max-width:1400px;margin:0 auto;}
-  .panel{display:none;animation:fadeUp .3s ease;}
-  .panel.active{display:block;}
-  @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-  .panel-header{margin-bottom:22px;}
-  .panel-header h2{font-family:var(--mono);font-size:24px;margin-bottom:5px;}
-  .panel-header p{color:var(--muted);font-size:20px;}
-
-  /* ── FORMS ── */
-  .form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:20px;}
-  .form-group{display:flex;flex-direction:column;gap:5px;}
-  label{font-size:15px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;}
-  input,select{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:9px 13px;color:var(--text);font-family:var(--sans);font-size:13px;outline:none;transition:border-color .2s;width:100%;}
-  input:focus,select:focus{border-color:var(--accent);}
-  input::placeholder{color:var(--muted);}
-  select option{background:var(--surface2);}
-
-  /* ── BUTTONS ── */
-  .btn-row{display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap;}
-  .btn{padding:9px 20px;border:none;border-radius:6px;font-family:var(--sans);font-size:16px;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:7px;}
-  .btn-primary{background:var(--accent);color:#000;}.btn-primary:hover{background:#d97706;}
-  .btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border);}.btn-secondary:hover{border-color:var(--accent);}
-  .btn-success{background:var(--success);color:#fff;}.btn-success:hover{background:#059669;}
-  .btn-blue{background:var(--accent2);color:#fff;}.btn-blue:hover{background:#2563eb;}
-  .btn-teal{background:var(--teal);color:#fff;}.btn-teal:hover{background:#0d9488;}
-  .btn-outline{background:transparent;color:var(--text);border:1px solid var(--border);}.btn-outline:hover{border-color:var(--accent);}
-  .btn-danger{background:var(--danger);color:#fff;}
-  .btn-sm{padding:6px 13px;font-size:16px;}
-  .btn:disabled{opacity:.4;cursor:not-allowed;}
-
-  /* ── CHOICE SCREEN ── */
-  .choice-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;text-align:center;gap:32px;}
-  .choice-title{font-family:var(--mono);font-size:24px;color:var(--text);}
-  .choice-sub{color:var(--muted);font-size:14px;max-width:480px;line-height:1.7;}
-  .choice-cards{display:flex;gap:20px;flex-wrap:wrap;justify-content:center;}
-  .choice-card{background:var(--surface);border:2px solid var(--border);border-radius:12px;padding:28px 32px;cursor:pointer;transition:all .25s;min-width:440px;max-width:280px;text-align:center;}
-  .choice-card:hover{border-color:var(--accent);transform:translateY(-3px);box-shadow:0 12px 32px rgba(0,0,0,.4);}
-  .choice-card.card-import:hover{border-color:var(--success);}
-  .choice-card .c-icon{font-size:40px;margin-bottom:14px;display:block;}
-  .choice-card h3{font-family:var(--mono);font-size:17px;margin-bottom:8px;color:var(--text);}
-  .choice-card p{font-size:15px;color:var(--muted);line-height:1.6;}
-  .choice-card .c-badge{display:inline-block;margin-top:12px;padding:4px 12px;border-radius:999px;font-size:11px;font-weight:600;}
-  .card-step  .c-badge{background:rgba(245,158,11,.15);color:var(--accent);}
-  .card-import .c-badge{background:rgba(16,185,129,.15);color:var(--success);}
-
-  /* ── QUICK IMPORT PANEL ── */
-  .qi-section{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px 24px;margin-bottom:20px;}
-  .qi-title{font-family:var(--mono);font-size:12px;letter-spacing:.08em;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
-  .qi-note{background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);border-radius:6px;padding:10px 14px;font-size:12px;color:#93c5fd;margin-bottom:14px;line-height:1.6;}
-  .qi-note.green{background:rgba(16,185,129,.08);border-color:rgba(16,185,129,.2);color:#6ee7b7;}
-  .qi-note.purple{background:rgba(139,92,246,.08);border-color:rgba(139,92,246,.2);color:#c4b5fd;}
-
-  /* ── IMPORT ZONE ── */
-  .import-zone{border:2px dashed var(--border);border-radius:10px;padding:32px 20px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:16px;position:relative;}
-  .import-zone:hover,.import-zone.drag{border-color:var(--accent);background:rgba(245,158,11,.03);}
-  .import-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
-  .import-zone .icon{font-size:28px;margin-bottom:8px;}
-  .import-zone p{color:var(--muted);font-size:13px;}
-
-  /* ── LOCATION PICKER ── */
-  .location-picker{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:18px;}
-  .lp-title{font-family:var(--mono);font-size:10px;color:var(--success);letter-spacing:.08em;margin-bottom:12px;}
-  .location-cascade{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
-  .location-cascade .form-group{flex:1;min-width:150px;}
-  .location-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);border-radius:6px;padding:7px 12px;font-family:var(--mono);font-size:11px;color:var(--success);margin-top:10px;}
-  .sep{color:var(--muted);}
-
-  /* ── TABLES ── */
-  .badge-row{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px;}
-  .badge{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:4px 10px;font-family:var(--mono);font-size:11px;color:var(--accent);}
-  .table-wrap{overflow-x:auto;border-radius:8px;border:1px solid var(--border);margin-top:18px;}
-  table{width:100%;border-collapse:collapse;font-size:12px;}
-  thead{background:var(--surface2);border-bottom:1px solid var(--border);}
-  thead th{padding:10px 14px;text-align:left;font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--muted);font-weight:400;white-space:nowrap;}
-  tbody tr{border-bottom:1px solid var(--border);transition:background .15s;}
-  tbody tr:last-child{border-bottom:none;}
-  tbody tr:hover{background:var(--surface2);}
-  tbody td{padding:10px 14px;color:var(--text);}
-  .td-mono{font-family:var(--mono);font-size:11px;color:var(--accent);}
-  .td-teal{font-family:var(--mono);font-size:11px;color:var(--teal);}
-  .td-num{font-family:var(--mono);font-size:11px;color:var(--accent2);}
-  .td-loc{font-family:var(--mono);font-size:11px;color:var(--success);}
-
-  /* ── MISC ── */
-  .divider{display:flex;align-items:center;gap:10px;margin:20px 0;color:var(--muted);font-size:11px;letter-spacing:.1em;}
-  .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border);}
-  .pill{display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:600;}
-  .pill-green{background:rgba(16,185,129,.15);color:#10b981;}
-  .pill-yellow{background:rgba(245,158,11,.15);color:#f59e0b;}
-  .pill-teal{background:rgba(20,184,166,.15);color:#14b8a6;}
-  .pill-err{background:rgba(239,68,68,.15);color:#ef4444;}
-  .stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:20px;}
-  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px;}
-  .stat-card .s-val{font-family:var(--mono);font-size:18px;font-weight:700;margin-bottom:3px;}
-  .stat-card .s-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;}
-  .stat-card.c-green .s-val{color:var(--success);}
-  .stat-card.c-yellow .s-val{color:var(--accent);}
-  .stat-card.c-red .s-val{color:var(--danger);}
-  .stat-card.c-blue .s-val{color:var(--accent2);}
-  .stat-card.c-teal .s-val{color:var(--teal);}
-    .topbar {
-        border-radius: 18px;
-        display: flex;
-        width: 100%;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        padding: 16px 24px;
-    }
-
-    .topbar h2 {
-        font-size: 20px;
-        color: #eef2f9;
-    }
-
-    .topbar-right {
-        display: flex;
-        gap: 10px;
-        align-items: center;
-    }
-
-
-    .pill {
-        border: none;
-        color: #eef2f9;
-        background: #2f3345;
-        border-radius: 999px;
-        padding: 8px 18px;
-        font-size: 14px;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-
-    .pill:hover {
-        background: #3a3e52;
-    }
-
-    .pill.active {
-        background: #52c28f;
-        color: #071811;
-        font-weight: 700;
-    }
-
-    .pill.dashboard-active {
-        background: #4a55d8;
-        color: #eff2fe;
-        font-weight: 700;
-        box-shadow: 0 0 0 2px rgba(74, 85, 216, 0.28);
-    }
-
-    .avatar {
-        width: 42px;
-        height: 42px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #eceef4, #cbd0d9);
-    }
-
-  .preview-block{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:16px;}
-  .preview-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
-  .preview-header span{font-family:var(--mono);font-size:12px;color:var(--accent);}
-  .progress-wrap{margin-bottom:16px;}
-  .progress-label-row{display:flex;justify-content:space-between;margin-bottom:5px;font-size:11px;color:var(--muted);}
-  .progress-track{height:5px;background:var(--surface2);border-radius:999px;overflow:hidden;}
-  .progress-fill{height:100%;background:linear-gradient(90deg,var(--purple),var(--accent2));border-radius:999px;width:0%;transition:width .3s;}
-  .import-result{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);border-radius:8px;padding:14px 18px;display:flex;align-items:center;gap:12px;margin-top:14px;}
-  .import-result .r-icon{font-size:24px;}
-  .import-result h4{font-family:var(--mono);font-size:13px;color:var(--success);margin-bottom:3px;}
-  .import-result p{font-size:12px;color:var(--muted);}
-  .toast-container{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:7px;z-index:999;}
-  .toast{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--success);border-radius:8px;padding:10px 16px;font-size:12px;box-shadow:0 8px 24px rgba(0,0,0,.4);animation:slideIn .3s ease,fadeOut .3s ease 2.7s forwards;min-width:200px;}
-  .toast.error{border-left-color:var(--danger);}
-  @keyframes slideIn{from{transform:translateX(40px);opacity:0}to{transform:translateX(0);opacity:1}}
-  @keyframes fadeOut{to{opacity:0;transform:translateX(40px)}}
-  .empty-state{text-align:center;padding:32px;color:var(--muted);font-size:13px;}
-  .info-note{background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.2);border-radius:6px;padding:10px 14px;font-size:12px;color:#fcd34d;margin-bottom:16px;}
-
-  /* Sales column mapper inside QI */
-  .sales-mapper-inner{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px;}
-
-  @media(max-width:640px){
-    .header,.main{padding-left:18px;padding-right:18px;}
-    .stepper-wrap{padding:18px 18px 0;}
-    .choice-cards{flex-direction:column;align-items:center;}
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
+}
+
+.panel-header {
+  margin-bottom: 22px;
+}
+
+.panel-header h2 {
+  font-family: var(--mono);
+  font-size: 24px;
+  margin-bottom: 5px;
+}
+
+.panel-header p {
+  color: var(--muted);
+  font-size: 20px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+label {
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+input,
+select {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 9px 13px;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+  width: 100%;
+}
+
+input:focus,
+select:focus {
+  border-color: var(--accent);
+}
+
+input::placeholder {
+  color: var(--muted);
+}
+
+select option {
+  background: var(--surface2);
+}
+
+.btn-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  padding: 9px 20px;
+  border: none;
+  border-radius: 6px;
+  font-family: var(--sans);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #000;
+}
+
+.btn-primary:hover {
+  background: #d97706;
+}
+
+.btn-secondary {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover {
+  border-color: var(--accent);
+}
+
+.btn-success {
+  background: var(--success);
+  color: #fff;
+}
+
+.btn-success:hover {
+  background: #059669;
+}
+
+.btn-blue {
+  background: var(--accent2);
+  color: #fff;
+}
+
+.btn-blue:hover {
+  background: #2563eb;
+}
+
+.btn-teal {
+  background: var(--teal);
+  color: #fff;
+}
+
+.btn-teal:hover {
+  background: #0d9488;
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.btn-outline:hover {
+  border-color: var(--accent);
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+}
+
+.btn-sm {
+  padding: 6px 13px;
+  font-size: 16px;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.choice-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  text-align: center;
+  gap: 32px;
+}
+
+.choice-title {
+  font-family: var(--mono);
+  font-size: 24px;
+  color: var(--text);
+}
+
+.choice-sub {
+  color: var(--muted);
+  font-size: 14px;
+  max-width: 480px;
+  line-height: 1.7;
+}
+
+.choice-cards {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.choice-card {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 28px 32px;
+  cursor: pointer;
+  transition: all 0.25s;
+  min-width: 440px;
+  max-width: 280px;
+  text-align: center;
+}
+
+.choice-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+}
+
+.choice-card.card-import:hover {
+  border-color: var(--success);
+}
+
+.choice-card .c-icon {
+  font-size: 40px;
+  margin-bottom: 14px;
+  display: block;
+}
+
+.choice-card h3 {
+  font-family: var(--mono);
+  font-size: 17px;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.choice-card p {
+  font-size: 15px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.choice-card .c-badge {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.card-step .c-badge {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--accent);
+}
+
+.card-import .c-badge {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--success);
+}
+
+.qi-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+}
+
+.qi-title {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.qi-note {
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: #93c5fd;
+  margin-bottom: 14px;
+  line-height: 1.6;
+}
+
+.qi-note.green {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.2);
+  color: #6ee7b7;
+}
+
+.qi-note.purple {
+  background: rgba(139, 92, 246, 0.08);
+  border-color: rgba(139, 92, 246, 0.2);
+  color: #c4b5fd;
+}
+
+.import-zone {
+  border: 2px dashed var(--border);
+  border-radius: 10px;
+  padding: 32px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 16px;
+  position: relative;
+}
+
+.import-zone:hover,
+.import-zone.drag {
+  border-color: var(--accent);
+  background: rgba(245, 158, 11, 0.03);
+}
+
+.import-zone input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
+
+.import-zone .icon {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.import-zone p {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.location-picker {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 18px;
+}
+
+.lp-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--success);
+  letter-spacing: 0.08em;
+  margin-bottom: 12px;
+}
+
+.location-cascade {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.location-cascade .form-group {
+  flex: 1;
+  min-width: 150px;
+}
+
+.location-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 6px;
+  padding: 7px 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--success);
+  margin-top: 10px;
+}
+
+.sep {
+  color: var(--muted);
+}
+
+.badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 14px;
+}
+
+.badge {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--accent);
+}
+
+.table-wrap {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  margin-top: 18px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+thead {
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+}
+
+thead th {
+  padding: 10px 14px;
+  text-align: left;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+}
+
+tbody tr:last-child {
+  border-bottom: none;
+}
+
+tbody tr:hover {
+  background: var(--surface2);
+}
+
+tbody td {
+  padding: 10px 14px;
+  color: var(--text);
+}
+
+.td-mono {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--accent);
+}
+
+.td-teal {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--teal);
+}
+
+.td-num {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--accent2);
+}
+
+.td-loc {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--success);
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 20px 0;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.pill {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.pill-green {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.pill-yellow {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+
+.pill-teal {
+  background: rgba(20, 184, 166, 0.15);
+  color: #14b8a6;
+}
+
+.pill-err {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.stat-card .s-val {
+  font-family: var(--mono);
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+
+.stat-card .s-lbl {
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.stat-card.c-green .s-val {
+  color: var(--success);
+}
+
+.stat-card.c-yellow .s-val {
+  color: var(--accent);
+}
+
+.stat-card.c-red .s-val {
+  color: var(--danger);
+}
+
+.stat-card.c-blue .s-val {
+  color: var(--accent2);
+}
+
+.stat-card.c-teal .s-val {
+  color: var(--teal);
+}
+
+.topbar {
+  border-radius: 18px;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 24px;
+}
+
+.topbar h2 {
+  font-size: 20px;
+  color: #eef2f9;
+}
+
+.topbar-right {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.pill {
+  border: none;
+  color: #eef2f9;
+  background: #2f3345;
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pill:hover {
+  background: #3a3e52;
+}
+
+.pill.active {
+  background: #52c28f;
+  color: #071811;
+  font-weight: 700;
+}
+
+.pill.dashboard-active {
+  background: #4a55d8;
+  color: #eff2fe;
+  font-weight: 700;
+  box-shadow: 0 0 0 2px rgba(74, 85, 216, 0.28);
+}
+
+.avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #eceef4, #cbd0d9);
+}
+
+.preview-block {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.preview-header span {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--accent);
+}
+
+.progress-wrap {
+  margin-bottom: 16px;
+}
+
+.progress-label-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.progress-track {
+  height: 5px;
+  background: var(--surface2);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--purple), var(--accent2));
+  border-radius: 999px;
+  width: 0%;
+  transition: width 0.3s;
+}
+
+.import-result {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 8px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.import-result .r-icon {
+  font-size: 24px;
+}
+
+.import-result h4 {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--success);
+  margin-bottom: 3px;
+}
+
+.import-result p {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.toast-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  z-index: 999;
+}
+
+.toast {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--success);
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  animation: slideIn 0.3s ease, fadeOut 0.3s ease 2.7s forwards;
+  min-width: 200px;
+}
+
+.toast.error {
+  border-left-color: var(--danger);
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(40px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  to {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 32px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.info-note {
+  background: rgba(245, 158, 11, 0.07);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: #fcd34d;
+  margin-bottom: 16px;
+}
+
+.sales-mapper-inner {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 640px) {
+  .header,
+  .main {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+  .stepper-wrap {
+    padding: 18px 18px 0;
+  }
+  .choice-cards {
+    flex-direction: column;
+    align-items: center;
+  }
+}
 </style>
 </head>
 <body>
@@ -549,457 +1273,758 @@
 <div class="toast-container" id="toastContainer"></div>
 
 <script>
-const API ="https://amity-major-project-warehouse-management.onrender.com"
+const API = "https://amity-major-project-warehouse-management.onrender.com";
 let _currentPanel = 'choice';
 
-// ── TOAST ──
-function toast(msg, type='success') {
-  const c = document.getElementById('toastContainer');
-  const t = document.createElement('div');
-  t.className = `toast${type==='error'?' error':''}`;
-  t.textContent = (type==='success'?'✓ ':'✕ ') + msg;
-  c.appendChild(t); setTimeout(() => t.remove(), 3100);
+function toast(msg, type = 'success') {
+    const container = document.getElementById('toastContainer');
+    const toastEl = document.createElement('div');
+    toastEl.className = `toast${type === 'error' ? ' error' : ''}`;
+    toastEl.textContent = (type === 'success' ? '✓ ' : '✕ ') + msg;
+    container.appendChild(toastEl);
+    setTimeout(() => toastEl.remove(), 3100);
+}
+async function api(path, body = null, method = null) {
+    const httpMethod = method || (body ? 'POST' : 'GET');
+    const options = body 
+        ? { method: httpMethod, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+        : { method: httpMethod };
+    const response = await fetch(API + path, options);
+    if (!response.ok) throw new Error(await response.text());
+    return response.json();
+}
+function showPanel(panelId) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById(panelId).classList.add('active');
+    _currentPanel = panelId;
 }
 
-// ── API ──
-async function api(path, body=null, method=null) {
-  const m = method||(body?'POST':'GET');
-  const opts = body ? {method:m,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)} : {method:m};
-  const r = await fetch(API+path, opts);
-  if(!r.ok) throw new Error(await r.text());
-  return r.json();
-}
-
-// ── CHOICE SCREEN ──
 function startStepByStep() {
-  document.getElementById('stepper').style.display = 'flex';
-  showPanel('panel-0');
-  loadRacks();
+    document.getElementById('stepper').style.display = 'flex';
+    showPanel('panel-0');
+    loadRacks();
 }
+
 function startQuickImport() {
-  document.getElementById('stepper').style.display = 'none';
-  showPanel('panel-qi');
+    document.getElementById('stepper').style.display = 'none';
+    showPanel('panel-qi');
 }
+
 function backToChoice() {
-  document.getElementById('stepper').style.display = 'none';
-  showPanel('panel-choice');
-}
-function showPanel(id) {
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  _currentPanel = id;
+    document.getElementById('stepper').style.display = 'none';
+    showPanel('panel-choice');
 }
 
-// ── STEPPER ──
-// Step order: 0=Rack, 1=Shelf, 2=Boxes, 3=Products, 4=Raw Materials, 5=Sales Data
-function goStep(n) {
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.step-item').forEach((s,i) => {
-    s.classList.toggle('active', i === n);
-    s.classList.toggle('done', i < n);
-  });
-  document.getElementById(`panel-${n}`).classList.add('active');
-  _currentPanel = `panel-${n}`;
-  if (n === 1) loadRacks();
-  if (n === 2) loadShelves();
-  if (n === 3) { loadBoxes(); loadProducts(); }
-  if (n === 4) { loadRMDropdowns(); loadRawMaterials(); loadRMStats(); }
+function goStep(stepNum) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.step-item').forEach((step, idx) => {
+        step.classList.toggle('active', idx === stepNum);
+        step.classList.toggle('done', idx < stepNum);
+    });
+
+    document.getElementById(`panel-${stepNum}`).classList.add('active');
+    _currentPanel = `panel-${stepNum}`;
+
+    _loadStepData(stepNum);
 }
 
-// ── RACK ──
+function _loadStepData(stepNum) {
+    if (stepNum === 1) loadRacks();
+    if (stepNum === 2) loadShelves();
+    if (stepNum === 3) { loadBoxes(); loadProducts(); }
+    if (stepNum === 4) { loadRMDropdowns(); loadRawMaterials(); loadRMStats(); }
+}
+
+
+
+
+async function _createEntity(endpoint, data, successMsg, clearInputs, onSuccess) {
+    if (!_validateEntity(data)) return;
+    try {
+        await api(endpoint, data);
+        toast(successMsg);
+        clearInputs();
+        if (onSuccess) onSuccess();
+    } catch (e) {
+        toast(e.message, 'error');
+    }
+}
+
+function _validateEntity(data) {
+    for (const [key, value] of Object.entries(data)) {
+        if (key.includes('code') || key.includes('name')) {
+            if (!value || !String(value).trim()) {
+                toast(`${key.replace(/_/g, ' ')} required`, 'error');
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+function _getInputValue(inputId) {
+    const el = document.getElementById(inputId);
+    return el ? el.value : '';
+}
+
+function _setInputValue(inputId, value) {
+    const el = document.getElementById(inputId);
+    if (el) el.value = value;
+}
+
+function _clearInputs(...inputIds) {
+    inputIds.forEach(id => _setInputValue(id, ''));
+}
+
+
+
+
 async function createRack() {
-  const code=document.getElementById('rack_code').value.trim(), type=document.getElementById('rack_type').value;
-  if(!code) return toast('Enter rack code','error');
-  try { await api('/create-rack',{rack_code:code,type}); toast(`Rack "${code}" created`); document.getElementById('rack_code').value=''; loadRacks(); }
-  catch(e) { toast(e.message,'error'); }
+    const data = {
+        rack_code: _getInputValue('rack_code').trim(),
+        type: _getInputValue('rack_type')
+    };
+    if (!data.rack_code) return toast('Enter rack code', 'error');
+    
+    await _createEntity(
+        '/create-rack',
+        data,
+        `Rack "${data.rack_code}" created`,
+        () => _clearInputs('rack_code'),
+        loadRacks
+    );
 }
+
 async function loadRacks() {
-  try {
-    const d = await api('/get-racks');
-    document.getElementById('rack_select').innerHTML = d.map(x=>`<option value="${x.id}">${x.rack_code} (${x.type})</option>`).join('');
-    document.getElementById('rack_badges').innerHTML = d.map(x=>`<span class="badge">${x.rack_code}</span>`).join('');
-  } catch {}
+    try {
+        const racks = await api('/get-racks');
+        document.getElementById('rack_select').innerHTML = racks
+            .map(r => `<option value="${r.id}">${r.rack_code} (${r.type})</option>`)
+            .join('');
+        document.getElementById('rack_badges').innerHTML = racks
+            .map(r => `<span class="badge">${r.rack_code}</span>`)
+            .join('');
+    } catch (e) {
+        console.error('Failed to load racks:', e);
+    }
 }
 
-// ── SHELF ──
+
+
+
 async function createShelves() {
-  const rack_id=document.getElementById('rack_select').value, levels=document.getElementById('levels').value;
-  if(!rack_id||!levels) return toast('Select rack and levels','error');
-  if(+levels>3) return toast('Max 3 shelves per rack','error');
-  try { await api('/create-shelves',{rack_id:+rack_id,levels:+levels}); toast(`${levels} shelf(ves) created`); document.getElementById('levels').value=''; loadShelves(); }
-  catch(e) { toast(e.message,'error'); }
+    const rackId = _getInputValue('rack_select');
+    const levels = _getInputValue('levels');
+
+    if (!rackId || !levels) return toast('Select rack and levels', 'error');
+    if (+levels > 3) return toast('Max 3 shelves per rack', 'error');
+
+    try {
+        await api('/create-shelves', { rack_id: +rackId, levels: +levels });
+        toast(`${levels} shelf(ves) created`);
+        _clearInputs('levels');
+        loadShelves();
+    } catch (e) {
+        toast(e.message, 'error');
+    }
 }
+
 async function loadShelves() {
-  try {
-    const d = await api('/get-shelves');
-    document.getElementById('shelf_select').innerHTML = d.map(x=>`<option value="${x.id}">${x.shelf_code}</option>`).join('');
-    document.getElementById('shelf_badges').innerHTML = d.map(x=>`<span class="badge">${x.shelf_code}</span>`).join('');
-  } catch {}
+    try {
+        const shelves = await api('/get-shelves');
+        document.getElementById('shelf_select').innerHTML = shelves
+            .map(s => `<option value="${s.id}">${s.shelf_code}</option>`)
+            .join('');
+        document.getElementById('shelf_badges').innerHTML = shelves
+            .map(s => `<span class="badge">${s.shelf_code}</span>`)
+            .join('');
+    } catch (e) {
+        console.error('Failed to load shelves:', e);
+    }
 }
 
-// ── BOXES ──
+
+
+
 async function createBoxes() {
-  const shelf_id=document.getElementById('shelf_select').value, count=document.getElementById('box_count').value;
-  if(!shelf_id||!count) return toast('Fill all fields','error');
-  if(+count>3) return toast('Max 3 boxes per shelf','error');
-  try { await api('/create-boxes',{shelf_id:+shelf_id,count:+count}); toast(`${count} box(es) created`); document.getElementById('box_count').value=''; loadBoxes(); }
-  catch(e) { toast(e.message,'error'); }
-}
-async function loadBoxes() {
-  try {
-    const d = await api('/get-boxes');
-    document.getElementById('product_box').innerHTML = d.map(x=>`<option value="${x.id}">${x.box_code}</option>`).join('');
-    document.getElementById('box_badges').innerHTML = d.map(x=>`<span class="badge">${x.box_code}</span>`).join('');
-    document.getElementById('rm_box_sel').innerHTML = `<option value="">— No box —</option>` + d.map(x=>`<option value="${x.id}">${x.box_code}</option>`).join('');
-  } catch {}
+    const shelfId = _getInputValue('shelf_select');
+    const count = _getInputValue('box_count');
+
+    if (!shelfId || !count) return toast('Fill all fields', 'error');
+    if (+count > 3) return toast('Max 3 boxes per shelf', 'error');
+
+    try {
+        await api('/create-boxes', { shelf_id: +shelfId, count: +count });
+        toast(`${count} box(es) created`);
+        _clearInputs('box_count');
+        loadBoxes();
+    } catch (e) {
+        toast(e.message, 'error');
+    }
 }
 
-// ── PRODUCTS ──
+async function loadBoxes() {
+    try {
+        const boxes = await api('/get-boxes');
+        const boxOptions = boxes.map(b => `<option value="${b.id}">${b.box_code}</option>`).join('');
+        const boxBadges = boxes.map(b => `<span class="badge">${b.box_code}</span>`).join('');
+
+        document.getElementById('product_box').innerHTML = boxOptions;
+        document.getElementById('box_badges').innerHTML = boxBadges;
+        document.getElementById('rm_box_sel').innerHTML = `<option value="">— No box —</option>${boxOptions}`;
+    } catch (e) {
+        console.error('Failed to load boxes:', e);
+    }
+}
+
+
+
+
 async function createProduct() {
-  const data = {
-    product_code:  document.getElementById('product_code').value.trim(),
-    product_name:  document.getElementById('product_name').value.trim(),
-    category:      document.getElementById('p_category').value.trim() || null,
-    stock_qty:    +(document.getElementById('stock').value || 0),
-    reorder_level:+(document.getElementById('reorder').value || 0),
-    size_category: document.getElementById('size_category').value || 'medium',
-    box_id:       document.getElementById('product_box').value ? +document.getElementById('product_box').value : null,
-  };
-  if(!data.product_code||!data.product_name) return toast('Code and Name required','error');
-  try {
-    await api('/create-product', data);
-    toast(`Product "${data.product_name}" added`);
-    ['product_code','product_name','p_category','stock','reorder'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-    loadProducts();
-  } catch(e) { toast(e.message,'error'); }
+    const data = {
+        product_code: _getInputValue('product_code').trim(),
+        product_name: _getInputValue('product_name').trim(),
+        category: _getInputValue('p_category').trim() || null,
+        stock_qty: +(_getInputValue('stock') || 0),
+        reorder_level: +(_getInputValue('reorder') || 0),
+        size_category: _getInputValue('size_category') || 'medium',
+        box_id: _getInputValue('product_box') ? +_getInputValue('product_box') : null,
+    };
+
+    if (!data.product_code || !data.product_name) return toast('Code and Name required', 'error');
+
+    try {
+        await api('/create-product', data);
+        toast(`Product "${data.product_name}" added`);
+        _clearInputs('product_code', 'product_name', 'p_category', 'stock', 'reorder');
+        loadProducts();
+    } catch (e) {
+        toast(e.message, 'error');
+    }
 }
 
 async function loadProducts() {
-  try {
-    const d = await api('/get-products');
-    const tbody = document.getElementById('product_table');
-    if(!d.length){tbody.innerHTML=`<tr><td colspan="8" class="empty-state">No products yet.</td></tr>`;return;}
-    tbody.innerHTML = d.map(p=>`
-      <tr>
-        <td class="td-mono">${p.product_code}</td><td>${p.product_name}</td>
-        <td>${p.category||'—'}</td>
-        <td class="td-num">${p.stock_qty}</td><td class="td-num">${p.reorder_level}</td>
-        <td><span class="pill pill-yellow">${p.size_category||'—'}</span></td>
-        <td class="td-loc">${p.box_code||'—'}</td>
-        <td><span class="pill ${p.stock_qty>p.reorder_level?'pill-green':'pill-yellow'}">${p.stock_qty>p.reorder_level?'OK':'Low'}</span></td>
-      </tr>`).join('');
-  } catch {}
+    try {
+        const products = await api('/get-products');
+        const tbody = document.getElementById('product_table');
+
+        if (!products.length) {
+            tbody.innerHTML = `<tr><td colspan="8" class="empty-state">No products yet.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = products.map(p => `
+            <tr>
+                <td class="td-mono">${p.product_code}</td>
+                <td>${p.product_name}</td>
+                <td>${p.category || '—'}</td>
+                <td class="td-num">${p.stock_qty}</td>
+                <td class="td-num">${p.reorder_level}</td>
+                <td><span class="pill pill-yellow">${p.size_category || '—'}</span></td>
+                <td class="td-loc">${p.box_code || '—'}</td>
+                <td><span class="pill ${p.stock_qty > p.reorder_level ? 'pill-green' : 'pill-yellow'}">${p.stock_qty > p.reorder_level ? 'OK' : 'Low'}</span></td>
+            </tr>
+        `).join('');
+    } catch (e) {
+        console.error('Failed to load products:', e);
+    }
 }
 
 function downloadProductTemplate() {
-  const ws = XLSX.utils.aoa_to_sheet([
-    ['product_code','product_name','category','stock_qty','reorder_level','size_category','rack_code','shelf_level','box_code'],
-    ['PRD-001','Sample Product','Electronics',60,200,'medium','RK-E01',1,'RK-E01-SH01-BX01']
-  ]);
-  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Products');
-  XLSX.writeFile(wb,'products_template.xlsx');
+    const ws = XLSX.utils.aoa_to_sheet([
+        ['product_code', 'product_name', 'category', 'stock_qty', 'reorder_level', 'size_category', 'rack_code', 'shelf_level', 'box_code'],
+        ['PRD-001', 'Sample Product', 'Electronics', 60, 200, 'medium', 'RK-E01', 1, 'RK-E01-SH01-BX01']
+    ]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Products');
+    XLSX.writeFile(wb, 'products_template.xlsx');
 }
 
-function handleProductDrop(e){e.preventDefault();document.getElementById('p-import-zone').classList.remove('drag');const f=e.dataTransfer.files[0];if(f)parseProductFile(f,'p_preview');}
-function handleProductFile(e){const f=e.target.files[0];if(f)parseProductFile(f,'p_preview');}
-function handleQIProductDrop(e){e.preventDefault();document.getElementById('qi-p-zone').classList.remove('drag');const f=e.dataTransfer.files[0];if(f)parseProductFile(f,'qi_p_preview');}
-function handleQIProductFile(e){const f=e.target.files[0];if(f)parseProductFile(f,'qi_p_preview');}
+
+
+
+function _attachFileHandlers(dropZoneId, fileInputId, parseCallback) {
+    const dropZone = document.getElementById(dropZoneId);
+    const fileInput = document.getElementById(fileInputId);
+
+    dropZone.addEventListener('dragover', e => {
+        e.preventDefault();
+        dropZone.classList.add('drag');
+    });
+
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
+
+    dropZone.addEventListener('drop', e => {
+        e.preventDefault();
+        dropZone.classList.remove('drag');
+        const file = e.dataTransfer.files[0];
+        if (file) parseCallback(file);
+    });
+
+    fileInput.addEventListener('change', e => {
+        const file = e.target.files[0];
+        if (file) parseCallback(file);
+    });
+}
+
+function _parseExcelFile(file, callback) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+        if (!rows.length) return toast('File is empty', 'error');
+        callback(rows);
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+
+
+
+function handleProductDrop(e) {
+    e.preventDefault();
+    document.getElementById('p-import-zone').classList.remove('drag');
+    const file = e.dataTransfer.files[0];
+    if (file) parseProductFile(file, 'p_preview');
+}
+
+function handleProductFile(e) {
+    const file = e.target.files[0];
+    if (file) parseProductFile(file, 'p_preview');
+}
+
+function handleQIProductDrop(e) {
+    e.preventDefault();
+    document.getElementById('qi-p-zone').classList.remove('drag');
+    const file = e.dataTransfer.files[0];
+    if (file) parseProductFile(file, 'qi_p_preview');
+}
+
+function handleQIProductFile(e) {
+    const file = e.target.files[0];
+    if (file) parseProductFile(file, 'qi_p_preview');
+}
 
 function parseProductFile(file, previewId) {
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const wb = XLSX.read(new Uint8Array(e.target.result),{type:'array'});
-    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-    if(!rows.length) return toast('File is empty','error');
-    window._pRows = rows;
-    window._pPreviewId = previewId;
-    renderPreview(previewId, rows, `importProducts()`);
-  };
-  reader.readAsArrayBuffer(file);
+    _parseExcelFile(file, (rows) => {
+        window._pRows = rows;
+        window._pPreviewId = previewId;
+        _renderImportPreview(previewId, rows, 'importProducts()');
+    });
 }
 
 async function importProducts() {
-  const rows = window._pRows; if (!rows) return;
-  const products = rows.map(r => ({
-    product_code:  (r.product_code  || r.code || '').toString().trim(),
-    product_name:  (r.product_name  || r.name || '').toString().trim(),
-    category:      (r.category      || '').toString().trim() || null,
-    stock_qty:    +(r.stock_qty || r.stock || 0),
-    reorder_level:+(r.reorder_level || r.reorder || 0),
-    size_category: (r.size_category || r.size || 'medium').toString().trim(),
-    rack_code:    (r.rack_code  || r.rack   || '').toString().trim(),
-    shelf_level: +(r.shelf_level|| r.shelf  || r.level || 0),
-    box_code:     (r.box_code   || r.box    || r.box_id || '').toString().trim(),
-  }));
-  try {
-    const res = await api('/import-products-with-location', { products });
-    toast(`Imported ${res.inserted} product(s)${res.skipped ? ', ' + res.skipped + ' skipped' : ''}${res.unresolved ? ', ⚠️ ' + res.unresolved + ' unresolved' : ''}`);
-    document.getElementById(window._pPreviewId).innerHTML = '';
-    window._pRows = null;
-    if (_currentPanel === 'panel-3') loadProducts();
-  } catch (e) { toast(e.message, 'error'); }
+    const rows = window._pRows;
+    if (!rows) return;
+
+    const products = rows.map(r => ({
+        product_code: (r.product_code || r.code || '').toString().trim(),
+        product_name: (r.product_name || r.name || '').toString().trim(),
+        category: (r.category || '').toString().trim() || null,
+        stock_qty: +(r.stock_qty || r.stock || 0),
+        reorder_level: +(r.reorder_level || r.reorder || 0),
+        size_category: (r.size_category || r.size || 'medium').toString().trim(),
+        rack_code: (r.rack_code || r.rack || '').toString().trim(),
+        shelf_level: +(r.shelf_level || r.shelf || r.level || 0),
+        box_code: (r.box_code || r.box || r.box_id || '').toString().trim(),
+    }));
+
+    try {
+        const result = await api('/import-products-with-location', { products });
+        const msg = `Imported ${result.inserted} product(s)${result.skipped ? ', ' + result.skipped + ' skipped' : ''}`;
+        toast(msg);
+        document.getElementById(window._pPreviewId).innerHTML = '';
+        window._pRows = null;
+        if (_currentPanel === 'panel-3') loadProducts();
+    } catch (e) {
+        toast(e.message, 'error');
+    }
 }
 
-// ── RAW MATERIALS ──
+
+
+
 async function loadRMDropdowns() {
-  try {
-    const [boxes, products] = await Promise.all([api('/get-boxes'), api('/get-products')]);
-    document.getElementById('rm_box_sel').innerHTML = `<option value="">— No box —</option>` + boxes.map(x=>`<option value="${x.id}">${x.box_code}</option>`).join('');
-    // FIXED: Store product_code (string) not id (number) — database FK references product_code
-    document.getElementById('rm_product_sel').innerHTML = `<option value="">— Not linked —</option>` + products.map(p=>`<option value="${p.product_code}">${p.product_code} — ${p.product_name}</option>`).join('');
-  } catch {}
+    try {
+        const [boxes, products] = await Promise.all([api('/get-boxes'), api('/get-products')]);
+
+        document.getElementById('rm_box_sel').innerHTML = `<option value="">— No box —</option>` +
+            boxes.map(b => `<option value="${b.id}">${b.box_code}</option>`).join('');
+
+        document.getElementById('rm_product_sel').innerHTML = `<option value="">— Not linked —</option>` +
+            products.map(p => `<option value="${p.product_code}">${p.product_code} — ${p.product_name}</option>`).join('');
+    } catch (e) {
+        console.error('Failed to load RM dropdowns:', e);
+    }
 }
 
 async function loadRMStats() {
-  try {
-    const s = await api('/get-raw-materials-summary');
-    document.getElementById('rm_stats').style.display='';
-    document.getElementById('rm_stat_total').textContent     = s.total||'0';
-    document.getElementById('rm_stat_low').textContent       = s.low_stock_count||'0';
-    document.getElementById('rm_stat_cats').textContent      = s.categories||'0';
-    document.getElementById('rm_stat_linked').textContent    = s.linked_to_product||'0';
-  } catch {}
+    try {
+        const stats = await api('/get-raw-materials-summary');
+        document.getElementById('rm_stats').style.display = '';
+        document.getElementById('rm_stat_total').textContent = stats.total || '0';
+        document.getElementById('rm_stat_low').textContent = stats.low_stock_count || '0';
+        document.getElementById('rm_stat_cats').textContent = stats.categories || '0';
+        document.getElementById('rm_stat_linked').textContent = stats.linked_to_product || '0';
+    } catch (e) {
+        console.error('Failed to load RM stats:', e);
+    }
 }
 
 async function createRawMaterial() {
-  // Extract values first for clarity and to avoid multiple DOM queries
-  const productCode = document.getElementById('rm_product_sel').value;
-  alert(productCode)
-  const boxId = document.getElementById('rm_box_sel').value;
+    const data = {
+        material_code: _getInputValue('rm_code').trim(),
+        material_name: _getInputValue('rm_name').trim(),
+        category: _getInputValue('rm_category').trim() || null,
+        stock_qty: parseInt(_getInputValue('rm_stock') || 0),
+        qty_per_unit: parseFloat(_getInputValue('rm_qty_req') || 0),
+        reorder_level: parseInt(_getInputValue('rm_reorder') || 0),
+        size_category: _getInputValue('rm_size') || 'medium',
+        product_id: _getInputValue('rm_product_sel') || null,
+        box_id: _getInputValue('rm_box_sel') ? parseInt(_getInputValue('rm_box_sel')) : null,
+    };
 
-  const data = {
-    material_code:  document.getElementById('rm_code').value.trim(),
-    material_name:  document.getElementById('rm_name').value.trim(),
-    category:       document.getElementById('rm_category').value.trim() || null,
-    stock_qty:     parseInt(document.getElementById('rm_stock').value || 0),
-    qty_per_unit:  parseFloat(document.getElementById('rm_qty_req').value || 0),
-    reorder_level: parseInt(document.getElementById('rm_reorder').value || 0),
-    size_category:  document.getElementById('rm_size').value || 'medium',
+    if (!data.material_code || !data.material_name) return toast('Code and Name required', 'error');
 
-    product_id: productCode || null,
-    // box_id is still numeric
-    box_id:     boxId ? parseInt(boxId) : null,
-  };
-  if(!data.material_code||!data.material_name) return toast('Code and Name required','error');
-  try {
-    await api('/create-raw-material', data);
-    toast(`Material "${data.material_name}" added`);
-    ['rm_code','rm_name','rm_category','rm_stock','rm_qty_req','rm_reorder'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-    loadRawMaterials(); loadRMStats();
-  } catch(e) { toast(e.message,'error'); }
+    try {
+        await api('/create-raw-material', data);
+        toast(`Material "${data.material_name}" added`);
+        _clearInputs('rm_code', 'rm_name', 'rm_category', 'rm_stock', 'rm_qty_req', 'rm_reorder');
+        loadRawMaterials();
+        loadRMStats();
+    } catch (e) {
+        toast(e.message, 'error');
+    }
 }
 
 async function loadRawMaterials() {
-  try {
-    const d = await api('/get-raw-materials');
-    const tbody = document.getElementById('rm_table');
-    if(!d.length){tbody.innerHTML=`<tr><td colspan="9" class="empty-state">No raw materials yet.</td></tr>`;return;}
-    tbody.innerHTML = d.map(m=>`
-      <tr>
-        <td class="td-teal">${m.material_code}</td>
-        <td>${m.material_name}</td>
-        <td class="td-num">${m.stock_qty}</td>
-        <td class="td-num">${m.reorder_level}</td>
-        <td>${m.product_name ? `<span class="pill pill-yellow">${m.product_name}</span>` : '<span style="color:var(--muted)">—</span>'}</td>
-        <td class="td-loc">${m.box_code||'—'}</td>
-        <td><span class="pill pill-teal">${m.size_category||'—'}</span></td>
-        <td><span class="pill ${m.stock_qty>m.reorder_level?'pill-green':'pill-yellow'}">${m.stock_qty>m.reorder_level?'OK':'Low'}</span></td>
-      </tr>`).join('');
-  } catch {}
+    try {
+        const materials = await api('/get-raw-materials');
+        const tbody = document.getElementById('rm_table');
+
+        if (!materials.length) {
+            tbody.innerHTML = `<tr><td colspan="9" class="empty-state">No raw materials yet.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = materials.map(m => `
+            <tr>
+                <td class="td-teal">${m.material_code}</td>
+                <td>${m.material_name}</td>
+                <td class="td-num">${m.stock_qty}</td>
+                <td class="td-num">${m.reorder_level}</td>
+                <td>${m.product_name ? `<span class="pill pill-yellow">${m.product_name}</span>` : '<span style="color:var(--muted)">—</span>'}</td>
+                <td class="td-loc">${m.box_code || '—'}</td>
+                <td><span class="pill pill-teal">${m.size_category || '—'}</span></td>
+                <td><span class="pill ${m.stock_qty > m.reorder_level ? 'pill-green' : 'pill-yellow'}">${m.stock_qty > m.reorder_level ? 'OK' : 'Low'}</span></td>
+            </tr>
+        `).join('');
+    } catch (e) {
+        console.error('Failed to load raw materials:', e);
+    }
 }
 
 function downloadRMTemplate() {
-  const ws = XLSX.utils.aoa_to_sheet([
-    ['material_code','material_name','category','quantity_required','stock_qty','reorder_level','size_category','product_id','rack','shelf','box_id'],
-    // FIXED: product_id should be product_code (like 'PRD-001'), not numeric or supplier name
-    ['RM-001','Copper Wire 1.5mm','Electrical',1.2,5000,750,'medium','PRD-001',1,'RK-M01',1]
-  ]);
-  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'RawMaterials');
-  XLSX.writeFile(wb,'raw_materials_template.xlsx');
+    const ws = XLSX.utils.aoa_to_sheet([
+        ['material_code', 'material_name', 'category', 'quantity_required', 'stock_qty', 'reorder_level', 'size_category', 'product_id', 'rack', 'shelf', 'box_id'],
+        ['RM-001', 'Copper Wire 1.5mm', 'Electrical', 1.2, 5000, 750, 'medium', 'PRD-001', 1, 'RK-M01', 1]
+    ]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'RawMaterials');
+    XLSX.writeFile(wb, 'raw_materials_template.xlsx');
 }
 
-function handleRMDrop(e){e.preventDefault();document.getElementById('rm-import-zone').classList.remove('drag');const f=e.dataTransfer.files[0];if(f)parseRMFile(f,'rm_preview');}
-function handleRMFile(e){const f=e.target.files[0];if(f)parseRMFile(f,'rm_preview');}
-function handleQIRMDrop(e){e.preventDefault();document.getElementById('qi-rm-zone').classList.remove('drag');const f=e.dataTransfer.files[0];if(f)parseRMFile(f,'qi_rm_preview');}
-function handleQIRMFile(e){const f=e.target.files[0];if(f)parseRMFile(f,'qi_rm_preview');}
+
+
+
+function handleRMDrop(e) {
+    e.preventDefault();
+    document.getElementById('rm-import-zone').classList.remove('drag');
+    if (e.dataTransfer.files[0]) parseRMFile(e.dataTransfer.files[0], 'rm_preview');
+}
+
+function handleRMFile(e) {
+    if (e.target.files[0]) parseRMFile(e.target.files[0], 'rm_preview');
+}
+
+function handleQIRMDrop(e) {
+    e.preventDefault();
+    document.getElementById('qi-rm-zone').classList.remove('drag');
+    if (e.dataTransfer.files[0]) parseRMFile(e.dataTransfer.files[0], 'qi_rm_preview');
+}
+
+function handleQIRMFile(e) {
+    if (e.target.files[0]) parseRMFile(e.target.files[0], 'qi_rm_preview');
+}
 
 function parseRMFile(file, previewId) {
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const wb = XLSX.read(new Uint8Array(e.target.result),{type:'array'});
-    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-    if(!rows.length) return toast('File is empty','error');
-    window._rmRows = rows;
-    window._rmPreviewId = previewId;
-    renderPreview(previewId, rows, `importRawMaterials()`);
-  };
-  reader.readAsArrayBuffer(file);
+    _parseExcelFile(file, (rows) => {
+        window._rmRows = rows;
+        window._rmPreviewId = previewId;
+        _renderImportPreview(previewId, rows, 'importRawMaterials()');
+    });
 }
 
 async function importRawMaterials() {
-  const rows = window._rmRows; if (!rows) return;
-  const materials = rows.map(r => ({
-    material_code:     (r.material_code || '').toString().trim(),
-    material_name:     (r.material_name || '').toString().trim(),
-    category:          (r.category || '').toString().trim() || null,
-    qty_per_unit:     +(r.quantity_required || 0),
-    stock_qty:        +(r.stock_qty || 0),
-    reorder_level:    +(r.reorder_level || 0),
-    size_category:     (r.size_category || 'medium').toString().trim(),
-    // FIXED: product_id should be product_code (string like "PRD-001"), not numeric
-    product_id:        (r.product_id || '').toString().trim() || null,
-    rack_code:         (r.rack || '').toString().trim(),
-    shelf_level:      +(r.shelf || 0),
-    box_code:          (r.box_id || '').toString().trim(),
-  }));
-  try {
-    const res = await api('/import-raw-materials-with-location', { materials });
-    toast(`Imported ${res.inserted} material(s)${res.skipped ? ', ' + res.skipped + ' skipped' : ''}${res.unresolved ? ', ' + res.unresolved + ' location unresolved' : ''}`);
-    document.getElementById(window._rmPreviewId).innerHTML = '';
-    window._rmRows = null;
-    if (_currentPanel === 'panel-4') { loadRawMaterials(); loadRMStats(); }
-  } catch (e) { toast(e.message, 'error'); }
+    const rows = window._rmRows;
+    if (!rows) return;
+
+    const materials = rows.map(r => ({
+        material_code: (r.material_code || '').toString().trim(),
+        material_name: (r.material_name || '').toString().trim(),
+        category: (r.category || '').toString().trim() || null,
+        qty_per_unit: +(r.quantity_required || 0),
+        stock_qty: +(r.stock_qty || 0),
+        reorder_level: +(r.reorder_level || 0),
+        size_category: (r.size_category || 'medium').toString().trim(),
+        product_id: (r.product_id || '').toString().trim() || null,
+        rack_code: (r.rack || '').toString().trim(),
+        shelf_level: +(r.shelf || 0),
+        box_code: (r.box_id || '').toString().trim(),
+    }));
+
+    try {
+        const result = await api('/import-raw-materials-with-location', { materials });
+        const msg = `Imported ${result.inserted} material(s)${result.skipped ? ', ' + result.skipped + ' skipped' : ''}`;
+        toast(msg);
+        document.getElementById(window._rmPreviewId).innerHTML = '';
+        window._rmRows = null;
+        if (_currentPanel === 'panel-4') {
+            loadRawMaterials();
+            loadRMStats();
+        }
+    } catch (e) {
+        toast(e.message, 'error');
+    }
 }
 
-// ── SHARED PREVIEW RENDERER ──
-function renderPreview(previewId, rows, importCall) {
-  document.getElementById(previewId).innerHTML = `
-    <div class="preview-block">
-      <div class="preview-header">
-        <span>Preview — ${rows.length} row(s)</span>
-        <button class="btn btn-success btn-sm" onclick="${importCall}">⬆ Import All</button>
-      </div>
-      <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:11px;">
-        <thead><tr style="background:var(--surface);color:var(--muted);">
-          ${Object.keys(rows[0]).map(k=>`<th style="padding:7px;text-align:left;font-family:var(--mono);font-size:9px;">${k}</th>`).join('')}
-        </tr></thead>
-        <tbody>${rows.slice(0,5).map(r=>`<tr>${Object.values(r).map(v=>`<td style="padding:7px;border-top:1px solid var(--border);">${v}</td>`).join('')}</tr>`).join('')}</tbody>
-      </table>
-      ${rows.length>5?`<div style="color:var(--muted);font-size:11px;padding:7px;">…and ${rows.length-5} more rows</div>`:''}</div>
-    </div>`;
+
+
+
+let _salesValidRows = [];
+let _qiSalesValidRows = [];
+
+function handleSalesDrop(e) {
+    e.preventDefault();
+    document.getElementById('sales-zone').classList.remove('drag');
+    if (e.dataTransfer.files[0]) parseSalesFile(e.dataTransfer.files[0], 'sales');
 }
 
-// ── SALES DATA (Step-by-Step, panel-5) ──
-let _salesRawRows=[], _salesValidRows=[];
+function handleSalesFile(e) {
+    if (e.target.files[0]) parseSalesFile(e.target.files[0], 'sales');
+}
 
-function handleSalesDrop(e){e.preventDefault();document.getElementById('sales-zone').classList.remove('drag');const f=e.dataTransfer.files[0];if(f)parseSalesFile(f,'sales');}
-function handleSalesFile(e){const f=e.target.files[0];if(f)parseSalesFile(f,'sales');}
+function handleQISalesDrop(e) {
+    e.preventDefault();
+    document.getElementById('qi-sales-zone').classList.remove('drag');
+    if (e.dataTransfer.files[0]) parseSalesFile(e.dataTransfer.files[0], 'qi_sales');
+}
 
-// ── SALES DATA (Quick Import) ──
-let _qiSalesRawRows=[], _qiSalesValidRows=[];
+function handleQISalesFile(e) {
+    if (e.target.files[0]) parseSalesFile(e.target.files[0], 'qi_sales');
+}
 
-function handleQISalesDrop(e){e.preventDefault();document.getElementById('qi-sales-zone').classList.remove('drag');const f=e.dataTransfer.files[0];if(f)parseSalesFile(f,'qi_sales');}
-function handleQISalesFile(e){const f=e.target.files[0];if(f)parseSalesFile(f,'qi_sales');}
-
-// ── UNIFIED SALES PARSER (context = 'sales' | 'qi_sales') ──
 function parseSalesFile(file, context) {
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const wb = XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true});
-    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{raw:false});
-    if(!rows.length) return toast('File is empty','error');
+    _parseExcelFile(file, (rows) => {
+        if (context === 'sales') window._salesRawRows = rows;
+        else window._qiSalesRawRows = rows;
 
-    if(context === 'sales') _salesRawRows = rows;
-    else _qiSalesRawRows = rows;
+        const columns = Object.keys(rows[0]);
+        const defaults = ['date', 'item', 'sales'];
+        const prefix = context === 'qi_sales' ? 'qi_' : '';
 
-    const cols = Object.keys(rows[0]), defaults = ['date','item','sales'];
-    const prefix = context === 'qi_sales' ? 'qi_' : '';
-    ['map_date','map_item','map_sales'].forEach((id,i) => {
-      const sel = document.getElementById(prefix + id);
-      sel.innerHTML = cols.map(c=>`<option value="${c}" ${c.toLowerCase()===defaults[i]?'selected':''}>${c}</option>`).join('');
+        ['map_date', 'map_item', 'map_sales'].forEach((id, i) => {
+            const select = document.getElementById(prefix + id);
+            select.innerHTML = columns.map(c =>
+                `<option value="${c}" ${c.toLowerCase() === defaults[i] ? 'selected' : ''}>${c}</option>`
+            ).join('');
+        });
+
+        document.getElementById(prefix + 'sales_mapper').style.display = 'block';
+        toast(`Parsed ${rows.length.toLocaleString()} rows — confirm mapping`);
     });
-    document.getElementById(context === 'qi_sales' ? 'qi_sales_mapper' : 'sales_mapper').style.display = 'block';
-    toast(`Parsed ${rows.length.toLocaleString()} rows — confirm mapping`);
-  };
-  reader.readAsArrayBuffer(file);
 }
 
 function confirmSalesMapping() {
-  if(!_salesRawRows.length) return toast('Upload a file first','error');
-  const dC=document.getElementById('map_date').value, iC=document.getElementById('map_item').value, vC=document.getElementById('map_sales').value;
-  processSalesRows(_salesRawRows.map(r=>({date:r[dC],item:r[iC],sales:r[vC]})), 'sales');
+    if (!window._salesRawRows?.length) return toast('Upload a file first', 'error');
+    const dateCol = _getInputValue('map_date');
+    const itemCol = _getInputValue('map_item');
+    const salesCol = _getInputValue('map_sales');
+    const mapped = window._salesRawRows.map(r => ({ date: r[dateCol], item: r[itemCol], sales: r[salesCol] }));
+    processSalesRows(mapped, 'sales');
 }
 
 function confirmQISalesMapping() {
-  if(!_qiSalesRawRows.length) return toast('Upload a file first','error');
-  const dC=document.getElementById('qi_map_date').value, iC=document.getElementById('qi_map_item').value, vC=document.getElementById('qi_map_sales').value;
-  processSalesRows(_qiSalesRawRows.map(r=>({date:r[dC],item:r[iC],sales:r[vC]})), 'qi_sales');
+    if (!window._qiSalesRawRows?.length) return toast('Upload a file first', 'error');
+    const dateCol = _getInputValue('qi_map_date');
+    const itemCol = _getInputValue('qi_map_item');
+    const salesCol = _getInputValue('qi_map_sales');
+    const mapped = window._qiSalesRawRows.map(r => ({ date: r[dateCol], item: r[itemCol], sales: r[salesCol] }));
+    processSalesRows(mapped, 'qi_sales');
 }
 
-function validateSalesRow(raw, idx) {
-  const errors=[], date=raw.date, item=raw.item!=null?String(raw.item):null, sales=parseFloat(raw.sales);
-  if(!date) errors.push('Invalid date');
-  if(!item) errors.push('Missing item');
-  if(isNaN(sales)||sales<0) errors.push('Invalid sales');
-  return{rowNum:idx+2,date,item,sales:isNaN(sales)?null:sales,errors,valid:!errors.length};
+function _validateSalesRow(raw, rowNum) {
+    const errors = [];
+    const date = raw.date;
+    const item = raw.item != null ? String(raw.item) : null;
+    const sales = parseFloat(raw.sales);
+
+    if (!date) errors.push('Invalid date');
+    if (!item) errors.push('Missing item');
+    if (isNaN(sales) || sales < 0) errors.push('Invalid sales');
+
+    return {
+        rowNum: rowNum + 2,
+        date,
+        item,
+        sales: isNaN(sales) ? null : sales,
+        errors,
+        valid: !errors.length
+    };
 }
 
 function processSalesRows(rawRows, context) {
-  const isQI = context === 'qi_sales';
-  const prefix = isQI ? 'qi_' : '';
+    const isQI = context === 'qi_sales';
+    const prefix = isQI ? 'qi_' : '';
 
-  const validated = rawRows.map((r,i) => validateSalesRow(r,i));
-  const validRows = validated.filter(r => r.valid);
-  const invalid   = validated.filter(r => !r.valid);
-  const dates     = validRows.map(r=>r.date).sort();
-  const items     = new Set(validRows.map(r=>r.item));
+    const validated = rawRows.map((r, i) => _validateSalesRow(r, i));
+    const validRows = validated.filter(r => r.valid);
+    const invalidRows = validated.filter(r => !r.valid);
+    const dates = validRows.map(r => r.date).sort();
+    const items = new Set(validRows.map(r => r.item));
 
-  if(isQI) _qiSalesValidRows = validRows; else _salesValidRows = validRows;
+    if (isQI) _qiSalesValidRows = validRows;
+    else _salesValidRows = validRows;
 
-  // Update stats
-  const statsEl = document.getElementById(prefix + 'sales_stats');
-  statsEl.style.display = '';
-  document.getElementById(prefix + 'stat_total').textContent   = validated.length.toLocaleString();
-  document.getElementById(prefix + 'stat_valid').textContent   = validRows.length.toLocaleString();
-  document.getElementById(prefix + 'stat_invalid').textContent = invalid.length.toLocaleString();
-  document.getElementById(prefix + 'stat_items').textContent   = items.size;
-  document.getElementById(prefix + 'stat_range').textContent   = dates.length ? `${dates[0].slice(0,7)} → ${dates[dates.length-1].slice(0,7)}` : '—';
+    // Update stats display
+    const statsEl = document.getElementById(prefix + 'sales_stats');
+    statsEl.style.display = '';
+    document.getElementById(prefix + 'stat_total').textContent = validated.length.toLocaleString();
+    document.getElementById(prefix + 'stat_valid').textContent = validRows.length.toLocaleString();
+    document.getElementById(prefix + 'stat_invalid').textContent = invalidRows.length.toLocaleString();
+    document.getElementById(prefix + 'stat_items').textContent = items.size;
+    document.getElementById(prefix + 'stat_range').textContent = dates.length
+        ? `${dates[0].slice(0, 7)} → ${dates[dates.length - 1].slice(0, 7)}`
+        : '—';
 
-  if(dates.length >= 2) {
-    const days = (new Date(dates[dates.length-1]) - new Date(dates[0])) / 86400000;
-    if(days < 365) toast('Warning: <1 year of data','error');
-    else if(days < 730) toast('Note: <2 years of data');
-    else toast(`${(days/365).toFixed(1)} years of sales data loaded`);
-  }
+    // Data coverage warning
+    if (dates.length >= 2) {
+        const days = (new Date(dates[dates.length - 1]) - new Date(dates[0])) / 86400000;
+        if (days < 365) toast('Warning: <1 year of data', 'error');
+        else if (days < 730) toast('Note: <2 years of data');
+        else toast(`${(days / 365).toFixed(1)} years of sales data loaded`);
+    }
 
-  const importFn = isQI ? 'importQISalesData()' : 'importSalesData()';
-  document.getElementById(prefix + 'sales_preview').innerHTML = `
-    <div class="preview-block">
-      <div class="preview-header">
-        <span>${validRows.length.toLocaleString()} valid rows</span>
-        <button class="btn btn-success btn-sm" onclick="${importFn}" ${validRows.length===0?'disabled':''}>⬆ Import ${validRows.length.toLocaleString()} Rows</button>
-      </div>
-      <div style="font-size:12px;color:var(--muted);">Date range: ${dates[0]||'—'} → ${dates[dates.length-1]||'—'} · ${items.size} items${invalid.length ? ` · <span style="color:var(--danger)">${invalid.length} invalid rows</span>` : ''}</div>
-    </div>`;
+    const importFn = isQI ? 'importQISalesData()' : 'importSalesData()';
+    document.getElementById(prefix + 'sales_preview').innerHTML = `
+        <div class="preview-block">
+            <div class="preview-header">
+                <span>${validRows.length.toLocaleString()} valid rows</span>
+                <button class="btn btn-success btn-sm" onclick="${importFn}" ${validRows.length === 0 ? 'disabled' : ''}>⬆ Import ${validRows.length.toLocaleString()} Rows</button>
+            </div>
+            <div style="font-size:12px;color:var(--muted);">
+                Date range: ${dates[0] || '—'} → ${dates[dates.length - 1] || '—'} · ${items.size} items${invalidRows.length ? ` · <span style="color:var(--danger)">${invalidRows.length} invalid rows</span>` : ''}
+            </div>
+        </div>`;
 }
 
-async function runSalesImport(validRows, prefix) {
-  if(!validRows.length) return toast('No valid rows','error');
-  const CHUNK=1000, total=validRows.length, chunks=Math.ceil(total/CHUNK);
-  document.getElementById(prefix+'sales_progress').style.display = 'block';
-  document.getElementById(prefix+'sales_preview').innerHTML = '';
-  let inserted=0, skipped=0;
-  for(let i=0; i<chunks; i++) {
-    const slice = validRows.slice(i*CHUNK,(i+1)*CHUNK).map(r=>({sale_date:r.date,item_id:r.item,sales:r.sales}));
-    const pct = Math.round(((i+1)/chunks)*100);
-    document.getElementById(prefix+'progress_fill').style.width = pct+'%';
-    document.getElementById(prefix+'progress_pct').textContent = pct+'%';
-    document.getElementById(prefix+'progress_label').textContent = `Batch ${i+1}/${chunks}…`;
-    try { const res=await api('/import-sales',{records:slice}); inserted+=res.inserted||0; skipped+=res.skipped||0; }
-    catch(e) { toast(`Batch ${i+1} failed: ${e.message}`,'error'); }
-    await new Promise(r=>setTimeout(r,30));
-  }
-  document.getElementById(prefix+'progress_label').textContent = 'Done!';
-  document.getElementById(prefix+'import_result').style.display = 'flex';
-  document.getElementById(prefix+'import_result_msg').textContent = `${inserted.toLocaleString()} inserted · ${skipped.toLocaleString()} skipped`;
-  toast(`Imported ${inserted.toLocaleString()} sales records`);
+async function _runSalesImport(validRows, prefix) {
+    if (!validRows.length) return toast('No valid rows', 'error');
+
+    const CHUNK_SIZE = 1000;
+    const totalChunks = Math.ceil(validRows.length / CHUNK_SIZE);
+    const progressEl = document.getElementById(prefix + 'sales_progress');
+    progressEl.style.display = 'block';
+    document.getElementById(prefix + 'sales_preview').innerHTML = '';
+
+    let inserted = 0;
+    let skipped = 0;
+
+    for (let i = 0; i < totalChunks; i++) {
+        const chunk = validRows.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE).map(r => ({
+            sale_date: r.date,
+            item_id: r.item,
+            sales: r.sales
+        }));
+
+        const percentComplete = Math.round(((i + 1) / totalChunks) * 100);
+        document.getElementById(prefix + 'progress_fill').style.width = percentComplete + '%';
+        document.getElementById(prefix + 'progress_pct').textContent = percentComplete + '%';
+        document.getElementById(prefix + 'progress_label').textContent = `Batch ${i + 1}/${totalChunks}…`;
+
+        try {
+            const result = await api('/import-sales', { records: chunk });
+            inserted += result.inserted || 0;
+            skipped += result.skipped || 0;
+        } catch (e) {
+            toast(`Batch ${i + 1} failed: ${e.message}`, 'error');
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 30));
+    }
+
+    document.getElementById(prefix + 'progress_label').textContent = 'Done!';
+    document.getElementById(prefix + 'import_result').style.display = 'flex';
+    document.getElementById(prefix + 'import_result_msg').textContent = `${inserted.toLocaleString()} inserted · ${skipped.toLocaleString()} skipped`;
+    toast(`Imported ${inserted.toLocaleString()} sales records`);
 }
 
-function importSalesData()   { runSalesImport(_salesValidRows,   ''); _salesValidRows=[]; }
-function importQISalesData() { runSalesImport(_qiSalesValidRows, 'qi_'); _qiSalesValidRows=[]; }
+function importSalesData() {
+    _runSalesImport(_salesValidRows, '');
+    _salesValidRows = [];
+}
 
-// Init
-loadRacks();
+function importQISalesData() {
+    _runSalesImport(_qiSalesValidRows, 'qi_');
+    _qiSalesValidRows = [];
+}
+
+
+
+
+function _renderImportPreview(previewId, rows, importCallback) {
+    const columns = Object.keys(rows[0]);
+    const previewRows = rows.slice(0, 5);
+    const hiddenCount = rows.length > 5 ? rows.length - 5 : 0;
+
+    document.getElementById(previewId).innerHTML = `
+        <div class="preview-block">
+            <div class="preview-header">
+                <span>Preview — ${rows.length} row(s)</span>
+                <button class="btn btn-success btn-sm" onclick="${importCallback}">⬆ Import All</button>
+            </div>
+            <div style="overflow-x:auto;">
+                <table style="width:100%;border-collapse:collapse;font-size:11px;">
+                    <thead>
+                        <tr style="background:var(--surface);color:var(--muted);">
+                            ${columns.map(col => `<th style="padding:7px;text-align:left;font-family:var(--mono);font-size:9px;">${col}</th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${previewRows.map(row => `
+                            <tr>
+                                ${columns.map(col => `<td style="padding:7px;border-top:1px solid var(--border);">${row[col]}</td>`).join('')}
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                ${hiddenCount > 0 ? `<div style="color:var(--muted);font-size:11px;padding:7px;">…and ${hiddenCount} more rows</div>` : ''}
+            </div>
+        </div>`;
+}
+
+
+
+
+function initializeApp() {
+    loadRacks();
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeApp);
+} else {
+    initializeApp();
+}
 </script>
 </body>
 </html>
