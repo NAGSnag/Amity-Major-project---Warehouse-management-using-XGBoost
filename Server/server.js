@@ -248,14 +248,12 @@ app.post("/create-single-raw-material", async (req, res) => {
             box_id = null,
         } = req.body;
  
-        // Validate required fields
         if (!material_code || !material_name) {
             return res.status(400).json({ 
                 error: "material_code and material_name are required" 
             });
         }
  
-        // Check if material code already exists
         const existing = await db(
             `SELECT id FROM raw_materials WHERE material_code = ?`,
             [material_code]
@@ -267,7 +265,6 @@ app.post("/create-single-raw-material", async (req, res) => {
             });
         }
  
-        // Insert raw material
         const result = await db(
             `INSERT INTO raw_materials 
             (material_code, material_name, category,stock_qty, reorder_level, size_category,  box_id, updated_at)
@@ -312,14 +309,12 @@ app.post("/create-single-product", async (req, res) => {
             box_id = null,
         } = req.body;
  
-        // Validate required fields
         if (!product_code || !product_name) {
             return res.status(400).json({ 
                 error: "product_code and product_name are required" 
             });
         }
  
-        // Check if product code already exists
         const existing = await db(
             `SELECT id FROM products WHERE product_code = ?`,
             [product_code]
@@ -331,7 +326,6 @@ app.post("/create-single-product", async (req, res) => {
             });
         }
  
-        // Insert product
         const result = await db(
             `INSERT INTO products 
             (product_code, product_name, category,

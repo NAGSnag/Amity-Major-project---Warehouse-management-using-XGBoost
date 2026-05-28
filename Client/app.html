@@ -1122,7 +1122,7 @@ function populateSearchItems() {
         card.className = 'shelf-card';
 
         const header = document.createElement('div');
-        const rack_name = rack.name || `Rack ${rack.rack_code}`; // Define for data-loc
+        const rack_name = rack.name || `Rack ${rack.rack_code}`; 
         header.innerHTML = `
             <p class="shelf-id">#${rack.rack_code}</p>
             <p class="shelf-title">
@@ -1139,7 +1139,7 @@ function populateSearchItems() {
         rackEl.className = 'rack';
 
         shelves.forEach(shelf => {
-            const shelf_name = shelf.name || `Shelf ${shelf.shelf_code}`; // Define for data-loc
+            const shelf_name = shelf.name || `Shelf ${shelf.shelf_code}`;
             const shelfBoxes = allBoxes
                 .filter(b => b.shelf_id === shelf.id)
                 .sort((a, b) => a.box_code.localeCompare(b.box_code, undefined, { numeric: true }));
@@ -1980,13 +1980,11 @@ document.getElementById("search_btn").onclick = () => {
 
     function searchItem() {
 
-        // PRODUCTS
         foundItem = allProducts.find(p =>
             (p.product_name || "").toLowerCase() === value ||
             (p.product_code || "").toLowerCase() === value
         );
 
-        // RAW MATERIALS
         if (!foundItem) {
             foundItem = allRawMaterials.find(r =>
                 (r.material_name || "").toLowerCase() === value ||
@@ -2043,12 +2041,9 @@ document.getElementById("search_btn").onclick = () => {
         return true;
     }
 
-    // try first in current section
     let found = focusBox();
 
     if (!found) {
-
-        // switch section and try again
         document.getElementById("btn-prev").click();
 
         setTimeout(() => {

@@ -872,10 +872,6 @@ async function fetchRawMaterials() {
     }
 }
 
-/**
- * SALES Schema (Individual Records with Pagination):
- * Returns sales_data with pagination support
- */
 async function fetchSales(limit = 200, offset = 0) {
     try {
         const url = `${API}/get-allsales?limit=${limit}&offset=${offset}`;
@@ -914,7 +910,6 @@ async function addProduct(productData) {
     }
 }
 
-// Add new raw material
 async function addRawMaterial(materialData) {
     try {
         const response = await fetch(`${API}/create-single-raw-material`, {
@@ -930,9 +925,6 @@ async function addRawMaterial(materialData) {
     }
 }
 
-// ================= HELPER FUNCTIONS =================
-
-// Determine stock status based on stock and reorder level
 function getStockStatus(stock, reorderLevel) {
     const stockNum = parseInt(stock);
     const reorderNum = parseInt(reorderLevel);
@@ -946,15 +938,11 @@ function getStockStatus(stock, reorderLevel) {
     }
 }
 
-// Format date
 function formatDate(dateString) {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-IN');
 }
 
-// ================= UI RENDERING FUNCTIONS =================
-
-// Render products table
 async function renderProducts() {
     const result = await fetchProducts();
     
@@ -1003,7 +991,6 @@ async function renderProducts() {
     wrapper.style.display = 'block';
 }
 
-// Render raw materials table
 async function renderRawMaterials() {
     const result = await fetchRawMaterials();
     
@@ -1053,20 +1040,14 @@ async function renderRawMaterials() {
     wrapper.style.display = 'block';
 }
 
-// ================= PAGINATION STATE =================
-
 let salesCurrentOffset = 0;
 let salesCurrentLimit = 200;
 let salesTotalRecords = 0;
-
-// Reset pagination to first page
 function resetSalesPagination() {
     salesCurrentLimit = parseInt(document.getElementById('salesPageSize').value);
     salesCurrentOffset = 0;
     renderSales();
 }
-
-// Go to next page
 function nextSalesPage() {
     const nextOffset = salesCurrentOffset + salesCurrentLimit;
     if (nextOffset < salesTotalRecords) {
@@ -1075,8 +1056,6 @@ function nextSalesPage() {
         document.querySelector('.table-wrapper')?.scrollIntoView({ behavior: 'smooth' });
     }
 }
-
-// Go to previous page
 function previousSalesPage() {
     const prevOffset = salesCurrentOffset - salesCurrentLimit;
     if (prevOffset >= 0) {
@@ -1086,7 +1065,6 @@ function previousSalesPage() {
     }
 }
 
-// Render sales table
 async function renderSales() {
     const result = await fetchSales(salesCurrentLimit, salesCurrentOffset);
     
@@ -1118,10 +1096,8 @@ async function renderSales() {
     const limit = result.limit || salesCurrentLimit;
     const offset = result.offset || salesCurrentOffset;
     
-    // Update state
     salesTotalRecords = total;
     
-    // Update info
     count.textContent = `${total.toLocaleString()} Total`;
     
     if (total === 0) {
@@ -1136,7 +1112,6 @@ async function renderSales() {
     const endRecord = Math.min(offset + limit, total);
     paginationInfo.textContent = `Showing ${startRecord.toLocaleString()}-${endRecord.toLocaleString()} of ${total.toLocaleString()}`;
     
-    // Update button states
     prevBtn.disabled = offset === 0;
     nextBtn.disabled = endRecord >= total;
     
@@ -1168,9 +1143,6 @@ async function renderSales() {
     wrapper.style.display = 'block';
 }
 
-// ================= MODAL FUNCTIONS =================
-
-// Fetch boxes
 async function fetchBoxes() {
     try {
         const res = await fetch(`${API}/get-boxes`);
@@ -1215,7 +1187,7 @@ async function openModal(type) {
 function closeModal() {
     document.getElementById("itemModal").classList.remove("open");
 }
-// Save item
+
 async function saveItem() {
 
     const code = document.getElementById("itemCode").value.trim();
@@ -1282,9 +1254,7 @@ async function saveItem() {
 
     saveBtn.disabled = false;
 }
-// ================= INITIALIZATION =================
 
-// Load all data on page load
 document.addEventListener("DOMContentLoaded", () => {
     renderProducts();
     renderRawMaterials();
