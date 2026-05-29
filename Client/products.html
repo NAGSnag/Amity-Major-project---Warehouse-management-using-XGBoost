@@ -494,6 +494,7 @@ body{
                                 <th>Stock</th>
                                 <th>Reorder Level</th>
                                 <th>Status</th>
+                                  <th>Action</th>  
                             </tr>
                         </thead>
 
@@ -546,6 +547,7 @@ body{
                                 <th>Reorder Level</th>
                                 <th>Size</th>
                                 <th>Status</th>
+                                  <th>Action</th>  
                             </tr>
                         </thead>
 
@@ -763,15 +765,28 @@ body{
     </div>
 
 </div>
+<div id="stockModal" class="modal-overlay">
+  <div class="sim-modal">
+    <h2 id="stockModalTitle">Update Stock</h2>
+    <div class="form-group">
+      <label>New Stock Quantity</label>
+      <input type="number" id="newStockQty" min="0" placeholder="Enter new quantity">
+    </div>
+    <div class="modal-actions">
+      <button class="cancel" onclick="closeStockModal()">Cancel</button>
+      <button class="active" onclick="saveStockUpdate()">Update</button>
+    </div>
+  </div>
+</div>
 
 <script>
 
-let currentType = "product";
-const API="https://amity-major-project-warehouse-management.onrender.com"
+    let currentType = "product";
+    const API="https://amity-major-project-warehouse-management.onrender.com"
     let boxesCache = [];
     let productsCache = [];
     let rawMaterialsCache = [];
-
+    let stockUpdateTarget = {};
 
 async function fetchProducts() {
     try {
@@ -984,6 +999,14 @@ async function renderProducts() {
                 <td>${product.stock_qty || 0}</td>
                 <td>${product.reorder_level || 0}</td>
                 <td class="${status.class}">${status.text}</td>
+                <td>
+                <button 
+                    class="pill" 
+                    style="padding:4px 10px; font-size:12px;"
+                    onclick="openUpdateStockModal('product', ${product.id}, '${product.product_name}', ${product.stock_qty})">
+                    Update Stock
+                </button>
+                </td>
             </tr>
         `;
     }).join('');
@@ -1033,6 +1056,15 @@ async function renderRawMaterials() {
                 <td>${material.reorder_level || 0}</td>
                 <td>${material.size_category || 'N/A'}</td>
                 <td class="${status.class}">${status.text}</td>
+                <td>
+                    <button 
+                        class="pill" 
+                        style="padding:4px 10px; font-size:12px;"
+                        onclick="openUpdateStockModal('raw', ${material.id}, '${material.material_name}', ${material.stock_qty})"
+                    >
+                        Update Stock
+                    </button>
+                    </td>
             </tr>
         `;
     }).join('');
@@ -1047,6 +1079,41 @@ function resetSalesPagination() {
     salesCurrentLimit = parseInt(document.getElementById('salesPageSize').value);
     salesCurrentOffset = 0;
     renderSales();
+}
+function openUpdateStockModal(type, id, name, currentStock) {
+  stockUpdateTarget = { type, id };
+  document.getElementById('stockModalTitle').textContent = `Update Stock — ${name}`;
+  document.getElementById('newStockQty').value = currentStock;
+  document.getElementById('stockModal').classList.add('open');
+}
+
+function closeStockModal() {
+  document.getElementById('stockModal').classList.remove('open');
+}
+
+async function saveStockUpdate() {
+  const qty = parseInt(document.getElementById('newStockQty').value);
+  if (isNaN(qty) || qty < 0) { alert('Enter a valid quantity'); return; }
+
+  const { type, id } = stockUpdateTarget;
+  const endpoint = type === 'product'
+    ? `${API}/update-product-stock`   // ← confirm with your backend
+    : `${API}/update-raw-material-stock`;
+
+  try {
+    const res = await fetch(endpoint, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, stock_qty: qty })
+    });
+    const data = await res.json();
+    alert('Stock updated!');
+    closeStockModal();
+    if (type === 'product') renderProducts();
+    else renderRawMaterials();
+  } catch (err) {
+    alert('Failed: ' + err.message);
+  }
 }
 function nextSalesPage() {
     const nextOffset = salesCurrentOffset + salesCurrentLimit;

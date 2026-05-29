@@ -742,6 +742,53 @@ async function resolveBoxId(rack_code, shelf_level, box_code) {
   );
   return box?.id || null;
 }
+app.put('/update-product-stock', async (req, res) => {
+  const { id, stock_qty } = req.body;
+
+  if (!id || stock_qty === undefined || stock_qty < 0) {
+    return res.status(400).json({ error: 'Invalid id or stock_qty' });
+  }
+
+  try {
+    const [result] = await pool.query(
+      `UPDATE products SET stock_qty = ? WHERE id = ?`,
+      [stock_qty, id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    res.json({ success: true, message: 'Product stock updated', id, stock_qty });
+  } catch (err) {
+    console.error('Error updating product stock:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/update-raw-material-stock', async (req, res) => {
+  const { id, stock_qty } = req.body;
+
+  if (!id || stock_qty === undefined || stock_qty < 0) {
+    return res.status(400).json({ error: 'Invalid id or stock_qty' });
+  }
+
+  try {
+    const [result] = await pool.query(
+      `UPDATE raw_materials SET stock_qty = ? WHERE id = ?`,
+      [stock_qty, id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Raw material not found' });
+    }
+
+    res.json({ success: true, message: 'Raw material stock updated', id, stock_qty });
+  } catch (err) {
+    console.error('Error updating raw material stock:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
  
 app.post("/import-products-with-location", async (req, res) => {
   try {
